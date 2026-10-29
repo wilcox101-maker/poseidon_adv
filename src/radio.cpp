@@ -197,10 +197,23 @@ static void teardown_current(void)
         break;
     case RADIO_SUBGHZ:
         cc1101_end();
-        gps_begin();  /* re-enable GPS UART on pin 13 after CC1101 releases it */
+        /* GPIO 13 is Hydra CC1101 CS while sub-GHz is up, and GPS UART TX
+         * on the LoRa-GNSS hat otherwise. cc1101_end left CS held high.
+         * Hand the pad back only when the user opted into GPS — starting
+         * the UART with GPS off would wiggle the CC1101 chip-select. */
+        if (gps_user_enabled()) {
+            pinMode(CC1101_CS, INPUT);
+            gps_begin();
+        }
         break;
     case RADIO_NRF24:
         nrf24_end();
+        /* nrf24_park_others() holds CC1101 CS (GPIO 13) high for the
+         * whole nRF24 session. Same restore rule as sub-GHz. */
+        if (gps_user_enabled()) {
+            pinMode(CC1101_CS, INPUT);
+            gps_begin();
+        }
         break;
     default: break;
     }
@@ -269,9 +282,10 @@ bool radio_switch(radio_domain_t target)
     case RADIO_LORA:
         break;
     case RADIO_SUBGHZ:
-        gps_end();  /* release pin 13 — GPS UART TX shares with CC1101 CS */
+        gps_end();  /* GPIO 13: GPS UART TX shares Hydra CC1101 CS */
         break;
     case RADIO_NRF24:
+        gps_end();  /* parking CC1101 CS claims GPIO 13 (GPS UART TX) */
         break;
     default: break;
     }

@@ -20,11 +20,8 @@
 #include <driver/sdspi_host.h>
 #include <driver/spi_common.h>
 
-#define SD_SCK   40
-#define SD_MISO  39
-#define SD_MOSI  14
-/* SD_CS now lives in sd_helper.h so the shared-bus park logic (cc1101/nrf24)
- * has one source of truth for the SD chip-select. */
+/* SD_SCK / SD_MISO / SD_MOSI / SD_CS live in sd_helper.h so Hydra and LoRa
+ * parking share one pin map with the microSD. */
 #define SD_FREQ  20000000  /* 20 MHz — reliable on 5cm ribbon in the Cardputer */
 
 /* Dedicated SPI bus for SD. The M5Cardputer display (M5GFX) claims

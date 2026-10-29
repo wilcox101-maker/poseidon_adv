@@ -1,6 +1,6 @@
 # Proposal: CC1101 + nRF24L01+ Cardputer HAT integration
 
-**Status:** draft, awaiting hardware in hand (hat arrives ~2026-04-15)
+**Status:** pinout confirmed (PINGEQUA Hydra RF Cap). The rest of this note is the original feature proposal.
 **Owner:** @GeneralDussDuss
 
 ---
@@ -25,31 +25,38 @@ remote node entirely — POSEIDON talks directly to both chips over SPI.
 Neither exists on any other Cardputer firmware. Both are the kind of attack that makes
 people actually watch demo videos.
 
-## Wiring (confirm against hat docs when hardware arrives)
+## Wiring (PINGEQUA Hydra RF Cap — confirmed)
 
-Cardputer exposes these on the expansion header (Grove I²C + rear pads):
+The hat shares the Cardputer microSD HSPI bus. These are the official
+Hydra pins (`src/cc1101_hw.h`, `src/nrf24_hw.h`); do not substitute the
+earlier combo-hat guess (CC1101 CS 15 / GDO0 13, nRF24 CS 4 / CE 3).
 
-| Cardputer GPIO | Likely role              |
-|----------------|--------------------------|
-| 13             | G13 / SDA  (can repurpose as SPI) |
-| 17             | G17 / SCL  (can repurpose)        |
-| 41 / 42        | additional header lines, HAT-specific |
+| Signal       | GPIO | Also used by                                      |
+|--------------|------|---------------------------------------------------|
+| SCK          | 40   | microSD, CAP-LoRa1262                             |
+| MISO         | 39   | microSD, CAP-LoRa1262                             |
+| MOSI         | 14   | microSD, CAP-LoRa1262                             |
+| CC1101 CS    | 13   | LoRa-GNSS GPS UART TX (MCU TX). Not a LoRa SPI pin. |
+| CC1101 GDO0  | 5    | CAP-LoRa1262 SX1262 NSS                           |
+| nRF24 CS     | 6    | CAP-LoRa1262 SX1262 BUSY                          |
+| nRF24 CE     | 4    | CAP-LoRa1262 SX1262 DIO1                          |
+| microSD CS   | 12   | SD only. Parked high while either Hydra radio talks. |
 
-SPI bus: reuse **HSPI** / `SPI2_HOST`. Rough pin map (TBD on hat arrival):
+GPS UART RX is GPIO 15 (module TX → MCU). Hydra does not use GPIO 15.
+Bring-up calls `gps_end()` before driving GPIO 13 as CC1101 CS, and
+restores the UART only when the user has opted into GPS. GDO0 stays an
+input (boot uses `INPUT_PULLUP` so a LoRa NSS on the same pad reads as
+deselected).
 
 ```
-SCK   → G13 (or dedicated HAT pin)
-MOSI  → G17
-MISO  → G??
-CC1101 CS   → G??
-nRF24  CS   → G??
-CC1101 GDO0 → G?? (interrupt / sync pulse)
-nRF24  IRQ  → G?? (interrupt)
-nRF24  CE   → G??
+SCK         → GPIO 40
+MISO        → GPIO 39
+MOSI        → GPIO 14
+CC1101 CS   → GPIO 13
+CC1101 GDO0 → GPIO 5
+nRF24  CS   → GPIO 6
+nRF24  CE   → GPIO 4
 ```
-
-The SD card already uses SPI (SCK 40, MISO 39, MOSI 14, CS 12). If HAT needs different
-pins we'll have two independent SPI buses; SPI2 and SPI3 are both available on S3.
 
 ## Lazy radio integration
 
@@ -133,13 +140,12 @@ Pick existing libs first, only write from scratch if licensing or fit is wrong:
 
 ## Open questions (raise when hardware is in hand)
 
-- Final pinout on the hat — exact GPIOs for SCK/MOSI/MISO, CS, GDO0, IRQ, CE
+- Final pinout on the hat — resolved, see Wiring. Official map is SCK 40, MISO 39, MOSI 14, CC1101 CS 13 / GDO0 5, nRF24 CS 6 / CE 4. No separate nRF24 IRQ is wired in this firmware.
 - Antenna: does the hat have its own antenna, or does it terminate at SMA for external?
 - Power: does the hat draw enough to bother the Cardputer battery? CC1101 TX is ~35 mA
   continuous, nRF24 TX is ~12 mA — not bad, but if user runs a sub-GHz replay loop
   while BLE scanning, we might hit brownout.
-- Interrupt routing: S3 has limited interruptable pins, need to confirm hat pins map
-  to interruptable GPIOs.
+- Interrupt routing: resolved for GDO0. GPIO 5 is interrupt-capable on the ESP32-S3 and is what `subghz_scan` attaches to. No nRF24 IRQ pin is part of the official map above.
 - Antenna switching if both chips share one antenna path.
 
 ## Proposed commit sequence (once hat arrives)
@@ -158,5 +164,5 @@ Each commit stands alone + is testable in isolation. Ship one per evening, itera
 
 ## Waiting
 
-Hold implementation until hardware is in hand and pinout is confirmed. Ping back when
-the hat arrives and I'll start task 4.1a immediately.
+Pinout is confirmed and implemented in `src/cc1101_hw.h` / `src/nrf24_hw.h`.
+The task list above is historical; the sub-GHz and nRF24 features already exist.

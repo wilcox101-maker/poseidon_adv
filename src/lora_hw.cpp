@@ -8,6 +8,8 @@
  */
 #include "lora_hw.h"
 #include "sd_helper.h"
+#include "cc1101_hw.h"
+#include "nrf24_hw.h"
 #include <M5Unified.h>
 #include <SD.h>
 #include <SPI.h>
@@ -16,6 +18,13 @@
 #define LORA_RST   3
 #define LORA_DIO1  4
 #define LORA_BUSY  6
+
+/* Same header pads, different hats. Fail the build if either map drifts. */
+static_assert(LORA_NSS  == CC1101_GDO0, "Hydra GDO0 shares CAP-LoRa1262 NSS");
+static_assert(LORA_DIO1 == NRF24_CE,    "Hydra nRF24 CE shares CAP-LoRa1262 DIO1");
+static_assert(LORA_BUSY == NRF24_CS,    "Hydra nRF24 CS shares CAP-LoRa1262 BUSY");
+static_assert(LORA_NSS != CC1101_CS && LORA_RST != NRF24_CE,
+              "LoRa NSS/RST must not be retargeted onto Hydra CS/CE");
 
 /* No custom SPIClass. M5Stack's CAP-LoRa1262 reference and d4rkmen/plai's
  * Cardputer-Adv Meshtastic port both rely on the global Arduino SPI object
@@ -115,18 +124,19 @@ int lora_begin(const lora_config_t &cfg)
      * what RadioLib needs to talk to the SX1262. */
     sd_mount();
 
-    /* Park SD CS. GPIO 13 used to be parked HIGH here for the CC1101's
-     * CS line — but GPIO 13 is ALSO the GPS UART TX pin (see gps.h:18-19).
-     * Forcing it OUTPUT/HIGH after gps_begin() left the UART driver
-     * fighting our output mode, causing intermittent NMEA loss. CC1101
-     * never coexists with LoRa (radio_switch handles mutual exclusion +
-     * cc1101_end now restores CS=13 to INPUT, POS-AUDIT-012) so we
-     * don't park pin 13 here. */
-    pinMode(12, OUTPUT); digitalWrite(12, HIGH);  /* SD CS */
-    /* POS-AUDIT-026: defensive nRF24 CS park. nRF24 doesn't share radio
-     * domain with LoRa, but if a non-radio_switch path left CE/CS driven
-     * the SX1262 could see noise on the shared HSPI bus. */
-    pinMode(6, OUTPUT); digitalWrite(6, HIGH);    /* nRF24 CS */
+    /* Park SD CS. GPIO 13 is Hydra CC1101 CS and also this hat's GPS
+     * UART TX. Forcing it OUTPUT/HIGH after gps_begin() left the UART
+     * driver fighting our output mode, causing intermittent NMEA loss.
+     * CC1101 never coexists with LoRa (radio_switch tears it down first;
+     * cc1101_end leaves CC1101 CS high, and the GPS restore path
+     * tri-states GPIO 13 only when the user opted in). Do not park
+     * pin 13 here. */
+    pinMode(SD_CS, OUTPUT); digitalWrite(SD_CS, HIGH);
+    /* Defensive nRF24 CS park. nRF24 doesn't share a radio domain with
+     * LoRa, but a leftover driven CS on the shared HSPI bus lets the
+     * nRF24 (or a floating slave) contend on MISO. This pad is also
+     * SX1262 BUSY; RadioLib reclaims it as an input during begin. */
+    pinMode(NRF24_CS, OUTPUT); digitalWrite(NRF24_CS, HIGH);
 
     /* Release from reset. */
     pinMode(LORA_NSS, OUTPUT); digitalWrite(LORA_NSS, HIGH);

@@ -3,7 +3,11 @@
  *
  * Cardputer-Adv pin map (per M5 docs):
  *   SX1262: NSS=G5 SCK=G40 MOSI=G14 MISO=G39 RST=G3 DIO1=G4 BUSY=G6
- *   Antenna switch: PI4IOE5V6408 @ 0x43 on internal I2C, P0 HIGH enables.
+ *
+ * PINGEQUA Hydra RF Cap (different hat, same header) reuses three of
+ * these pads: CC1101 GDO0=NSS G5, nRF24 CE=DIO1 G4, nRF24 CS=BUSY G6.
+ * Hydra CC1101 CS is G13 (GPS UART TX on this hat), not a LoRa pin.
+ * Antenna switch: PI4IOE5V6408 @ 0x43 on internal I2C, P0 HIGH enables.
  *
  * Shares the SD SPI bus via sd_get_spi() — features run one at a time
  * so no mutex is needed.

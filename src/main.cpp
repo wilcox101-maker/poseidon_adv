@@ -7,6 +7,7 @@
 #include "menu.h"
 #include "radio.h"
 #include "sd_helper.h"
+#include "cc1101_hw.h"
 #include "gps.h"
 #include "sfx.h"
 #include "theme.h"
@@ -104,11 +105,12 @@ void setup()
     /* Safety belt: force the I2C (TCA8418) keyboard reader even if
      * autodetect picked K126, so the driver never grabs G3-G7. */
     M5Cardputer.Keyboard.begin(std::make_unique<TCA8418KeyboardReader>());
-    /* Release pin 5 — LoRa hat uses it as NSS (needs HIGH to deselect),
-     * Hydra hat uses it as CC1101 GDO0 (input). Since we don't know
-     * which hat is attached, set INPUT_PULLUP which safely deselects
-     * LoRa NSS (pulled high) and won't fight CC1101 GDO0 (input). */
-    pinMode(5, INPUT_PULLUP);
+    /* Release Hydra GDO0 / LoRa NSS (GPIO 5). LoRa needs the pad high
+     * to stay deselected; Hydra uses it as CC1101 GDO0 (the chip drives
+     * it, so we must not force an output). INPUT_PULLUP covers both
+     * hats: NSS reads as deselected, and a weak pull does not clamp
+     * GDO0 once the CC1101 is actively driving the net. */
+    pinMode(CC1101_GDO0, INPUT_PULLUP);
     M5Cardputer.Display.setRotation(1);  /* landscape, keyboard at the bottom */
     Serial.begin(115200);
     hb_install_esp_query();

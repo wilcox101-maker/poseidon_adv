@@ -8,23 +8,37 @@
 #include <ELECHOUSE_CC1101_SRC_DRV.h>
 #include <SD.h>
 
+/* Official Hydra map must stay locked to the shared SD bus and to the
+ * one GPS pad it actually collides with (UART TX = GPIO 13 = CC1101 CS).
+ * GDO0 is GPIO 5; GPS RX (GPIO 15) is not a Hydra pin. */
+static_assert(CC1101_SCK  == SD_SCK,  "Hydra SCK must be the SD/HSPI clock");
+static_assert(CC1101_MISO == SD_MISO, "Hydra MISO must be the SD/HSPI data-in");
+static_assert(CC1101_MOSI == SD_MOSI, "Hydra MOSI must be the SD/HSPI data-out");
+static_assert(CC1101_SCK  == NRF24_SCK  && CC1101_MISO == NRF24_MISO &&
+              CC1101_MOSI == NRF24_MOSI, "Hydra CC1101 and nRF24 share one SPI bus");
+static_assert(CC1101_CS == GPS_UART_TX_PIN, "Hydra CC1101 CS shares GPS UART TX");
+static_assert(CC1101_GDO0 != GPS_UART_TX_PIN && CC1101_GDO0 != GPS_UART_RX_PIN,
+              "Hydra GDO0 must not sit on a GPS UART pin");
+static_assert(NRF24_CS != GPS_UART_TX_PIN && NRF24_CS != GPS_UART_RX_PIN &&
+              NRF24_CE != GPS_UART_TX_PIN && NRF24_CE != GPS_UART_RX_PIN,
+              "Hydra nRF24 CS/CE must not sit on a GPS UART pin");
+static_assert(CC1101_CS != SD_CS && NRF24_CS != SD_CS && CC1101_CS != NRF24_CS,
+              "Hydra chip-selects must be unique on the shared bus");
+
 static bool s_up = false;
 
 void cc1101_park_others(void)
 {
-    /* On the combo hat CC1101 CS=15 and GDO0=13, which are exactly the GPS
-     * UART pins (RX=15, TX=13). A running GPS poller fights us for them —
-     * symptoms range from "CS never asserts" to "garbage bytes on SPI" — so
-     * tear GPS down first. (POS-AUDIT-244 / rf-015: only if actually up;
-     * unconditional teardown momentarily backdrove the GPS TX into us.) */
+    /* Official Hydra: CC1101 CS = GPIO 13 = GPS UART TX on the LoRa-GNSS
+     * hat. GDO0 = GPIO 5, which is not a GPS pin (GPS RX is GPIO 15 and
+     * Hydra does not use it). A live GPS poller holds GPIO 13 as UART TX,
+     * so the CC1101 never sees CS. Tear GPS down only when it is actually
+     * up — an unconditional teardown back-drove the GPS TX line. */
     if (gps_is_up()) gps_end();
 
-    /* Hold every other device on the shared HSPI bus deselected so CC1101
-     * owns it. Driven from the canonical macros (SD_CS, NRF24_CS) so this
-     * can't drift out of sync with the hat pinout — the old hard-coded 6/5
-     * were the Hydra nRF24-CS / LoRa-NSS pins and left the hat's real nRF24
-     * CS (4) un-parked (latent MISO contention). CC1101's own CS/GDO0 are
-     * set up in cc1101_begin. */
+    /* Deselect the other HSPI slaves so the CC1101 owns MISO.
+     * nRF24 CS is GPIO 6. Do not drive GDO0 (GPIO 5) here: the CC1101
+     * owns that net as an input, and on the CAP-LoRa1262 it is SX1262 NSS. */
     pinMode(SD_CS,    OUTPUT); digitalWrite(SD_CS,    HIGH);
     pinMode(NRF24_CS, OUTPUT); digitalWrite(NRF24_CS, HIGH);
 }
@@ -40,8 +54,8 @@ bool cc1101_begin(float freq_mhz)
         return false;
     }
 
-    /* Reuse the SD's HSPI instance (pins 40/39/14 are shared). With
-     * the bmorcelli fork of the ELECHOUSE lib we can pass that
+    /* Reuse the SD's HSPI instance (SCK/MISO/MOSI are the shared Hydra
+     * bus). With the bmorcelli fork of the ELECHOUSE lib we can pass that
      * instance in via setSPIinstance so the lib skips its own
      * SPI.begin() — which on Arduino-ESP32 3.x put pins into SPI
      * peripheral mode then immediately digitalWrite/Read them, logging
@@ -50,7 +64,9 @@ bool cc1101_begin(float freq_mhz)
      * instance (already initialised) the pin-mode conflict disappears. */
     ELECHOUSE_cc1101.setSPIinstance(&sd_get_spi());
     pinMode(CC1101_CS, OUTPUT); digitalWrite(CC1101_CS, HIGH);
-    ELECHOUSE_cc1101.setSpiPin(40, 39, 14, CC1101_CS);
+    /* setSpiPin(sck, miso, mosi, ss) — CS is the only pin the library
+     * still toggles itself; the bus wires come from sd_get_spi(). */
+    ELECHOUSE_cc1101.setSpiPin(CC1101_SCK, CC1101_MISO, CC1101_MOSI, CC1101_CS);
     /* Do NOT call setGDO() — it sets GDO0 to OUTPUT which blocks the
      * CC1101's data signal. The official RCSwitch example skips it.
      * GDO0 must be INPUT so the CC1101 drives it and RCSwitch reads. */
@@ -78,6 +94,12 @@ bool cc1101_begin(float freq_mhz)
         Serial.printf("[cc1101] chip NOT detected: PARTNUM=0x%02X VERSION=0x%02X "
                       "(expect 0x00 / 0x14) — check CC1101 CS pin (GPIO %d) and hat seating\n",
                       part, ver, CC1101_CS);
+        /* GDO0 was just switched to a plain input, which drops the boot
+         * pull-up that deselects LoRa NSS. Put that pull-up back and leave
+         * CS high. s_up stays false, so cc1101_end() will not redo this. */
+        pinMode(CC1101_GDO0, INPUT_PULLUP);
+        pinMode(CC1101_CS, OUTPUT);
+        digitalWrite(CC1101_CS, HIGH);
         return false;
     }
     Serial.printf("[cc1101] chip OK: PARTNUM=0x%02X VERSION=0x%02X\n", part, ver);
@@ -111,11 +133,15 @@ void cc1101_end(void)
     if (!s_up) return;
     ELECHOUSE_cc1101.setSidle();
     ELECHOUSE_cc1101.goSleep();
-    /* POS-AUDIT-012: restore GDO0 to INPUT (was OUTPUT for some TX paths)
-     * and float CS so the next HSPI user sees a clean bus. Other parked
-     * CS lines (SD=12, nRF24=6, LoRa=5) are released by their owners. */
-    pinMode(CC1101_GDO0, INPUT);
-    pinMode(CC1101_CS, INPUT);
+    /* GDO0 is GPIO 5, also SX1262 NSS on the other hat. Boot leaves it
+     * INPUT_PULLUP so LoRa NSS stays deselected without clamping the
+     * CC1101 data pin. TX paths drive it as an output; put that pull-up
+     * back. Hold our own CS high (deselected). radio_switch tri-states
+     * GPIO 13 only when handing it back to the GPS UART. SD CS and
+     * nRF24 CS stay parked by their owners. */
+    pinMode(CC1101_GDO0, INPUT_PULLUP);
+    pinMode(CC1101_CS, OUTPUT);
+    digitalWrite(CC1101_CS, HIGH);
     s_up = false;
 }
 

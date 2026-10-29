@@ -63,10 +63,11 @@ void gps_end(void)
     s_uart.end();
     /* gps-002: HardwareSerial::end() does not release the pin mode —
      * the UART driver leaves TX in OUTPUT (driven LOW or HIGH depending
-     * on idle state) and RX with whatever pull was last set. CC1101 +
-     * LoRa park sequences re-claim pin 13 (GPS TX) for CS/CSn parking;
-     * leaving it driven creates bus contention with whoever asserts CS
-     * next. Tri-state both ends so HSPI cs-park paths can drive cleanly. */
+     * on idle state) and RX with whatever pull was last set. Hydra park
+     * re-claims GPIO 13 (GPS UART TX / CC1101 CS) and drives it high;
+     * leaving the UART driver on that pad fights the chip-select.
+     * Tri-state both ends so the HSPI park paths can drive cleanly.
+     * GPIO 15 (GPS UART RX) is not a Hydra pin. */
     pinMode(GPS_UART_TX_PIN, INPUT);
     pinMode(GPS_UART_RX_PIN, INPUT);
     s_started = false;

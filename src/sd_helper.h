@@ -2,9 +2,14 @@
 
 #include <SPI.h>
 
-/* SD chip-select on the shared HSPI bus. Exposed here (not buried in the .cpp)
- * so CC1101/nRF24 bus-parking can deselect it via one canonical macro. */
-#define SD_CS 12
+/* Shared HSPI bus (microSD + Hydra CC1101/nRF24 + CAP-LoRa1262).
+ * Exposed here so radio parking and CC1101 setSpiPin stay on one map:
+ *   SCK=40  MISO=39  MOSI=14  SD CS=12
+ *   Hydra CC1101 CS=13 GDO0=5, nRF24 CS=6 CE=4 (see cc1101_hw.h / nrf24_hw.h). */
+#define SD_SCK   40
+#define SD_MISO  39
+#define SD_MOSI  14
+#define SD_CS    12
 
 #define SD_POSEIDON_ROOT       "/poseidon"
 #define SD_CAPTURE_ROOT        "/poseidon/captures"
