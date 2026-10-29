@@ -203,7 +203,7 @@ static void teardown_current(void)
          * the UART with GPS off would wiggle the CC1101 chip-select. */
         if (gps_user_enabled()) {
             pinMode(CC1101_CS, INPUT);
-            gps_begin();
+            gps_resume_if_enabled();
         }
         break;
     case RADIO_NRF24:
@@ -212,7 +212,7 @@ static void teardown_current(void)
          * whole nRF24 session. Same restore rule as sub-GHz. */
         if (gps_user_enabled()) {
             pinMode(CC1101_CS, INPUT);
-            gps_begin();
+            gps_resume_if_enabled();
         }
         break;
     default: break;

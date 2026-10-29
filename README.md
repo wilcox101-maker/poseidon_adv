@@ -8,11 +8,21 @@
   [![framework](https://img.shields.io/badge/framework-Arduino%2FPlatformIO-green)](https://platformio.org/)
   [![license](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
   [![modules](https://img.shields.io/badge/research%20modules-170%2B-orange)]()
-  [![release](https://img.shields.io/badge/release-v0.8.0-blueviolet)](https://github.com/Evil0ctopus/poseidon_adv/releases/latest)
+  [![release](https://img.shields.io/badge/release-v0.8.1-blueviolet)](https://github.com/wilcox101-maker/poseidon_adv)
   [![version](https://img.shields.io/badge/version-Deepwater-success)]()
   [![use](https://img.shields.io/badge/use-authorized%20%2F%20owned%20hardware-important)]()
 
 </div>
+
+---
+
+## This fork (0.8.1)
+
+[wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv) tracks [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). Upstream changes are pulled and rebased over time. Fixes for the PINGEQUA Hydra RF Cap on Cardputer ADV stay on top.
+
+This fork exists to correct Hydra bring-up (wrong pins, shared-SPI chip-selects, GPS conflict on GPIO 13). It is not a separate product.
+
+Official Hydra map in this tree: SPI SCK 40, MISO 39, MOSI 14; CC1101 CS 13, GDO0 5; nRF24 CS 6, CE 4; microSD CS 12. Source revision **0.8.1**. Binaries under `release_binaries/` are still the 0.8.0 Deepwater images until the next package build.
 
 ---
 
@@ -33,7 +43,7 @@ If you are unsure whether a use is allowed, treat it as **not allowed**. See the
 
 **POSEIDON** is a pocket-sized, keyboard-first **wireless auditing and security-research lab** built for the **M5Stack Cardputer-Advance** (ESP32-S3, QWERTY keyboard, 240×135 color display). Research modules cover Wi-Fi, Bluetooth Low Energy (BLE), Sub-GHz, 2.4 GHz, LoRa, Infrared, and LAN — intended for learning RF/embedded security concepts and testing **owned** gear.
 
-This fork (`poseidon_adv`) builds on the GeneralDussDuss release with stability work, performance tweaks, and features aimed at lab / field evaluation on authorized hardware.
+Upstream POSEIDON builds on the GeneralDussDuss release with stability work, performance tweaks, and features aimed at lab / field evaluation on authorized hardware. This wilcox101-maker checkout tracks that tree and adds the Hydra pin and SPI fixes described above.
 
 * **170+ research modules:** Broad coverage across Wi-Fi, BLE, Sub-GHz, 2.4 GHz, LoRa, Infrared, and LAN for recon and defensive assessment in authorized environments.
 * **QWERTY-driven interface:** Letter-mnemonic menus and direct parameter typing (no thumb-stick scrolling).
@@ -139,7 +149,7 @@ On Windows, with development firmware running on a connected Cardputer:
 For release packaging after building all three profiles:
 
 ```powershell
-.\scripts\prepare_deepwater_release.ps1 -Version 0.8.0
+.\scripts\prepare_deepwater_release.ps1 -Version 0.8.1
 ```
 
 This refreshes the [distribution binaries](release_binaries/README.md), legacy

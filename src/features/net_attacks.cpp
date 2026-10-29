@@ -13,6 +13,7 @@
 #include "ui.h"
 #include "input.h"
 #include "radio.h"
+#include "../gps.h"
 #include "../wifi_ap_helpers.h"
 #include <WiFi.h>
 #include <esp_wifi.h>
@@ -93,13 +94,10 @@ void feat_uart_shell(void)
 {
     /* Release any radio that may own pin 13 (CC1101 CS / GPS TX). */
     radio_switch(RADIO_NONE);
-    extern void gps_end(void);
-    extern void gps_begin(void);
     gps_end();
-    /* RAII-style guard: restore GPS on every exit path below, so
-     * wardrive / GPS-fix features aren't left without a UART after
-     * this feature returns. */
-    struct gps_restore_t { ~gps_restore_t() { gps_begin(); } } _gps_restore;
+    /* Restore the UART and its poller on every exit if the user had
+     * GPS enabled. Does not start GPS that was left off. */
+    struct gps_restore_t { ~gps_restore_t() { gps_resume_if_enabled(); } } _gps_restore;
     ui_clear_body();
     ui_draw_status("uart", nullptr);
     ui_draw_footer("esc=exit  enter=send");

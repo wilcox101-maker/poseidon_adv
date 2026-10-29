@@ -1,6 +1,6 @@
-# POSEIDON Advanced v0.8.0 - Deepwater
+# POSEIDON Advanced — source 0.8.1
 
-These binaries are built from the Deepwater source and share its default UI.
+Firmware source in this fork is revision 0.8.1 (Hydra RF Cap pin and SPI fixes on top of upstream Deepwater). The binaries in this directory were built as **0.8.0** and were not rebuilt for 0.8.1.
 `SHA256SUMS.txt` covers every binary in this directory.
 
 | File | Purpose |
@@ -26,7 +26,7 @@ pio run -e cardputer -e cardputer-launcher -e cardputer-launcher-dual
 Then refresh these tracked release artifacts:
 
 ```powershell
-.\scripts\prepare_deepwater_release.ps1 -Version 0.8.0
+.\scripts\prepare_deepwater_release.ps1 -Version 0.8.1
 ```
 
 The personal website's Flash hub serves a checksum-verified copy of the

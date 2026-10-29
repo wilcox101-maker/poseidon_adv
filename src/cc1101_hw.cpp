@@ -51,6 +51,8 @@ bool cc1101_begin(float freq_mhz)
     /* The SD card is optional, but its HSPI pins are shared with this hat. */
     if (!sd_prepare_bus()) {
         Serial.println("[cc1101] shared SPI bus unavailable");
+        pinMode(CC1101_CS, OUTPUT);
+        digitalWrite(CC1101_CS, HIGH);
         return false;
     }
 
@@ -76,6 +78,9 @@ bool cc1101_begin(float freq_mhz)
      * silently corrupt subsequent register writes. */
     if (!ELECHOUSE_cc1101.Init()) {
         Serial.println("[cc1101] Init() failed — SPI bus likely wedged");
+        pinMode(CC1101_CS, OUTPUT);
+        digitalWrite(CC1101_CS, HIGH);
+        pinMode(CC1101_GDO0, INPUT_PULLUP);
         return false;
     }
     delay(10);
@@ -200,7 +205,10 @@ void cc1101_diag(void)
 {
     bool up = cc1101_begin(433.92f);
     Serial.printf("[cc1101] DIAG begin=%d\n", up);
-    if (!up) return;
+    if (!up) {
+        gps_resume_if_enabled();
+        return;
+    }
     uint8_t part = ELECHOUSE_cc1101.SpiReadStatus(0x30);
     uint8_t ver  = ELECHOUSE_cc1101.SpiReadStatus(0x31);
     Serial.printf("[cc1101] DIAG PARTNUM=0x%02X VERSION=0x%02X\n", part, ver);
@@ -212,4 +220,8 @@ void cc1101_diag(void)
         delay(150);
     }
     cc1101_end();
+    if (gps_user_enabled()) {
+        pinMode(CC1101_CS, INPUT);
+        gps_resume_if_enabled();
+    }
 }

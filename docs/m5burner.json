@@ -7,17 +7,17 @@
   "icon": "https://evil0ctopus.github.io/assets/deepwater-cover.png",
   "firmware": [
     {
-      "name": "POSEIDON Advanced v0.8.0 - Deepwater",
-      "version": "0.8.0",
+      "name": "POSEIDON Advanced v0.8.1 - Deepwater",
+      "version": "0.8.1",
       "chip": "esp32s3",
       "target": "M5Cardputer-Adv",
       "flash_size": "8MB",
       "psram": false,
       "url": "https://github.com/Evil0ctopus/poseidon_adv/releases/download/v0.8.0/poseidon-factory.bin",
       "offset": "0x0",
-      "description": "Deepwater default UI: navy/ice/cyan, short skippable boot reveal, sharp theme-aware icons, list/card menus, scrollable help, Ctrl+/ footer paging, large text and reduced motion. Removes full-screen menu/event animation buffers. Standalone factory image only; replaces the flash layout. Use poseidon-launcher.bin for existing Launcher installations instead. Public catalog publication requires the M5Burner publisher account.",
-      "date": "2026-10-03",
-      "changelog": "https://github.com/Evil0ctopus/poseidon_adv/blob/master/CHANGELOG.md",
+      "description": "Source revision 0.8.1 on the wilcox101-maker fork: official PINGEQUA Hydra pin map (CC1101 CS 13 / GDO0 5, nRF24 CS 6 / CE 4) and shared-SPI / GPS-UART fixes, tracking Evil0ctopus/poseidon_adv. The url field is still the published 0.8.0 Deepwater factory image until a 0.8.1 package is built. Standalone factory image replaces the flash layout. Use poseidon-launcher.bin for existing Launcher installations. Public catalog publication requires the M5Burner publisher account.",
+      "date": "2026-10-29",
+      "changelog": "https://github.com/wilcox101-maker/poseidon_adv/blob/master/CHANGELOG.md",
       "license": "MIT"
     },
     {

@@ -121,6 +121,16 @@ static void gps_task_fn(void *_)
     vTaskDelete(nullptr);
 }
 
+void gps_resume_if_enabled(void)
+{
+    if (!gps_user_enabled()) return;
+    if (!s_started) gps_begin();
+    if (!s_gps_task) {
+        s_gps_stop = false;
+        xTaskCreate(gps_task_fn, "gps", 2304, nullptr, 2, &s_gps_task);
+    }
+}
+
 bool gps_ensure_running(void)
 {
     /* Opening the GPS or Wardrive menu IS the opt-in event — record

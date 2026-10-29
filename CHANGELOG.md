@@ -6,6 +6,15 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-10-29
+
+Fork revision. Tracks [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). Hydra RF Cap fixes stay on top of upstream. Not a separate product.
+
+### Fixed
+- **Hydra pin map.** CC1101 is CS 13 / GDO0 5 and nRF24 is CS 6 / CE 4 on the shared SPI bus (SCK 40, MISO 39, MOSI 14, microSD CS 12). An earlier combo-hat map (CC1101 CS 15 / GDO0 13, nRF24 CS 4 / CE 3) talked to the wrong GPIOs. GDO0 is not a GPS pin and is not driven as a chip-select.
+- **Chip-select idle.** CC1101 CS and nRF24 CS stay high after init failure and after the nRF24 session ends, so a floating select cannot answer later SPI. nRF24 CE stays high-Z (that pad is LoRa DIO1 on the other hat).
+- **GPS restore.** GPIO 13 is the LoRa-GNSS UART TX and the CC1101 chip-select. Bring-up still calls `gps_end()` before driving it. Restore now restarts the NMEA poller as well as the UART, and only when the user had GPS enabled.
+
 ## [0.8.0] - 2026-10-03
 
 ### Added

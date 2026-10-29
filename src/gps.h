@@ -40,6 +40,11 @@ struct gps_fix_t {
 
 bool gps_begin(void);
 void gps_end(void);
+
+/* After Hydra (or the UART shell) releases GPIO 13: if the user opted
+ * into GPS, bring the UART back and respawn the poller gps_end() stopped.
+ * Does nothing when GPS is disabled, so CC1101 CS can stay high. */
+void gps_resume_if_enabled(void);
 void gps_poll(void);
 
 /* rf-015: cheap "is the UART up?" probe so callers that conditionally

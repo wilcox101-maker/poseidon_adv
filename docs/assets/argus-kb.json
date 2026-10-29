@@ -699,7 +699,7 @@
 "id": "k116",
 "source": "docs/hardware.html",
 "title": "Hardware",
-"text": "d with CC1101 GDO0 on Hydra hat G6 LoRa BUSY · shared with nRF24 CS on Hydra hat G7 GPS RX (NMEA input) on LoRa hat G13 GPS TX (LoRa hat) · shared with CC1101 CS on Hydra hat (gps_end() releases before CC1101 begin) G14 SPI MOSI (shared across SD + every hat) G39/G40 SPI MISO / SCK ⟠ PART OF THE SUITE THE SUITE FACELESS (c) 2026 POSEIDON - commander of the deep - MIT"
+"text": "d with CC1101 GDO0 on Hydra hat G6 LoRa BUSY · shared with nRF24 CS on Hydra hat G12 microSD CS G13 LoRa-GNSS UART TX and Hydra CC1101 CS G15 LoRa-GNSS UART RX, not a Hydra pin G5 is CC1101 GDO0 not GPS G14 SPI MOSI (shared across SD + every hat) G39/G40 SPI MISO / SCK ⟠ PART OF THE SUITE THE SUITE FACELESS (c) 2026 POSEIDON - commander of the deep - MIT"
 },
 {
 "id": "k117",

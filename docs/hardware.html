@@ -82,7 +82,9 @@
         <tr><td>Sub-GHz</td><td>CC1101 (300–928 MHz)</td></tr>
         <tr><td>2.4 GHz</td><td>nRF24L01+ (promisc ESB + HID)</td></tr>
         <tr><td>Vendor</td><td>PINGEQUA</td></tr>
-        <tr><td>Bus</td><td>SPI (shared with SD)</td></tr>
+        <tr><td>Bus</td><td>SPI SCK 40 / MISO 39 / MOSI 14, shared with microSD CS 12</td></tr>
+        <tr><td>CC1101</td><td>CS 13, GDO0 5</td></tr>
+        <tr><td>nRF24</td><td>CS 6, CE 4</td></tr>
         <tr><td>Use</td><td>Signal capture/replay, MouseJack, BLE spam via nRF24</td></tr>
       </table>
     </div>
@@ -100,7 +102,7 @@
       <h3>W5500 SPI&thinsp;⇄&thinsp;Ethernet <span class="chip" style="background:rgba(245,158,11,.2);color:#f59e0b;border-color:rgba(245,158,11,.4);">NEW · RJ45</span></h3>
       <table>
         <tr><td>PHY</td><td>WIZnet W5500 10/100 full-duplex</td></tr>
-        <tr><td>Bus</td><td>SPI (shared FSPI w/ SD)</td></tr>
+        <tr><td>Bus</td><td>Not wired in this tree. Cardputer microSD is HSPI (SCK 40, MISO 39, MOSI 14, CS 12), not FSPI</td></tr>
         <tr><td>Stack</td><td>lwIP via Arduino Ethernet — transport-agnostic <code>netif</code></td></tr>
         <tr><td>Unlocks</td><td>Full RaspyJack parity on Cardputer — the <a href="index.html#saltyjack" style="color:var(--ocean-bright);">SaltyJack</a> suite (DHCP starve, rogue DHCP, Responder, WPAD, NTLM harvest) runs over wired lwIP instead of WiFi STA.</td></tr>
         <tr><td>Why wired</td><td>Wired gets you past every PMF / WPA3 / corporate 802.1X defense that kills the wireless path. Plug in, own the broadcast domain.</td></tr>
@@ -119,11 +121,12 @@
     <table>
       <tr><td>G3</td><td>LoRa RST · held LOW at boot to keep SX1262 BUSY high-Z during M5GFX hat autodetect</td></tr>
       <tr><td>G4</td><td>LoRa DIO1 · shared with nRF24 CE on Hydra hat</td></tr>
-      <tr><td>G5</td><td>LoRa NSS (SPI) · shared with CC1101 GDO0 on Hydra hat</td></tr>
-      <tr><td>G6</td><td>LoRa BUSY · shared with nRF24 CS on Hydra hat</td></tr>
-      <tr><td>G7</td><td>GPS RX (NMEA input) on LoRa hat</td></tr>
-      <tr><td>G13</td><td>GPS TX (LoRa hat) · shared with CC1101 CS on Hydra hat (gps_end() releases before CC1101 begin)</td></tr>
+      <tr><td>G5</td><td>LoRa NSS (SPI) · Hydra CC1101 GDO0 (input, not a chip-select, not GPS)</td></tr>
+      <tr><td>G6</td><td>LoRa BUSY · Hydra nRF24 CS (held high when that radio is idle)</td></tr>
+      <tr><td>G12</td><td>microSD CS on the shared HSPI bus, held high when another device is selected</td></tr>
+      <tr><td>G13</td><td>LoRa-GNSS UART TX (MCU → module) · Hydra CC1101 CS. GPS is stopped before the pin is driven and restored afterward</td></tr>
       <tr><td>G14</td><td>SPI MOSI (shared across SD + every hat)</td></tr>
+      <tr><td>G15</td><td>LoRa-GNSS UART RX (NMEA from the module). Not a Hydra pin</td></tr>
       <tr><td>G39/G40</td><td>SPI MISO / SCK</td></tr>
     </table>
   </div>

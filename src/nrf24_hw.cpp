@@ -34,6 +34,10 @@ bool nrf24_begin(void)
     /* The SD card is optional, but its HSPI pins are shared with this hat. */
     if (!sd_prepare_bus()) {
         Serial.println("[nrf24] shared SPI bus unavailable");
+        pinMode(NRF24_CS, OUTPUT);
+        digitalWrite(NRF24_CS, HIGH);
+        pinMode(CC1101_CS, OUTPUT);
+        digitalWrite(CC1101_CS, HIGH);
         return false;
     }
 
@@ -50,8 +54,10 @@ bool nrf24_begin(void)
     if (!s_radio->begin(&bus)) {
         Serial.println("[nrf24] begin failed");
         delete s_radio; s_radio = nullptr;
-        /* CS stays high so the nRF24 cannot answer. Release CE — that pad
-         * is SX1262 DIO1 on the CAP-LoRa1262. */
+        /* Destructor may have released the pad. Drive CS high again so
+         * the nRF24 cannot answer. CE stays high-Z (LoRa DIO1). */
+        pinMode(NRF24_CS, OUTPUT);
+        digitalWrite(NRF24_CS, HIGH);
         pinMode(NRF24_CE, INPUT);
         return false;
     }
@@ -59,6 +65,8 @@ bool nrf24_begin(void)
     if (!s_radio->isChipConnected()) {
         Serial.println("[nrf24] chip not detected");
         delete s_radio; s_radio = nullptr;
+        pinMode(NRF24_CS, OUTPUT);
+        digitalWrite(NRF24_CS, HIGH);
         pinMode(NRF24_CE, INPUT);
         return false;
     }
@@ -82,12 +90,13 @@ void nrf24_end(void)
     }
     s_up = false;
 
-    /* Release CE/CS back to high-Z so the pins don't fight the next
-     * hat. Official Hydra CS=GPIO 6 overlaps CAP-LoRa1262 BUSY, and
-     * CE=GPIO 4 overlaps DIO1. CC1101 CS (GPIO 13) stays high so that
-     * chip stays deselected; radio_switch tri-states it only when
-     * restoring the GPS UART. */
-    pinMode(NRF24_CS, INPUT);
+    /* CS stays driven high so the nRF24 cannot answer later SPI from
+     * the microSD or the CC1101. CE is not a chip-select; leave it
+     * high-Z because GPIO 4 is SX1262 DIO1 on the CAP-LoRa1262.
+     * CC1101 CS (GPIO 13) stays high until radio_switch hands it back
+     * to the GPS UART. */
+    pinMode(NRF24_CS, OUTPUT);
+    digitalWrite(NRF24_CS, HIGH);
     pinMode(NRF24_CE, INPUT);
 }
 
