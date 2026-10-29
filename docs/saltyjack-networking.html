@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SaltyJack networking — POSEIDON</title>
+<meta name="description" content="How SaltyJack uses Wi-Fi STA on this fork, how SoftAP rogue DHCP differs, why the W5500 is not wired in this tree, and how the ESP32-C5 TRIDENT stays off the SaltyJack path.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .doc{max-width:980px;margin:0 auto;padding:clamp(6.5rem,10vw,8.5rem) 1.4rem 4rem}
+  .doc h2{font-family:var(--font-display);color:var(--ocean-vivid);font-size:clamp(1.35rem,2.4vw,1.8rem);margin:2.6rem 0 .7rem;letter-spacing:.03em}
+  .doc h3{font-family:var(--font-display);color:#e0f2fe;font-size:1.15rem;margin:1.6rem 0 .45rem;letter-spacing:.04em}
+  .doc p,.doc li{font-size:1.05rem;line-height:1.7;color:#cbd5e1}
+  .doc strong{color:var(--ocean-white)}
+  .doc ul,.doc ol{padding-left:1.25rem}
+  .doc li{margin:.4rem 0}
+  .doc a{color:var(--ocean-vivid)}
+  .doc code,.doc kbd{font-family:var(--font-mono);font-size:.86em;background:rgba(0,0,0,.45);border:1px solid rgba(14,165,233,.25);border-radius:4px;padding:.05rem .35rem;color:#7dd3fc}
+  .doc pre{background:#030611;border:1px solid rgba(14,165,233,.25);border-radius:10px;padding:1rem 1.1rem;overflow-x:auto;font-family:var(--font-mono);font-size:.82rem;line-height:1.55;color:#d1fae5;margin:1rem 0}
+  .callout{border:1px solid rgba(249,115,22,.45);background:linear-gradient(135deg,rgba(249,115,22,.10),rgba(6,10,22,.2));border-radius:14px;padding:1.1rem 1.25rem;margin:1.2rem 0}
+  .callout .k{font-family:var(--font-mono);font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--coral)}
+  .callout.ok{border-color:rgba(34,197,94,.4);background:linear-gradient(135deg,rgba(34,197,94,.08),rgba(6,10,22,.2))}
+  .callout.ok .k{color:#86efac}
+  .callout.info{border-color:rgba(14,165,233,.4);background:linear-gradient(135deg,rgba(14,165,233,.08),rgba(6,10,22,.2))}
+  .callout.info .k{color:var(--ocean-bright)}
+  table.map{width:100%;border-collapse:collapse;font-size:.92rem;margin:1rem 0 1.4rem}
+  table.map th,table.map td{border-bottom:1px solid rgba(255,255,255,.06);padding:.55rem .55rem;text-align:left;vertical-align:top;color:#cbd5e1}
+  table.map th{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ocean-bright);font-weight:500}
+  table.map td:first-child{color:#e2e8f0;font-weight:600}
+  .toc{display:flex;flex-wrap:wrap;gap:.45rem .7rem;margin:1.2rem 0 0}
+  .toc a{font-family:var(--font-mono);font-size:.75rem;letter-spacing:.04em;border:1px solid rgba(14,165,233,.3);border-radius:999px;padding:.3rem .7rem;color:var(--ocean-bright)}
+  .yes{color:#86efac}.no{color:#fda4af}.later{color:#fcd34d}
+</style>
+</head>
+<body data-matrix>
+
+<div id="bootOverlay">
+  <div class="boot-trident">🔱</div>
+  <div class="boot-logo">NET</div>
+  <div class="boot-lines"><div class="boot-line"><span class="dim">[LOAD]</span> saltyjack-networking.html <span class="ok">OK</span></div></div>
+</div>
+<div id="scrollProgress"></div>
+<div id="hud"><div class="hud-row"><span class="hud-dot"></span>SALTYJACK · STA now · W5500 not wired</div></div>
+
+<nav id="mainNav">
+  <a href="index.html" class="nav-logo"><span class="icon">P</span><span>POSEIDON</span></a>
+  <ul class="nav-links">
+    <li><a href="demo/">Demo</a></li>
+    <li><a href="arsenal.html">Arsenal</a></li>
+    <li><a href="codex.html">Codex</a></li>
+    <li><a href="hardware.html">Hardware</a></li>
+    <li><a href="saltyjack-networking.html" class="active">Networking</a></li>
+    <li><a href="roadmap.html">Roadmap</a></li>
+    <li><a href="install.html">Install</a></li>
+    <li><a href="testers.html">Testers</a></li>
+    <li><a href="credits.html">Credits</a></li>
+    <li><a href="legal.html">Legal</a></li>
+    <li><a href="https://github.com/wilcox101-maker/poseidon_adv" target="_blank">GitHub</a></li>
+  </ul>
+</nav>
+
+<article class="doc">
+  <div class="section-label">LAN // SALTYJACK</div>
+  <h1 class="section-title" style="font-size:clamp(2.1rem,5vw,3.3rem)">SaltyJack networking</h1>
+  <p>Station mode, the SoftAP named <code>POSEIDON-SaltyJack</code>, the W5500 pinout, and the ESP32-C5. What this tree actually runs, and what it does not.</p>
+
+  <div class="callout">
+    <div class="k">Authorized use only</div>
+    <p style="margin:.45rem 0 0">Run these tools on networks and hardware you own, or where you have explicit written permission. DHCP starvation and rogue DHCP disrupt address assignment. Responder and WPAD collect authentication material. Unauthorized use is illegal in most places. If you are unsure, do not run the tool. Read <a href="legal.html">Legal</a> before you transmit.</p>
+  </div>
+
+  <p>This page matches <strong>this</strong> <code>master</code> tree. The version string in the README, <code>CHANGELOG.md</code>, and <code>docs/m5burner.json</code> is <strong>Deepwater v0.8.0</strong>. There is no separate v0.8.1 firmware image in the repository. Notes that say “0.8.1 fork” mean this Deepwater tree: SaltyJack over Wi-Fi STA, and Rogue DHCP on the SoftAP, are in the image you flash today. The W5500 driver is not. The same text is in <a href="saltyjack-networking.md">saltyjack-networking.md</a>.</p>
+
+  <nav class="toc" aria-label="On this page">
+    <a href="#paths">Four paths</a>
+    <a href="#scope">0.8.1 vs future W5500</a>
+    <a href="#prereq">Prerequisites</a>
+    <a href="#sta">How-to A · STA</a>
+    <a href="#not-connected">Not connected</a>
+    <a href="#w5500">How-to B · W5500</a>
+    <a href="#c5">How-to C · C5</a>
+    <a href="#softap">SoftAP rogue DHCP</a>
+    <a href="#map">Quick map</a>
+  </nav>
+
+  <h2 id="paths">Four paths, and which one SaltyJack uses</h2>
+  <p>The Cardputer-Adv radio is an ESP32-S3. It has 2.4 GHz Wi-Fi. It does not speak 5 GHz. SaltyJack does not gain a second radio because a hat is plugged in.</p>
+
+  <table class="map">
+    <thead>
+      <tr><th>Path</th><th>Who is the AP?</th><th>What the Cardputer does</th><th>SaltyJack in this tree</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Wi-Fi STA</td>
+        <td>An authorized AP you already run</td>
+        <td>Joins that AP as a client. lwIP attaches to the STA netif <code>WIFI_STA_DEF</code>.</td>
+        <td class="yes">Works. DHCP Starve, Rogue DHCP (STA), Responder, and WPAD bind here.</td>
+      </tr>
+      <tr>
+        <td>SoftAP</td>
+        <td>The Cardputer</td>
+        <td>Open AP <code>POSEIDON-SaltyJack</code>. The Cardputer serves DHCP.</td>
+        <td class="yes">Works, only as Rogue DHCP (AP). Not the STA path.</td>
+      </tr>
+      <tr>
+        <td>W5500 RJ45</td>
+        <td>Whatever is on the Ethernet segment</td>
+        <td>Would be an SPI Ethernet netif, if a driver existed.</td>
+        <td class="no">Not implemented. Pinout only. <a href="hardware.html">hardware.html</a>: “Not wired in this tree.”</td>
+      </tr>
+      <tr>
+        <td>ESP32-C5</td>
+        <td>Unrelated. The C5 is its own board.</td>
+        <td>ESP-NOW satellite for 5 GHz, Zigbee, and 5 GHz PMKID.</td>
+        <td class="no">Never. SaltyJack does not send or receive through the C5.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p><strong>Station mode</strong> means the Cardputer is a Wi-Fi client. It associates to an access point, takes a DHCP lease from that network’s server, and uses the address lwIP installed on the STA interface. Starve, rogue-STA, Responder, and WPAD all consult <code>WiFi.status()</code> / <code>WiFi.localIP()</code>. Starve also stops the DHCP <em>client</em> on <code>WIFI_STA_DEF</code> while it runs, because that client owns UDP/68. None of those tools open an Ethernet interface. None of them call the C5 command channel (<code>c5_cmd_*</code> over ESP-NOW).</p>
+
+  <p><strong>Rogue DHCP (AP)</strong> is the contrast. It does not join the target AP. <code>wifi_raw_ap_up("POSEIDON-SaltyJack")</code> starts an open SoftAP on channel 1 (not hidden, up to 4 stations) through the raw-IDF helper. Arduino <code>WiFi.softAP()</code> crashes on the Bruce-pinned libraries this tree builds with, so the firmware does not use it. The AP address is lwIP’s default <strong>192.168.4.1</strong>. The tool stops the IDF DHCP <em>server</em> on <code>WIFI_AP_DEF</code> and binds UDP/67 itself. Clients that join <code>POSEIDON-SaltyJack</code> are leased by the Cardputer, with the Cardputer as gateway and DNS.</p>
+
+  <h2 id="scope">0.8.1 vs future W5500</h2>
+  <p>Lab notes call this fork “0.8.1”. The version string tagged in the README, <code>CHANGELOG.md</code>, and <code>docs/m5burner.json</code> is <strong>Deepwater v0.8.0</strong>. There is no v0.8.1 binary to flash. The table is what that image does today. The W5500 driver is the future row, not a hidden option in this tree.</p>
+  <table class="map">
+    <thead>
+      <tr><th>Capability</th><th>This tree (Deepwater v0.8.0)</th><th>Not in this tree</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Join an authorized AP</td>
+        <td class="yes">Yes. Wi-Fi → Connect, Network → Connect, or System → Settings → Saved Wi-Fi.</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>Starve, Rogue DHCP (STA), Responder, WPAD on the STA netif</td>
+        <td class="yes">Yes</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>Rogue DHCP (AP), SSID <code>POSEIDON-SaltyJack</code></td>
+        <td class="yes">Yes</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>NTLMv2 Crack from microSD files</td>
+        <td class="yes">Yes. No live link required.</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>C5 over ESP-NOW: dual-band scan, Zigbee, 5 GHz deauth, 5 GHz PMKID</td>
+        <td class="yes">Yes, under C5 nodes. Separate menu from SaltyJack.</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>W5500 / RJ45 as the lwIP interface</td>
+        <td class="no">No Ethernet begin, no W5500 driver, no second netif.</td>
+        <td class="later">Comments in <code>saltyjack.h</code> and <code>saltyjack_responder.cpp</code> call this future: “once the SPI Ethernet hat is wired up”, “when that hat lands.”</td>
+      </tr>
+      <tr>
+        <td>SaltyJack forwarded by the C5</td>
+        <td class="no">No</td>
+        <td>Not a planned path. The C5 is a different radio.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Older roadmap, codex, and arsenal copy described a wired RaspyJack path as if it already ran. That was the intended design. It is not what this tree does.</p>
+
+  <h2 id="prereq">Prerequisites</h2>
+  <ul>
+    <li>A Cardputer-Adv and this fork’s Deepwater image. Standalone units take <code>poseidon-factory.bin</code> at <code>0x0</code>. Launcher units take the app-only image in the existing POSEIDON slot. Do not factory-flash a Launcher or Meshtastic layout. See the <a href="https://github.com/wilcox101-maker/poseidon_adv/blob/master/README.md">README Quick Start</a> and <a href="install.html">Install</a>.</li>
+    <li>Written authorization for the network you will join or stand up.</li>
+    <li>For How-to A: that AP’s SSID and passphrase. The S3 must associate and receive a non-zero IPv4 address. A WPA3-only, 802.1X, or PMF network that refuses this client never produces a STA lease, and SaltyJack stops at “Not connected.”</li>
+    <li>A microSD card if you want hash files. Responder and WPAD also print the capture on serial when the file cannot be opened.</li>
+    <li>Hats: one at a time, or none. STA SaltyJack uses the S3’s own Wi-Fi. Hydra and the CAP-LoRa1262 share SPI with the microSD (SCK 40, MISO 39, MOSI 14). Do not seat them together, and do not seat either in a session where a W5500 is attached.</li>
+    <li>The C5 is not a hat on that header. Unplug the Cardputer while you flash the C5 (How-to C), so the browser attaches to the C5.</li>
+  </ul>
+
+  <h2 id="sta">How-to A — SaltyJack over Wi-Fi STA</h2>
+  <p>This is the path that works now.</p>
+
+  <h3>1. Flash this fork</h3>
+  <p>Use the Deepwater binaries from this repository, not an upstream POSEIDON build and not a guessed “0.8.1” filename. The tagged image in-tree is v0.8.0.</p>
+  <ul>
+    <li>Standalone / M5Burner: <code>poseidon-factory.bin</code> at offset <code>0x0</code>.</li>
+    <li>M5Stack Launcher: <code>poseidon-launcher.bin</code> through Launcher’s installer.</li>
+    <li>The known dual-app development layout: <code>poseidon-launcher-dual.bin</code> into the POSEIDON slot only.</li>
+  </ul>
+  <p>Browser flashing for the Cardputer is the ESP32-S3 target on <a href="flash/index.html">docs/flash/</a> (desktop Chrome or Edge). Confirm the chip before you write. The C5 target on that page is How-to C.</p>
+
+  <h3>2. Hats, one at a time</h3>
+  <p>Power off. Remove a LoRa or Hydra hat you are not using. SaltyJack STA does not need a hat. Only one hat may be seated. Do not stack Hydra and LoRa.</p>
+
+  <h3>3. Join the authorized network</h3>
+  <p>The Cardputer has to be a client of that AP <strong>before</strong> Starve, Rogue DHCP (STA), Responder, or WPAD. Three menus open the same screen (<code>feat_wifi_connect</code>):</p>
+  <table class="map">
+    <thead><tr><th>From the root</th><th>Then</th><th>Title</th></tr></thead>
+    <tbody>
+      <tr><td><kbd>w</kbd> Wi-Fi</td><td><kbd>n</kbd> Connect</td><td>WIFI CONNECT</td></tr>
+      <tr><td><kbd>n</kbd> Network</td><td><kbd>c</kbd> Connect</td><td>WIFI CONNECT</td></tr>
+      <tr><td><kbd>s</kbd> System</td><td><kbd>s</kbd> Settings, then <kbd>w</kbd> Saved Wi-Fi</td><td>WIFI CONNECT</td></tr>
+    </tbody>
+  </table>
+  <p>Starve and Responder say “via System &gt; Connect.” There is no System item named Connect. Use one of the three paths above. System → Settings → Saved Wi-Fi is the closest match to that sentence.</p>
+  <p>On WIFI CONNECT:</p>
+  <ul>
+    <li><kbd>n</kbd> types a new SSID and password (Preferences namespace <code>poseidon</code>, keys <code>ssid</code> and <code>pass</code>).</li>
+    <li><kbd>c</kbd> connects. An empty password, or an AP still selected from a Wi-Fi scan, forces a password prompt instead of replaying a stale secret.</li>
+    <li><kbd>x</kbd> forgets the saved network.</li>
+    <li>Backtick goes back.</li>
+  </ul>
+  <p>Connect uses <code>wifi_lean_sta_init</code>, then <code>esp_wifi_set_config</code> / <code>esp_wifi_connect</code>. It does not call Arduino <code>WiFi.begin()</code>, which can double-create the STA netif and reboot. It waits up to 15 seconds for an association <strong>and</strong> a non-zero address on <code>WIFI_STA_DEF</code>. Success shows <code>CONNECTED</code> plus IP, gateway, and mask. Failure shows <code>FAILED</code> and clears the saved password.</p>
+  <p>Stay associated. A raw SoftAP feature (portal, evil twin, beacon spam, Rogue DHCP (AP)) tears the STA netif down. Rejoin before the next STA SaltyJack tool.</p>
+
+  <h3>4. Open SaltyJack</h3>
+  <p>From the root menu press <kbd>j</kbd>. SaltyJack is its own screen, not a child of Network.</p>
+  <table class="map">
+    <thead><tr><th>Key</th><th>Action</th></tr></thead>
+    <tbody>
+      <tr><td><kbd>;</kbd> / <kbd>.</kbd></td><td>Move</td></tr>
+      <tr><td>Enter</td><td>Run the highlighted tool</td></tr>
+      <tr><td><kbd>i</kbd></td><td>Long description</td></tr>
+      <tr><td><kbd>v</kbd></td><td>Cycle list, grid, carousel</td></tr>
+      <tr><td>Backtick</td><td>Back</td></tr>
+    </tbody>
+  </table>
+  <p>Order on the menu: About, DHCP Starve, Rogue DHCP (STA), Rogue DHCP (AP), Responder, WPAD NTLM, NTLMv2 Crack.</p>
+
+  <h3>5. Tool order on an authorized LAN</h3>
+  <p>Skip any step you are not authorized to run. Rogue DHCP (AP) is <a href="#softap">its own section</a>. It is not step two of the STA flow.</p>
+  <ol>
+    <li><strong>DHCP Starve</strong> (STA). Requires <code>WL_CONNECTED</code> and a non-zero <code>localIP</code>. The tool stops the STA DHCP client (the lease is already held; the client would consume UDP/68), binds UDP/68, and sends Discover + Request from random locally administered MACs. Counters: discover, offer, request, ACK, NAK. The server line is <code>WiFi.gatewayIP()</code> captured at start. <strong>NAK ≥ 20</strong> shows <code>pool exhausted</code>. Backtick stops the flood, restarts the STA DHCP client, and shows totals. New legitimate clients cannot get an address while the pool is exhausted. Run this only on a lab LAN where that is the test.</li>
+    <li><strong>Rogue DHCP (STA)</strong>. Requires <code>WL_CONNECTED</code>. Binds UDP/67. Discover gets an Offer, Request gets an ACK. Offered host suffixes are <strong>100–150</strong> on the subnet you joined, 16 clients maximum. Lease options: router and DNS are the Cardputer’s STA address, domain <code>poseidon.lan</code> (option 15), WPAD <code>http://poseidon.lan/wpad.dat</code> (option 252), lease 24 hours. The screen shows offers, ACKs, client count, and the last IP/MAC, or <code>racing real server...</code> until the first lease. This races the real DHCP server. It is not the SoftAP.</li>
+    <li><strong>Responder</strong> and/or <strong>WPAD NTLM</strong>. Both require <code>WL_CONNECTED</code>. They are separate menu items; opening one leaves the previous tool. The pairing that the menu describes is: rogue-STA (after starve, if that is in scope) so clients are told the Cardputer is gateway, DNS, and WPAD, then leave Responder or WPAD running.
+      <ul>
+        <li><strong>Responder</strong> listens for LLMNR (UDP/5355, multicast 224.0.0.252), NetBIOS name service (UDP/137), and SMB (TCP/445). Name replies use the STA address. NTLMv2 material is appended to <code>/poseidon/saltyjack/ntlm_hashes.txt</code> in hashcat 5600 form <code>user::domain:challenge:proof:blob</code>. The module’s NetBIOS name is <code>POSEIDON-SJ</code>. The same line is printed on serial.</li>
+        <li><strong>WPAD NTLM</strong> serves HTTP on port 80, including a PAC, then HTTP 407 with <code>Proxy-Authenticate: NTLM</code>. Captures append to the same file, with a <code># wpad from &lt;client ip&gt;</code> comment. The address at the top of the screen is the STA address when association is up.</li>
+      </ul>
+    </li>
+    <li><strong>NTLMv2 Crack</strong> (optional, offline). Reads <code>ntlm_hashes.txt</code> and <code>ntlm_wordlist.txt</code> under <code>/poseidon/saltyjack/</code>. Hits append to <code>ntlm_found.txt</code>. A default wordlist is seeded on first run. Enter skips a user. Backtick aborts. This tool does not check Wi-Fi.</li>
+  </ol>
+  <p>Stop a live tool with backtick. Starve’s clean exit restarts the STA DHCP client. After a power cycle, Connect again and confirm a non-zero IP before the next run.</p>
+
+  <h2 id="not-connected">“Not connected”</h2>
+  <p>The STA tools refuse to start when the S3 is not a client with a usable lease.</p>
+  <table class="map">
+    <thead><tr><th>Tool</th><th>Condition</th><th>Screen</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>DHCP Starve</td>
+        <td><code>WiFi.status() != WL_CONNECTED</code> or <code>localIP</code> is 0.0.0.0</td>
+        <td><code>Not connected.</code> / <code>Join target WiFi first</code> / <code>via System &gt; Connect.</code></td>
+      </tr>
+      <tr>
+        <td>Rogue DHCP (STA)</td>
+        <td><code>WiFi.status() != WL_CONNECTED</code></td>
+        <td><code>STA not connected</code> / <code>join target WiFi first</code></td>
+      </tr>
+      <tr>
+        <td>Responder</td>
+        <td><code>WiFi.status() != WL_CONNECTED</code></td>
+        <td><code>Not connected.</code> / <code>Join target WiFi first</code> / <code>via System &gt; Connect.</code></td>
+      </tr>
+      <tr>
+        <td>WPAD NTLM</td>
+        <td><code>WiFi.status() != WL_CONNECTED</code></td>
+        <td><code>Not connected.</code> / <code>Join target WiFi first</code></td>
+      </tr>
+      <tr>
+        <td>Rogue DHCP (AP)</td>
+        <td>SoftAP bring-up failed (heap or radio). Not a missing STA lease.</td>
+        <td><code>AP setup failed</code> / <code>check heap / radio</code></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="callout info">
+    <div class="k">What the message is not</div>
+    <p style="margin:.45rem 0 0"><code>Not connected</code> does not mean the W5500 cable is unplugged, and it does not mean the C5 is offline. Those paths are not consulted. It means the ESP32-S3 STA interface is down or has no IPv4 address.</p>
+  </div>
+  <ol>
+    <li>Join <em>before</em> the tool: Wi-Fi → Connect, Network → Connect, or System → Settings → Saved Wi-Fi. “System &gt; Connect” is not a menu label.</li>
+    <li>WIFI CONNECT must end on <code>CONNECTED</code> with a non-zero IP. <code>FAILED</code> drops the saved password; type it again.</li>
+    <li>The AP has to be 2.4 GHz and has to accept this client. The S3 cannot join 5 GHz. A C5 on the bench does not give SaltyJack a 5 GHz STA.</li>
+    <li>A SoftAP feature after Connect, including Rogue DHCP (AP), replaces the STA netif. Connect again.</li>
+    <li><code>UDP bind failed</code>, <code>UDP :67 bind failed</code>, or <code>listener bind failed</code> is a different fault: the interface was up and the port was busy. Leave the tool and try once. It is not the “Not connected” screen.</li>
+    <li>A missing hash file can still have a serial line (<code>---- SaltyJack NTLMv2 capture ----</code> or the WPAD banner). Seat the microSD. The directory is <code>/poseidon/saltyjack/</code>.</li>
+  </ol>
+
+  <h2 id="w5500">How-to B — W5500 RJ45</h2>
+  <p>The module can be wired. <strong>This firmware does not drive it.</strong> <a href="hardware.html">docs/hardware.html</a> marks the hat <strong>Not wired in this tree</strong>. <code>src/features/saltyjack/saltyjack.h</code> says attacks follow “whichever L2 lwIP is attached to — WiFi STA for now, W5500 wired once the SPI Ethernet hat is wired up.” There is no <code>Ethernet.begin</code>, no W5500 register setup, and no Ethernet netif. The jack will not move SaltyJack off Wi-Fi, and it will not clear “Not connected.”</p>
+  <p>Until a driver exists, use <a href="#sta">How-to A</a>.</p>
+
+  <h3>Pin table (Bruce / Cardputer-Adv)</h3>
+  <p>SPI matches the microSD bus in <code>src/sd_helper.cpp</code> (SCK 40, MISO 39, MOSI 14, SD chip-select 12). Chip-select and interrupt are the Bruce-style W5500 assignment for this header. Reset is left open. The firmware does not claim these GPIOs for Ethernet.</p>
+  <table class="map">
+    <thead><tr><th>Signal</th><th>GPIO</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>SCLK</td><td>40</td><td>Shared HSPI clock (microSD and hats, not the display FSPI)</td></tr>
+      <tr><td>MOSI</td><td>14</td><td>Shared HSPI MOSI</td></tr>
+      <tr><td>MISO</td><td>39</td><td>Shared HSPI MISO</td></tr>
+      <tr><td>SCS</td><td>1</td><td>W5500 chip-select. Not the SD CS on GPIO 12.</td></tr>
+      <tr><td>INT</td><td>2</td><td>W5500 interrupt. Unused until a driver exists.</td></tr>
+      <tr><td>RST</td><td>NC</td><td>Do not tie reset to a GPIO. Leave it open.</td></tr>
+      <tr><td>5V</td><td>5V</td><td>Full-size modules that expect 5 V, plus GND.</td></tr>
+      <tr><td>GND</td><td>GND</td><td>Common ground with the Cardputer.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout">
+    <div class="k">W5500 Mini is 3.3 V only</div>
+    <p style="margin:.45rem 0 0">Do not power a Mini from the 5 V pin. That destroys the PHY. Use 3.3 V and GND for a Mini. Read the silkscreen on the board in your hand before you apply power.</p>
+  </div>
+
+  <h3>Do not seat Hydra or LoRa at the same time</h3>
+  <p>One hat. The header is shared.</p>
+  <ul>
+    <li>CAP-LoRa1262 uses HSPI plus GPIO 3 (RST), 4 (DIO1), 5 (NSS), and 6 (BUSY). GNSS UART is GPIO 13 (MCU TX) and GPIO 15 (NMEA RX).</li>
+    <li>Hydra (CC1101 + nRF24) sits on the same HSPI pads: nRF24 CE on 4, CC1101 GDO0 on 5, nRF24 CS on 6, CC1101 CS on 13. GPIO 13 is also the LoRa-GNSS UART TX, so those two hats cannot be seated together.</li>
+    <li>The microSD already owns SCK 40, MISO 39, MOSI 14, and CS 12 on that HSPI bus (not the display’s FSPI).</li>
+    <li>A W5500 on SCS 1 / INT 2 still shares SCK, MOSI, and MISO with the card and with those hats.</li>
+  </ul>
+  <p>Seating Hydra or LoRa with the W5500, or seating Hydra and LoRa together, fights chip-select and the SPI lines. Remove them before you attach the Ethernet module. The Feather nRF52840 hat is also mutually exclusive with LoRa / Hydra. It is not part of SaltyJack.</p>
+
+  <h3>What you can and cannot expect</h3>
+  <ul>
+    <li>You can build the cable to the table and leave it off the network until firmware exists.</li>
+    <li>You cannot run starve, rogue DHCP, Responder, or WPAD over the jack on this image.</li>
+    <li>You cannot clear “Not connected” with the cable.</li>
+    <li>A later image would have to create an lwIP netif on the W5500 and teach the tools to accept it. That code is not here. The v0.4 roadmap line that described wired parity did not land in this tree.</li>
+  </ul>
+
+  <h2 id="c5">How-to C — ESP32-C5 TRIDENT</h2>
+  <p>The C5 is a second board. It talks to the Cardputer over <strong>ESP-NOW</strong> (magic <code>POSE</code>) on Wi-Fi channel 1. It is how this fork reaches <strong>5 GHz</strong> Wi-Fi, <strong>802.15.4 / Zigbee</strong>, and <strong>5 GHz PMKID</strong>. The S3 cannot transmit or capture on 5 GHz alone. The C5 menu is root <kbd>5</kbd> (C5 nodes), not <kbd>j</kbd> (SaltyJack).</p>
+  <p>SaltyJack never routes through the C5. A paired C5 does not join a LAN, does not create a STA lease, and does not change the “Not connected” check.</p>
+  <p>5 GHz deauth and PMKID capture are transmissions and credential capture. Same rule: your equipment, or written permission.</p>
+
+  <h3>Flash the C5, not the Cardputer</h3>
+  <ol>
+    <li><strong>Unplug the Cardputer</strong> from USB. If both boards are plugged in, Web Serial often opens the S3. You will write the wrong image, or write C5 offsets onto the Cardputer.</li>
+    <li>Plug in only the ESP32-C5.</li>
+    <li>Open <a href="flash/index.html">docs/flash/</a> in <strong>desktop Chrome or Edge</strong>. Firefox, Safari, and phone browsers have no Web Serial. Desktop Opera works on that page too.</li>
+    <li>Set Target to <strong>TRIDENT — C5 Satellite (ESP32-C5)</strong>. Do not leave the ESP32-S3 target selected.</li>
+    <li>Connect, then flash. Three parts, under <code>docs/flash/bin/trident-c5/</code>:</li>
+  </ol>
+  <table class="map">
+    <thead><tr><th>Offset</th><th>File</th></tr></thead>
+    <tbody>
+      <tr><td><code>0x2000</code></td><td><code>bootloader.bin</code></td></tr>
+      <tr><td><code>0x8000</code></td><td><code>partition-table.bin</code></td></tr>
+      <tr><td><code>0x10000</code></td><td><code>poseidon_c5_node.bin</code></td></tr>
+    </tbody>
+  </table>
+  <p>The flasher pins the C5 to 4 MB, DIO, 80 MHz. Automatic size detect on this chip falls back to about 1 MB and the write dies past <code>0x100000</code>.</p>
+  <p>CLI equivalent, from <code>docs/flash/</code>:</p>
+  <pre>esptool --chip esp32c5 -p &lt;PORT&gt; --baud 460800 write_flash \
+  --flash_mode dio --flash_freq 80m --flash_size 4MB \
+  0x2000   bin/trident-c5/bootloader.bin \
+  0x8000   bin/trident-c5/partition-table.bin \
+  0x10000  bin/trident-c5/poseidon_c5_node.bin</pre>
+  <p>Building from source is <code>c5_node/</code> with ESP-IDF (this firmware targets 5.5.4). See <a href="https://github.com/wilcox101-maker/poseidon_adv/blob/master/c5_node/README.md">c5_node/README.md</a>. The bins above are what the web flasher writes.</p>
+
+  <h3>Auto-pair, then C5 → Status</h3>
+  <p>There is no PIN and no SaltyJack setting. After boot the C5 broadcasts an ESP-NOW HELLO about every 5 seconds. The Cardputer locks ESP-NOW receive to channel 1 so those HELLOs are not missed.</p>
+  <ol>
+    <li>Power the Cardputer again and power the C5 nearby.</li>
+    <li>Root menu <kbd>5</kbd> <strong>C5 nodes</strong>.</li>
+    <li><kbd>s</kbd> <strong>Status</strong>.</li>
+  </ol>
+  <p>Status calls <code>c5_begin()</code> and lists peers. With no HELLO yet: <code>NO C5 ONLINE</code>, <code>power on your C5 node.</code>, <code>it broadcasts HELLO every 5s.</code>, <code>will auto-connect.</code> When a HELLO lands the screen switches to <code>ONLINE</code> and the peer name. The corner dot is green when any C5 is online and red when none are. <kbd>P</kbd> pings every peer. <kbd>S</kbd> broadcasts STOP.</p>
+  <p>Scan 5G+2G, Zigbee sniff, Deauth 5G, PMKID 5G, and Nuke 5G send ESP-NOW commands to that peer. They need a peer online. They do not configure SaltyJack, and SaltyJack does not call them.</p>
+
+  <h3>What the C5 is for</h3>
+  <table class="map">
+    <thead><tr><th>C5 menu</th><th>Role</th><th>SaltyJack?</th></tr></thead>
+    <tbody>
+      <tr><td>Status</td><td>Peer table. Auto-connect via HELLO.</td><td class="no">No</td></tr>
+      <tr><td>Scan 5G+2G</td><td>Remote dual-band scan. Results return over ESP-NOW.</td><td class="no">No</td></tr>
+      <tr><td>Zigbee sniff</td><td>802.15.4 channel hop. Frame summaries over ESP-NOW.</td><td class="no">No</td></tr>
+      <tr><td>Deauth 5G / PMKID 5G</td><td>5 GHz work the S3 cannot do.</td><td class="no">No</td></tr>
+      <tr><td>—</td><td>DHCP, LLMNR, SMB, WPAD, NTLM files</td><td class="no">Stay on S3 STA lwIP. Not on the C5.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="softap">SoftAP rogue DHCP</h2>
+  <p>Rogue DHCP (AP) is not How-to A and not the C5. From SaltyJack (<kbd>j</kbd>) open <strong>Rogue DHCP (AP)</strong>.</p>
+  <ul>
+    <li>SSID <code>POSEIDON-SaltyJack</code>, open, channel 1.</li>
+    <li>Address 192.168.4.1 unless lwIP’s AP default has changed.</li>
+    <li>The Cardputer is the DHCP server. Lease options match the STA rogue tool (gateway, DNS, <code>poseidon.lan</code>, option 252).</li>
+    <li>Clients must join that SSID. They are not stations of your existing AP.</li>
+    <li>Failure is <code>AP setup failed</code> / <code>check heap / radio</code>, often after other Wi-Fi features have fragmented the heap. Reboot and run this tool first if you need the SoftAP.</li>
+    <li>Starting it drops the STA session. Responder and WPAD still require <code>WL_CONNECTED</code>, so they do not follow onto the SoftAP in this tree. Their menu items still show “Not connected” if the Cardputer is only hosting <code>POSEIDON-SaltyJack</code>. The AP tool’s DHCP options do point clients at the Cardputer; the listener tools do not switch interfaces to match.</li>
+  </ul>
+  <p>Use the SoftAP when the test is “clients that associate to an open lab AP we operate.” Use STA when the test is “the Cardputer is already a client on an authorized LAN.”</p>
+
+  <h2 id="map">Quick map</h2>
+  <table class="map">
+    <thead>
+      <tr><th></th><th>STA</th><th>SoftAP</th><th>W5500</th><th>C5</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Link</td><td>S3 joins your AP</td><td>S3 is <code>POSEIDON-SaltyJack</code></td><td>SPI RJ45, pins above</td><td>ESP-NOW to a second board</td></tr>
+      <tr><td>lwIP</td><td><code>WIFI_STA_DEF</code></td><td><code>WIFI_AP_DEF</code> (AP tool only)</td><td class="no">None in this tree</td><td class="no">None for SaltyJack</td></tr>
+      <tr><td>DHCP Starve</td><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td><td class="no">No</td></tr>
+      <tr><td>Rogue DHCP</td><td>STA mode</td><td>AP mode</td><td class="no">No</td><td class="no">No</td></tr>
+      <tr><td>Responder / WPAD</td><td class="yes">Yes, if STA is up</td><td class="no">Menu still requires STA</td><td class="no">No</td><td class="no">No</td></tr>
+      <tr><td>5 GHz / Zigbee / PMKID</td><td class="no">S3 is 2.4 GHz</td><td class="no">No</td><td class="no">No</td><td class="yes">C5 menu</td></tr>
+      <tr><td>Clears “Not connected”</td><td class="yes">Only a real STA lease</td><td class="no">No</td><td class="no">No</td><td class="no">No</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Keyboard and files</h2>
+  <ul>
+    <li>Root: <kbd>j</kbd> SaltyJack, <kbd>w</kbd> then <kbd>n</kbd> or <kbd>n</kbd> then <kbd>c</kbd> to join, <kbd>5</kbd> then <kbd>s</kbd> for C5 status, backtick back.</li>
+    <li>SaltyJack: <kbd>;</kbd> <kbd>.</kbd> Enter <kbd>i</kbd> <kbd>v</kbd> backtick.</li>
+    <li>Captures: <code>/poseidon/saltyjack/ntlm_hashes.txt</code></li>
+    <li>Wordlist and hits: <code>ntlm_wordlist.txt</code>, <code>ntlm_found.txt</code> in that directory.</li>
+    <li>Serial shows the hash line even when the SD file is not opened.</li>
+  </ul>
+
+  <h2>Credit</h2>
+  <p>SaltyJack is a port of <a href="https://github.com/7h30th3r0n3">@7h30th3r0n3</a>’s Evil-M5Project / RaspyJack work: DHCP starvation, rogue DHCP, Responder, WPAD, and the on-device NTLMv2 cracker. The on-device About page repeats that credit. Confirm which network you are allowed to test before you press Enter.</p>
+</article>
+
+<footer>
+  <div class="foot-glyph">⟠</div>
+  <div class="suite-label">PART OF THE SUITE</div>
+  <div class="suite-links">
+    <a href="hardware.html">HARDWARE</a>
+    <a href="saltyjack-networking.md">MARKDOWN</a>
+    <a href="legal.html">LEGAL</a>
+    <a href="flash/">C5 FLASH</a>
+  </div>
+  <div class="copy">&copy; 2026 POSEIDON &mdash; authorized use only &mdash; MIT</div>
+</footer>
+
+<canvas id="particles" style="position:fixed;inset:0;z-index:-1;pointer-events:none"></canvas>
+<script src="assets/site.js"></script>
+</body>
+</html>

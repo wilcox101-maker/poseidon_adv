@@ -90,6 +90,60 @@ The default POSEIDON theme now uses navy, ice-white and cyan with restrained lav
 | NORDIC FROST | Glacial cyan and silver |
 | GHOST PURPLE | Electric violet on obsidian |
 
+## SaltyJack and networking
+
+Authorized use only: networks and hardware you own, or explicit written permission. DHCP starvation and rogue DHCP disrupt address assignment. Responder and WPAD collect authentication material.
+
+**Comprehensive how-to** (STA meaning, SoftAP contrast, How-to A/B/C, pins, hat conflicts, C5 offsets, “Not connected” troubleshooting, 0.8.1 vs future W5500): **[docs/saltyjack-networking.md](docs/saltyjack-networking.md)** and **[docs/saltyjack-networking.html](docs/saltyjack-networking.html)**.
+
+The tagged image in this tree is Deepwater **v0.8.0**. There is no separate v0.8.1 file. Lab notes that say “0.8.1 fork” mean this tree. W5500 firmware is future work, not this image.
+
+### Wi-Fi STA
+
+Station mode means the Cardputer joins an access point as a **client**. SaltyJack DHCP Starve, Rogue DHCP (STA), Responder, and WPAD use lwIP on that STA netif (`WIFI_STA_DEF`) today. They do not use the ESP32-C5. They do not use the W5500.
+
+Rogue DHCP (AP) is the other path, and it is not STA. The Cardputer brings up an open SoftAP named `POSEIDON-SaltyJack` (lwIP default 192.168.4.1) and serves DHCP itself.
+
+### How-to A — SaltyJack over Wi-Fi STA (works now)
+
+1. Flash this fork (Deepwater image). Standalone: `poseidon-factory.bin` at `0x0`. Do not factory-flash a Launcher layout. See Quick Start below.
+2. Hats one at a time, or none. STA SaltyJack does not need a hat. Do not seat Hydra and LoRa together.
+3. Join the authorized target Wi-Fi first and wait for `CONNECTED` with a non-zero IP. Root `w` → `n` Connect, or `n` → `c` Connect, or System → Settings → `w` Saved Wi-Fi.
+4. Root `j` opens SaltyJack. Tool flow on an authorized LAN: **Starve → Rogue STA → Responder / WPAD** (NTLMv2 Crack is the offline follow-up from the microSD). Backtick stops a tool.
+5. **`Not connected`** means the S3 STA is down or has no IPv4 address. It does not mean the Ethernet cable or the C5. The on-screen line “System > Connect” is not a menu name; use the Connect entries above.
+
+### How-to B — W5500 RJ45 (hardware ready, firmware not in this tree)
+
+[docs/hardware.html](docs/hardware.html) says the driver is **Not wired in this tree**. No Ethernet stack is started. Until it is integrated, use How-to A. Do not seat Hydra or LoRa at the same time; they share SPI with the microSD. A **W5500 Mini is 3.3 V only** — do not power a Mini from 5 V.
+
+| Signal | GPIO | Notes |
+|---|---|---|
+| SCLK | 40 | Shared SPI clock |
+| MOSI | 14 | Shared SPI MOSI |
+| MISO | 39 | Shared SPI MISO |
+| SCS | 1 | W5500 chip-select (SD CS is GPIO 12) |
+| INT | 2 | W5500 interrupt, unused by this firmware |
+| RST | NC | Leave reset open |
+| 5V / GND | 5V and GND | Full-size modules that expect 5 V. Mini: 3.3 V and GND only |
+
+### How-to C — ESP32-C5 TRIDENT (not SaltyJack)
+
+Separate board, ESP-NOW, for 5 GHz, Zigbee, and 5 GHz PMKID. SaltyJack never routes through the C5.
+
+1. Unplug the Cardputer so Web Serial attaches to the C5.
+2. Desktop Chrome or Edge: [docs/flash/](docs/flash/index.html), target **TRIDENT — C5**.
+3. Offsets, bins under `docs/flash/bin/trident-c5/`: `0x2000` bootloader, `0x8000` partition table, `0x10000` `poseidon_c5_node.bin`.
+4. Power both. The C5 HELLO-broadcasts and auto-pairs. On the Cardputer: root `5` → `s` Status.
+
+### Quick map
+
+| Path | What it is | SaltyJack |
+|---|---|---|
+| STA | Cardputer joins an authorized AP | Starve, rogue STA, Responder, WPAD — works now |
+| SoftAP | Open AP `POSEIDON-SaltyJack` | Rogue DHCP (AP) only — works now |
+| W5500 | RJ45, pin table above | Not in this tree. Use STA until a driver lands |
+| C5 | ESP-NOW satellite | 5 GHz / Zigbee / PMKID only. Never SaltyJack |
+
 ## Quick Start & Installation
 
 Use the **Deepwater binaries from this fork**, not upstream's older release.
