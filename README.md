@@ -24,6 +24,8 @@ This fork exists to correct Hydra bring-up (wrong pins, shared-SPI chip-selects,
 
 Official Hydra map in this tree: SPI SCK 40, MISO 39, MOSI 14; CC1101 CS 13, GDO0 5; nRF24 CS 6, CE 4; microSD CS 12. Source revision **0.8.1**. Binaries under `release_binaries/` are still the 0.8.0 Deepwater images until the next package build.
 
+This fork’s Hydra GPIO map matches Bruce’s Hydra RF Cap pinout for Cardputer ADV: shared SPI SCK=40, MISO=39, MOSI=14; CC1101 CS=13, GDO0=5; nRF24 CS=6, CE=4. Bruce and Poseidon are separate firmwares. Poseidon does not use `brucePins.conf`. They share the same Hydra wiring map.
+
 ---
 
 ## Safety / Authorized Use
