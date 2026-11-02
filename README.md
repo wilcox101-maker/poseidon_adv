@@ -18,7 +18,7 @@
 
 ## This fork (0.8.1)
 
-[wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv) is Dale's checkout of [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). Upstream remains the base. Fork-specific work stays in a short stack of focused commits and is kept when upstream moves. Source revision **0.8.1**. Binaries under `release_binaries/` are still the 0.8.0 Deepwater images until the next package build.
+[wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv) is my checkout of [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). Upstream remains the base. Fork-specific work stays in a short stack of focused commits and is kept when upstream moves. Source revision **0.8.1**. Binaries under `release_binaries/` are still the 0.8.0 Deepwater images until the next package build.
 
 ### What this fork keeps
 
