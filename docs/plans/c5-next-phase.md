@@ -4,7 +4,7 @@ This is my next move on the ESP32-C5 node and the ESP-NOW link back to the Cardp
 
 ## Where I am
 
-The C5 already answers HELLO and PING, scans 5 GHz and 2.4 GHz, runs 5 GHz deauth, captures PMKID, captures a handshake when the EAPOL fits, and sniffs Zigbee/802.15.4. The Cardputer menu for that is the six C5 rows: Status, Scan 5G+2G, Zigbee sniff, Deauth 5G, PMKID 5G, Nuke 5G + HS. The node README also says GPS passthrough. `posei_hello_t` is name, heap, role, and the two radio flags, so GPS stays on the Cardputer.
+The C5 already answers HELLO and PING, scans 5 GHz and 2.4 GHz, runs 5 GHz deauth, captures PMKID, captures a handshake when the EAPOL fits, and sniffs Zigbee/802.15.4. The Cardputer menu for that is the six C5 rows: Status, Scan 5G+2G, Zigbee sniff, Deauth 5G, PMKID 5G, Nuke 5G + HS.
 
 `POSEI_VERSION` in `c5_node/main/proto.h` and `C5_VERSION` in `src/c5_cmd.h` are both **4**. The v3 cut added nine commands and four responses, and moved the old responses from 20–25 to 40–45. Version 4 then slimmed `posei_hs_t` / `c5_hs_t` to 174 bytes so a handshake fits the 230-byte payload (`eapol_m2` is capped at 128). The banners in `proto.h` and `c5_cmd.h`, and the type table in `c5_node/README.md`, still say v3. The constants are what the firmware checks.
 
@@ -61,7 +61,7 @@ These need a new opcode, a changed packed struct, or a radio mode the current sc
 
 **230-byte payload.** `POSEI_PAYLOAD_MAX` is 230. `posei_msg_t` is magic, version, type, seq, `payload[230]`, `payload_len`. The length byte has to match what I put in `payload`. The handshake struct is the reminder: extra fields pushed it past the cap, and v4 removed them. Any new or edited struct gets a `_Static_assert(sizeof(...) <= POSEI_PAYLOAD_MAX)` beside the handshake assert. One frame, no second format for overflow.
 
-**Radio scheduling.** One owner at a time. Hello pauses (`g_pause_hello`) while a scan or promiscuous capture hops, because an ESP-NOW transmit locks the channel and starves the sweep. Scans do not stack (`s_scan_running`, duplicate seq dropped). `CMD_STOP` has to stop every new mode as well as Zigbee, PMKID, and handshake capture. Wi-Fi station and the 802.15.4 sniffer do not overlap. SoftAP returns to station mode or the node drops out of the peer table. On the Cardputer side, wardrive already shows the matching constraint: park on channel 1 for the result window or the batch is lost.
+**Radio scheduling.** One owner at a time. Hello pauses (`g_pause_hello`) while a scan or promiscuous capture hops, because an ESP-NOW transmit locks the channel and starves the sweep. Scans do not stack (`s_scan_running`, duplicate seq dropped). `CMD_STOP` has to stop every mode I add, including the ones above Zigbee, PMKID, and handshake. Wi-Fi station and the 802.15.4 sniffer do not overlap. SoftAP returns to station mode or the node drops out of the peer table. On the Cardputer side, wardrive already shows the matching constraint: park on channel 1 for the result window or the batch is lost.
 
 **Authorized use only.** This stays on hardware and networks I own or have permission to test. Passive commands are what I use to confirm a build. Beacon spam, CIW, AP clone, karma, and deauth stay on those networks and off anything else.
 
@@ -69,7 +69,7 @@ These need a new opcode, a changed packed struct, or a radio mode the current sc
 
 Three numbers. They move for different reasons.
 
-**Wire protocol.** `POSEI_VERSION` and `C5_VERSION`, both 4 today. Either side drops a frame whose version byte does not match (`proto_validate`, `on_recv` in `c5_node/main/main.c`, the receive path in `src/c5_cmd.cpp`). A mixed pair goes silent. I still flash the C5 and the Cardputer together on a bump. The v3 renumber is why: response IDs moved onto the old 20–25 slot, and a peer that skipped the version check would misroute.
+**Wire protocol.** `POSEI_VERSION` and `C5_VERSION`, both 4 today. Either side drops a frame whose version byte does not match (`proto_validate`, `on_recv` in `c5_node/main/main.c`, the receive path in `src/c5_cmd.cpp`). A mixed pair goes silent. I still flash the C5 and the Cardputer together on a bump. The v3 renumber is why: responses left 20–25 for 40–45, and a peer that skipped the version check would misroute.
 
 I add 1 to both constants, in the same commit, when the wire breaks:
 
