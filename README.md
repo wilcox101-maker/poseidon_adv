@@ -60,7 +60,7 @@ When pulling Evil0ctopus/poseidon_adv, replay those units whole so the Hydra fix
 - You are responsible for complying with local radio and computer-misuse laws (e.g. FCC / Ofcom / ETSI and equivalents).
 - Captured data (handshakes, probes, logs) may include personal information — handle it lawfully.
 
-If you are unsure whether a use is allowed, treat it as **not allowed**. See the upstream [Legal & Responsible Use](https://generaldussduss.github.io/poseidon/legal.html) page for fuller guidance.
+If you are unsure whether a use is allowed, treat it as **not allowed**. See the upstream [Legal & Responsible Use](https://github.com/Evil0ctopus/poseidon_adv/blob/master/docs/legal.html) page for fuller guidance.
 
 ---
 
@@ -68,7 +68,7 @@ If you are unsure whether a use is allowed, treat it as **not allowed**. See the
 
 **POSEIDON** is a pocket-sized, keyboard-first **wireless auditing and security-research lab** built for the **M5Stack Cardputer-Advance** (ESP32-S3, QWERTY keyboard, 240×135 color display). Research modules cover Wi-Fi, Bluetooth Low Energy (BLE), Sub-GHz, 2.4 GHz, LoRa, Infrared, and LAN — intended for learning RF/embedded security concepts and testing **owned** gear.
 
-Upstream POSEIDON builds on the GeneralDussDuss release with stability work, performance tweaks, and features aimed at lab / field evaluation on authorized hardware. I track that tree and keep the Hydra, warning-cleanup, and docs commits described above.
+Upstream POSEIDON is [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). I track that tree. The stability work, performance tweaks, and lab / field features in this checkout sit on top of it, and I keep the Hydra, warning-cleanup, and docs commits described above.
 
 * **170+ research modules:** Broad coverage across Wi-Fi, BLE, Sub-GHz, 2.4 GHz, LoRa, Infrared, and LAN for recon and defensive assessment in authorized environments.
 * **QWERTY-driven interface:** Letter-mnemonic menus and direct parameter typing (no thumb-stick scrolling).
