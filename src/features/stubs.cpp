@@ -21,7 +21,7 @@ void feat_about(void)
     d.setCursor(4, BODY_Y + 44); d.print("keyboard-first pentesting");
     d.setCursor(4, BODY_Y + 54); d.print("M5Stack Cardputer");
     d.setTextColor(T_DIM, T_BG);
-    d.setCursor(4, BODY_Y + 70); d.print("github.com/GeneralDussDuss/poseidon");
+    d.setCursor(4, BODY_Y + 70); d.print("github.com/Evil0ctopus/poseidon_adv");
     d.setCursor(4, BODY_Y + 80); d.print("commander of the deep");
     ui_draw_footer("`=back");
     while (true) {
