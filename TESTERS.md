@@ -5,7 +5,7 @@ If you're helping stress-test POSEIDON, this doc tells you **what just changed**
 
 **Currently testing:** v0.5.0 is tagged, master is ~20 commits past it +
 in-flight 0.6 work. The TRIDENT ESP32-C5 web flasher just went live at
-<https://generaldussduss.github.io/poseidon/flash/>. Big stuff to verify
+[docs/flash/](docs/flash/). Big stuff to verify
 on real hardware:
 
 1. End-to-end browser flash of a TRIDENT C5 (P1)
@@ -19,7 +19,7 @@ on real hardware:
 
 ## Priority 1 — C5 web flasher (just deployed)
 
-The flasher at <https://generaldussduss.github.io/poseidon/flash/> is the
+The flasher at [docs/flash/](docs/flash/) is the
 first time we've had a one-click install path for the ESP32-C5
 satellite. esp-web-tools 10.2.1 on jsdelivr (the unpkg edge cache was
 serving an old 10.0-era bundle with no ESP32-C5 support — that's now
@@ -227,7 +227,7 @@ to know about now.
 
 ### Where to file
 
-GitHub Issues: <https://github.com/GeneralDussDuss/poseidon/issues>
+GitHub Issues: <https://github.com/Evil0ctopus/poseidon_adv/issues>
 Label `v0.5-tester` if you flashed the tag, or `v0.6-tester` if you
 flashed master.
 

@@ -69,7 +69,7 @@ If you're cutting a release and reading this, work top-to-bottom.
   This is what gets attached to the GitHub release for the
   install.html → `manifest-trident.json` web-flash flow.
 
-## 3. Refresh web flasher binaries (Pages-served)
+## 3. Refresh web flasher binaries (`docs/flash`)
 
 - [ ] Copy fresh C5 bins into the docs flasher tree:
 
@@ -119,7 +119,7 @@ The complete touch list from the v0.5.0 → 0.6 audit:
       fixed in this version, or new ones surfaced.
 - [ ] **`c5_node/README.md`** — protocol version, build flow.
 
-### Website pages (served from `docs/` via GitHub Pages)
+### Website pages (in `docs/`; GitHub Pages is not enabled)
 
 - [ ] **`docs/index.html`** — four spots that go stale:
   - `<div id="hud">` HUD text (`LIVE · vX.Y.Z ...`)
@@ -149,11 +149,11 @@ The complete touch list from the v0.5.0 → 0.6 audit:
 
 - [ ] **`docs/flash/manifest-trident-c5.json`** — bump version,
       ASCII-clean. Used by `flash/index.html` (the C5 install button).
-- [ ] **`docs/manifest-trident.json`** — install.html's release-URL
-      C5 manifest. The path itself
-      (`releases/latest/download/trident-factory.bin`) doesn't need
-      editing because `latest` auto-resolves, but bump the
-      `"version"` field for clarity.
+- [ ] **`docs/manifest-trident.json`** — C5 manifest. Upstream
+      releases do not publish `trident-factory.bin`, so the parts
+      point at the in-tree bins under `docs/flash/bin/trident-c5/`
+      (same offsets as `docs/flash/manifest-trident-c5.json`). Bump
+      the `"version"` field when those bins change.
 - [ ] **`docs/m5burner.json`** — **PREPEND a new entry to the
       `firmware[]` array** for this version (do NOT replace the
       existing entries; M5Burner shows them as a version history
@@ -167,11 +167,11 @@ The complete touch list from the v0.5.0 → 0.6 audit:
     "target":      "M5Cardputer-Adv",
     "flash_size":  "8MB",
     "psram":       true,
-    "url":         "https://github.com/GeneralDussDuss/poseidon/releases/download/vX.Y.Z/poseidon-factory.bin",
+    "url":         "https://github.com/Evil0ctopus/poseidon_adv/releases/download/vX.Y.Z/poseidon-factory.bin",
     "offset":      "0x0",
     "description": "<one-paragraph release headline>",
     "date":        "YYYY-MM-DD",
-    "changelog":   "https://github.com/GeneralDussDuss/poseidon/blob/master/CHANGELOG.md",
+    "changelog":   "https://github.com/Evil0ctopus/poseidon_adv/blob/master/CHANGELOG.md",
     "license":     "MIT"
   }
   ```
@@ -256,36 +256,34 @@ app-only GitHub release directly through SD/WebUI or a URL favorite.
 
 ## 7. Post-push verification
 
-GitHub Pages auto-builds from `master:/docs` on every push. Build
-takes ~30-60s. Poll the live page until it serves the new content:
+GitHub Pages is not enabled for this fork or for
+`Evil0ctopus/poseidon_adv`. Do not poll a `github.io` host. Confirm
+the docs files on `master` via raw GitHub. Raw updates a few seconds
+after the push.
 
 ```
-until curl -s https://generaldussduss.github.io/poseidon/ | grep -q "vX.Y.Z"; do sleep 5; done
-echo "live"
+until curl -fsSL https://raw.githubusercontent.com/wilcox101-maker/poseidon_adv/master/docs/index.html | grep -q "vX.Y.Z"; do sleep 5; done
+echo "on master"
 ```
 
-Check each endpoint independently:
+Check each file independently:
 
 ```
-curl -s -o /dev/null -w "%{http_code}\n" https://generaldussduss.github.io/poseidon/
-curl -s -o /dev/null -w "%{http_code}\n" https://generaldussduss.github.io/poseidon/flash/
-curl -s -o /dev/null -w "%{http_code}\n" https://generaldussduss.github.io/poseidon/flash/manifest-trident-c5.json
-curl -s -o /dev/null -w "%{http_code} %{size_download}\n" \
-  https://generaldussduss.github.io/poseidon/flash/bin/trident-c5/poseidon_c5_node.bin
+base=https://raw.githubusercontent.com/wilcox101-maker/poseidon_adv/master
+curl -fsSL -o /dev/null -w "%{http_code}\n" $base/docs/index.html
+curl -fsSL -o /dev/null -w "%{http_code}\n" $base/docs/flash/index.html
+curl -fsSL -o /dev/null -w "%{http_code}\n" $base/docs/flash/manifest-trident-c5.json
+curl -fsSL -o /dev/null -w "%{http_code} %{size_download}\n" \
+  $base/docs/flash/bin/trident-c5/poseidon_c5_node.bin
 ```
 
-If anything 404s, check the Pages build log:
+If a raw URL 404s, that file is not on `master` yet.
+
+If the release-asset flow is broken, check the upstream asset list
+(releases are published on `Evil0ctopus/poseidon_adv`):
 
 ```
-gh run list -L 3 -w "pages-build-deployment"
-gh run view <id> --log-failed
-```
-
-If the release-asset flow (`install.html`) is broken, check the
-asset list:
-
-```
-gh release view vX.Y.Z --json assets --jq '.assets[].name'
+gh release view vX.Y.Z --repo Evil0ctopus/poseidon_adv --json assets --jq '.assets[].name'
 ```
 
 ## 8. Common gotchas (each cost a debug round)
@@ -323,7 +321,7 @@ gh release view vX.Y.Z --json assets --jq '.assets[].name'
 
 M5Burner has a built-in "custom firmware" tab where users paste a
 manifest URL and it adds the firmware to their personal catalog.
-Ours is at `https://generaldussduss.github.io/poseidon/m5burner.json`
+Ours is at `https://raw.githubusercontent.com/wilcox101-maker/poseidon_adv/master/docs/m5burner.json`
 — shareable today without M5Stack's involvement.
 
 **To get on the *default* catalog** (shows up for every M5Burner
