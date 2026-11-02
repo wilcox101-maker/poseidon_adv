@@ -1,6 +1,6 @@
 # POSEIDON — Review & Action Items
 
-**Repo:** https://github.com/GeneralDussDuss/poseidon
+**Repo:** this tree, tracking https://github.com/Evil0ctopus/poseidon_adv
 **Target:** M5Stack Cardputer (ESP32-S3), PlatformIO/Arduino, C/C++
 **Reviewer:** Claude (web) — handing off to Claude Code for implementation
 

@@ -1,7 +1,7 @@
 # Proposal: CC1101 + nRF24L01+ Cardputer HAT integration
 
 **Status:** pinout confirmed (PINGEQUA Hydra RF Cap). The rest of this note is the original feature proposal.
-**Owner:** @GeneralDussDuss
+**Owner:** upstream proposal; pinout confirmed in this tree.
 
 ---
 

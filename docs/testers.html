@@ -32,14 +32,14 @@
     <li><a href="testers.html" class="active">Testers</a></li>
     <li><a href="credits.html">Credits</a></li>
     <li><a href="legal.html">Legal</a></li>
-    <li><a href="https://github.com/GeneralDussDuss/poseidon" target="_blank">GitHub</a></li>
+    <li><a href="https://github.com/wilcox101-maker/poseidon_adv" target="_blank">GitHub</a></li>
   </ul>
 </nav>
 
 <header class="page-head">
   <div class="kicker">04 // FIELD TEAM</div>
   <h1>For testers</h1>
-  <p class="lede">v0.6.8 is shipped, and the headline is <b style="color:#10b981;">KERBEROS</b>, a FIDO2 / U2F hardware security key hand written on the ESP32-S3 that needs eyes on real hardware (top of the list below). Still wanting a regression pass from the big v0.6.0 drop: the <b style="color:#d946ef;">Argus mood-sprite gotchi</b>, <b style="color:#d946ef;">six themes</b> + ambient motion + screensavers, the rewritten <b style="color:#d946ef;">raw-IDF AP path</b> (Portal, Beacon Spam, Evil Twin), the <b style="color:#d946ef;">BLE cooperative tick refactor</b> (Sour Apple, Spam, Karma actually firing now), and the <b style="color:#d946ef;">C5 protocol v3</b> with 5G scan terminator. The Hydra hat sub-GHz regression sweep is queued for the bench. Full doc: <a href="https://github.com/GeneralDussDuss/poseidon/blob/master/TESTERS.md" target="_blank"><code>TESTERS.md</code></a>.</p>
+  <p class="lede">v0.6.8 is shipped, and the headline is <b style="color:#10b981;">KERBEROS</b>, a FIDO2 / U2F hardware security key hand written on the ESP32-S3 that needs eyes on real hardware (top of the list below). Still wanting a regression pass from the big v0.6.0 drop: the <b style="color:#d946ef;">Argus mood-sprite gotchi</b>, <b style="color:#d946ef;">six themes</b> + ambient motion + screensavers, the rewritten <b style="color:#d946ef;">raw-IDF AP path</b> (Portal, Beacon Spam, Evil Twin), the <b style="color:#d946ef;">BLE cooperative tick refactor</b> (Sour Apple, Spam, Karma actually firing now), and the <b style="color:#d946ef;">C5 protocol v3</b> with 5G scan terminator. The Hydra hat sub-GHz regression sweep is queued for the bench. Full doc: <a href="https://github.com/wilcox101-maker/poseidon_adv/blob/master/TESTERS.md" target="_blank"><code>TESTERS.md</code></a>.</p>
 </header>
 
 <div class="console-strip">
@@ -76,7 +76,7 @@
       <h3>End-to-end browser flash of a TRIDENT satellite</h3>
       <p>The flasher at <a href="flash/"><code>/flash/</code></a> is the first time we&apos;ve had a one-click install path for the ESP32-C5 satellite. esp-web-tools 10.2.1 on jsdelivr (the unpkg edge cache was serving an old bundle with no C5 support &mdash; that&apos;s now fixed). We need real-board confirmation.</p>
       <ul class="test-steps">
-        <li>Open <a href="https://generaldussduss.github.io/poseidon/flash/" target="_blank">generaldussduss.github.io/poseidon/flash/</a> in Chrome / Edge / Opera</li>
+        <li>Open <a href="flash/">flash/</a> in Chrome / Edge / Opera</li>
         <li>Plug the C5 module directly via USB-C (not through the Cardputer)</li>
         <li>Click <b>Install TRIDENT</b> &middot; pick the C5&apos;s COM port (NOT the Cardputer-Adv&apos;s)</li>
         <li>Confirm the flow: erase &rarr; bootloader (0x2000) &rarr; partition-table (0x8000) &rarr; app (0x10000) all green</li>
@@ -176,7 +176,7 @@
       <li><b>Serial log</b> if possible (<code>pio device monitor --baud 115200</code> on the Cardputer; <code>idf.py monitor</code> on the C5)</li>
     </ul>
     <p style="margin-top:1rem;font-size:.88rem;color:#cbd5e1">
-      File at <a href="https://github.com/GeneralDussDuss/poseidon/issues" target="_blank">github.com/GeneralDussDuss/poseidon/issues</a> with label <code>v0.6-tester</code>.
+      File at <a href="https://github.com/Evil0ctopus/poseidon_adv/issues" target="_blank">github.com/Evil0ctopus/poseidon_adv/issues</a> with label <code>v0.6-tester</code>.
     </p>
   </div>
 </section>
@@ -185,8 +185,9 @@
   <div class="foot-glyph">&#x27E0;</div>
   <div class="suite-label">PART OF THE SUITE</div>
   <div class="suite-links">
-    <a href="https://generaldussduss.github.io/suite/">THE SUITE</a>
-    <a href="https://generaldussduss.github.io/faceless/">FACELESS</a>
+    <a href="legal.html">LEGAL</a>
+    <a href="install.html">INSTALL</a>
+    <a href="flash/">C5 FLASH</a>
   </div>
   <div class="copy">&copy; 2026 POSEIDON &mdash; commander of the deep &mdash; MIT</div>
 </footer>

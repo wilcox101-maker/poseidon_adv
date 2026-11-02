@@ -14,6 +14,7 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 - **Fork tracking note.** README records the Hydra pin, shared-SPI, and GPS fixes, the SaltyJack networking how-to, and the warning cleanup that I keep while tracking Evil0ctopus/poseidon_adv. Later upstream syncs should land those as separate commits and leave published `master` history in place. Ownership notes in the Markdown are in the first person.
+- **Upstream credit.** Present-facing docs name Evil0ctopus/poseidon_adv as the tree I track. I removed the previous upstream host from links and from the burner catalog. Older factory images that were never republished are no longer listed in `docs/m5burner.json`. The About screen names that same upstream. Shipped binaries still carry the previous About string until the next package build.
 
 ## [0.8.1] - 2026-10-29
 
@@ -311,8 +312,7 @@ fix so the UI knows when a scan ended.
   entries now resolve to Sony / Garmin / Govee / DJI / Tile / Anker /
   Wyze / Roku / Fitbit / Eddystone / Google Fast Pair / Drone Remote
   ID.
-- **ESP32-C5 web flasher** at
-  `https://generaldussduss.github.io/poseidon/flash/`. Single-page
+- **ESP32-C5 web flasher** at `docs/flash/`. Single-page
   install via `esp-web-tools@10.2.1` on jsdelivr CDN. POSEIDON's S3
   flasher still pending — POSEIDON ships via M5Burner today.
 - **C5 protocol v3 + 5G scan terminator.** Wire protocol bumped v2→v3
@@ -408,8 +408,7 @@ section.
   Devices that previously showed as generic "BLE" now resolve to
   Sony / Garmin / Govee / DJI / Tile / Anker / Wyze / Roku / Fitbit
   / Eddystone / Google Fast Pair / Drone Remote ID, etc.
-- **ESP32-C5 web flasher** at
-  `https://generaldussduss.github.io/poseidon/flash/`. Single-page
+- **ESP32-C5 web flasher** at `docs/flash/`. Single-page
   install button via `esp-web-tools@10.2.1` on the jsdelivr CDN.
 - **Carousel menu style** — big-card single-focus layout with
   cyberpunk pictograph icons. Toggle at `System → Menu style`.
@@ -1058,6 +1057,3 @@ First tagged release. Everything up to this point.
 POSEIDON is a pentesting tool. It is authorized for use on networks and
 devices you own or have written permission to test. See README "Legal"
 section.
-
-[Unreleased]: https://github.com/GeneralDussDuss/poseidon/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/GeneralDussDuss/poseidon/releases/tag/v0.1.0

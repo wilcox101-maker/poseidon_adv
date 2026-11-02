@@ -7,8 +7,16 @@
       "chipFamily": "ESP32-C5",
       "parts": [
         {
-          "path": "https://github.com/GeneralDussDuss/poseidon/releases/latest/download/trident-factory.bin",
-          "offset": 0
+          "path": "flash/bin/trident-c5/bootloader.bin",
+          "offset": 8192
+        },
+        {
+          "path": "flash/bin/trident-c5/partition-table.bin",
+          "offset": 32768
+        },
+        {
+          "path": "flash/bin/trident-c5/poseidon_c5_node.bin",
+          "offset": 65536
         }
       ]
     }
