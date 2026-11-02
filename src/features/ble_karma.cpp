@@ -57,7 +57,7 @@ class karma_cb : public NimBLEScanCallbacks {
         (void)d;
         /* Any advertisement or scan request counts as "somebody out
          * there probing" for our signal-loudness meter. */
-        s_karma_requests++;
+        s_karma_requests = s_karma_requests + 1;
     }
 };
 static karma_cb s_cb;
@@ -97,7 +97,7 @@ void feat_ble_karma(void)
         if (now - last_cycle > 2000) {
             last_cycle = now;
             const char *name = KARMA_NAMES[s_karma_idx % KARMA_N];
-            s_karma_idx++;
+            s_karma_idx = s_karma_idx + 1;
             strncpy(s_karma_current, name, sizeof(s_karma_current) - 1);
             s_karma_current[sizeof(s_karma_current) - 1] = '\0';
 
@@ -116,7 +116,7 @@ void feat_ble_karma(void)
             adv->setAdvertisementData(data);
             adv->setConnectableMode(BLE_GAP_CONN_MODE_UND);
             adv->start();
-            s_karma_responses++;
+            s_karma_responses = s_karma_responses + 1;
         }
 
         if (now - last_draw > 200) {

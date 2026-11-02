@@ -229,7 +229,8 @@ void wifi_show_ap_details(const ap_t &a)
     /* Signal Bar */
     int bar_w = 110;
     int pct = (a.rssi + 100) * 100 / 70;
-    if (pct < 0) pct = 0; if (pct > 100) pct = 100;
+    if (pct < 0) pct = 0;
+    if (pct > 100) pct = 100;
     d.setCursor(4, BODY_Y + 64); d.printf("RSSI : %d dBm", a.rssi);
     d.drawRect(95, BODY_Y + 64, bar_w, 7, T_DIM);
     uint16_t col = (a.rssi > -60) ? T_GOOD : (a.rssi > -80) ? T_WARN : T_BAD;

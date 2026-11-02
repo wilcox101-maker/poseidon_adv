@@ -63,7 +63,7 @@ static HardwareSerial uart1(1);
  * > 60% printable characters in a sample of > 20 bytes. */
 static int detect_baud(void)
 {
-    auto &d = M5Cardputer.Display;
+    [[maybe_unused]] auto &d = M5Cardputer.Display;
     ui_clear_body();
     ui_text(4, BODY_Y + 2, T_ACCENT, "Detecting baud...");
     ui_draw_footer("esc=cancel");
@@ -400,7 +400,7 @@ void feat_honeypot(void)
         uint16_t k = input_poll();
         if (k == PK_ESC) break;
 
-        WiFiClient client = srv.available();
+        WiFiClient client = srv.accept();
         if (!client) { delay(10); continue; }
 
         conn_count++;

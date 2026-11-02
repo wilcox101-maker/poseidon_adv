@@ -69,7 +69,8 @@ static void cli_add(const uint8_t *mac)
         }
     }
     if (s_learned_n < MAX_LEARNED_CLIENTS) {
-        memcpy(s_learned[s_learned_n++], mac, 6);
+        memcpy(s_learned[s_learned_n], mac, 6);
+        s_learned_n = s_learned_n + 1;
     }
     portEXIT_CRITICAL(&s_cli_mux);
 }
@@ -244,7 +245,7 @@ void feat_wifi_deauth(void)
 
     ui_clear_body();
     ui_draw_footer("ESC=stop  SPACE=pause");
-    auto &d = M5Cardputer.Display;
+    [[maybe_unused]] auto &d = M5Cardputer.Display;
 
     uint32_t last = 0;
     uint32_t last_sent = 0;

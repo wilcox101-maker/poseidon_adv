@@ -137,14 +137,15 @@ static void handle_resp_ap(const c5_msg_t *m)
     int count = m->payload_len / sizeof(c5_ap_t);
     const c5_ap_t *src = (const c5_ap_t *)m->payload;
     portENTER_CRITICAL(&s_mux);
-    s_dbg_resp_ap_frames++;
+    s_dbg_resp_ap_frames = s_dbg_resp_ap_frames + 1;
     s_dbg_raw_ap_records += count;
     for (int i = 0; i < count && s_ap_n < MAX_APS; ++i) {
         bool dup = false;
         for (int j = 0; j < s_ap_n; ++j)
             if (memcmp(s_aps[j].bssid, src[i].bssid, 6) == 0) { dup = true; break; }
         if (dup) continue;
-        s_aps[s_ap_n++] = src[i];
+        s_aps[s_ap_n] = src[i];
+        s_ap_n = s_ap_n + 1;
     }
     portEXIT_CRITICAL(&s_mux);
 }
@@ -157,7 +158,8 @@ static void handle_resp_zb(const c5_msg_t *m)
         memmove(s_zbs, s_zbs + 1, sizeof(c5_zb_t) * (MAX_ZBS - 1));
         s_zb_n = MAX_ZBS - 1;
     }
-    memcpy(&s_zbs[s_zb_n++], m->payload, sizeof(c5_zb_t));
+    memcpy(&s_zbs[s_zb_n], m->payload, sizeof(c5_zb_t));
+    s_zb_n = s_zb_n + 1;
     portEXIT_CRITICAL(&s_mux);
 }
 
@@ -179,7 +181,8 @@ static void handle_resp_pmkid(const c5_msg_t *m)
         memmove(s_pmkids, s_pmkids + 1, sizeof(c5_pmkid_t) * (MAX_PMKIDS - 1));
         s_pmkid_n = MAX_PMKIDS - 1;
     }
-    memcpy(&s_pmkids[s_pmkid_n++], p, sizeof(c5_pmkid_t));
+    memcpy(&s_pmkids[s_pmkid_n], p, sizeof(c5_pmkid_t));
+    s_pmkid_n = s_pmkid_n + 1;
     portEXIT_CRITICAL(&s_mux);
 }
 
@@ -201,7 +204,8 @@ static void handle_resp_hs(const c5_msg_t *m)
         memmove(s_hss, s_hss + 1, sizeof(c5_hs_t) * (MAX_HSS - 1));
         s_hs_n = MAX_HSS - 1;
     }
-    memcpy(&s_hss[s_hs_n++], h, sizeof(c5_hs_t));
+    memcpy(&s_hss[s_hs_n], h, sizeof(c5_hs_t));
+    s_hs_n = s_hs_n + 1;
     portEXIT_CRITICAL(&s_mux);
     Serial.printf("[c5] HS captured bssid=%02X%02X%02X%02X%02X%02X sta=%02X%02X%02X%02X%02X%02X m2=%u\n",
                   h->bssid[0],h->bssid[1],h->bssid[2],h->bssid[3],h->bssid[4],h->bssid[5],
@@ -226,7 +230,8 @@ static void handle_resp_sta(const c5_msg_t *m)
         memmove(s_stas, s_stas + 1, sizeof(c5_sta_t) * (MAX_STAS - 1));
         s_sta_n = MAX_STAS - 1;
     }
-    memcpy(&s_stas[s_sta_n++], s, sizeof(c5_sta_t));
+    memcpy(&s_stas[s_sta_n], s, sizeof(c5_sta_t));
+    s_sta_n = s_sta_n + 1;
     portEXIT_CRITICAL(&s_mux);
 }
 
@@ -254,7 +259,7 @@ static void handle_resp_probe(const c5_msg_t *m)
     }
     memcpy(&s_probes[s_probe_n], p, sizeof(c5_probe_t));
     s_probes[s_probe_n].ssid_len = ssid_len;
-    s_probe_n++;
+    s_probe_n = s_probe_n + 1;
     portEXIT_CRITICAL(&s_mux);
 }
 
@@ -267,7 +272,8 @@ static void handle_resp_deauth_hit(const c5_msg_t *m)
         memmove(s_dhits, s_dhits + 1, sizeof(c5_deauth_hit_t) * (MAX_DHITS - 1));
         s_dhit_n = MAX_DHITS - 1;
     }
-    memcpy(&s_dhits[s_dhit_n++], d, sizeof(c5_deauth_hit_t));
+    memcpy(&s_dhits[s_dhit_n], d, sizeof(c5_deauth_hit_t));
+    s_dhit_n = s_dhit_n + 1;
     portEXIT_CRITICAL(&s_mux);
 }
 
@@ -437,7 +443,7 @@ static void evict_locked(void)
     for (int i = s_peer_n - 1; i >= 0; --i) {
         if (now - s_peers[i].last_seen > 30000) {
             s_peers[i] = s_peers[s_peer_n - 1];
-            s_peer_n--;
+            s_peer_n = s_peer_n - 1;
         }
     }
 }
@@ -496,7 +502,8 @@ const char *c5_peer_name(int idx)
 
 static uint16_t send_simple_cmd(uint8_t type, const uint8_t *extra, int extra_len)
 {
-    uint16_t seq = s_next_seq++;
+    uint16_t seq = s_next_seq;
+    s_next_seq = s_next_seq + 1;
     c5_msg_t m = {};
     m.magic   = C5_MAGIC;
     m.version = C5_VERSION;

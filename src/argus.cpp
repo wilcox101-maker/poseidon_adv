@@ -71,7 +71,7 @@ void argus_invalidate(void)
     s_last_y    = INT32_MIN;
 }
 
-static void overlay_lightning(const uint16_t *src, int x, int y)
+[[maybe_unused]] static void overlay_lightning(const uint16_t *src, int x, int y)
 {
     auto &d = M5Cardputer.Display;
     /* Wipe last frame's bolts by re-pushing the top strip of the cached
@@ -98,7 +98,7 @@ static void overlay_lightning(const uint16_t *src, int x, int y)
     }
 }
 
-static void overlay_zzz(int x, int y, uint32_t now)
+[[maybe_unused]] static void overlay_zzz(int x, int y, uint32_t now)
 {
     auto &d = M5Cardputer.Display;
     for (int i = 0; i < 2; ++i) {
@@ -113,7 +113,7 @@ static void overlay_zzz(int x, int y, uint32_t now)
     }
 }
 
-static void overlay_scan_line(int x, int y, uint32_t now)
+[[maybe_unused]] static void overlay_scan_line(int x, int y, uint32_t now)
 {
     auto &d = M5Cardputer.Display;
     /* Magenta scan-line crosses the third-eye region every ~2 s. */
@@ -123,7 +123,7 @@ static void overlay_scan_line(int x, int y, uint32_t now)
     d.drawFastHLine(x + 18, sline_y, 12, T_ACCENT2);
 }
 
-static void overlay_glitch(int x, int y, uint32_t now)
+[[maybe_unused]] static void overlay_glitch(int x, int y, uint32_t now)
 {
     auto &d = M5Cardputer.Display;
     if ((now / 200) % 5 != 0) return;

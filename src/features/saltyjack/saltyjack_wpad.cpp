@@ -407,7 +407,7 @@ void feat_saltyjack_wpad(void)
     uint32_t p_gets = 0, p_407 = 0, p_type1 = 0, p_hash = 0;
     char p_sig[128] = "";
     while (true) {
-        WiFiClient c = s_server.available();
+        WiFiClient c = s_server.accept();
         if (c) handle_client(c);
 
         if (millis() - last_draw > 250) {

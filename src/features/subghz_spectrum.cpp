@@ -460,14 +460,16 @@ static void run_peak_hold(const freq_range_t &range)
                 canvas.drawFastVLine(pk_i, 0, GH, d.color565(0x06, 0x33, 0x3A));
             for (int i = 0; i < BINS; ++i) {
                 int sn = (int)smooth[i] - DB_LO;
-                if (sn < 0) sn = 0; if (sn > DB_SPAN) sn = DB_SPAN;
+                if (sn < 0) sn = 0;
+                if (sn > DB_SPAN) sn = DB_SPAN;
                 int h = (sn * (GH - 1)) / DB_SPAN;
                 for (int dy = 0; dy < h; ++dy) {
                     int fake = DB_LO + ((h - dy) * DB_SPAN) / (GH - 1);
                     canvas.drawPixel(i, GH - 1 - dy, rssi_color(fake));
                 }
                 int pn = (int)peak[i] - DB_LO;
-                if (pn < 0) pn = 0; if (pn > DB_SPAN) pn = DB_SPAN;
+                if (pn < 0) pn = 0;
+                if (pn > DB_SPAN) pn = DB_SPAN;
                 int py = GH - 1 - (pn * (GH - 1)) / DB_SPAN;
                 if (py >= 0 && py < GH) {
                     canvas.drawPixel(i, py, 0xFFFF);
@@ -479,14 +481,16 @@ static void run_peak_hold(const freq_range_t &range)
             d.fillRect(GX, GY, GW, GH, 0x0000);
             for (int i = 0; i < BINS; ++i) {
                 int sn = (int)smooth[i] - DB_LO;
-                if (sn < 0) sn = 0; if (sn > DB_SPAN) sn = DB_SPAN;
+                if (sn < 0) sn = 0;
+                if (sn > DB_SPAN) sn = DB_SPAN;
                 int h = (sn * (GH - 1)) / DB_SPAN;
                 for (int dy = 0; dy < h; ++dy) {
                     int fake = DB_LO + ((h - dy) * DB_SPAN) / (GH - 1);
                     d.drawPixel(GX + i, GY + GH - 1 - dy, rssi_color(fake));
                 }
                 int pn = (int)peak[i] - DB_LO;
-                if (pn < 0) pn = 0; if (pn > DB_SPAN) pn = DB_SPAN;
+                if (pn < 0) pn = 0;
+                if (pn > DB_SPAN) pn = DB_SPAN;
                 int py = GY + GH - 1 - (pn * (GH - 1)) / DB_SPAN;
                 d.drawPixel(GX + i, py, 0xFFFF);
             }
@@ -905,7 +909,8 @@ static void run_blip_sonar(const freq_range_t &range)
 
             float t   = (float)k.age / (float)k.life;
             float env = (t < 0.33f) ? (t / 0.33f) : (1.0f - (t - 0.33f) / 0.67f);
-            if (env < 0) env = 0; if (env > 1) env = 1;
+            if (env < 0) env = 0;
+            if (env > 1) env = 1;
             int radius = 2 + (int)(env * 7.0f);
 
             uint16_t base = k.rose ? ROSE : CYAN;

@@ -238,7 +238,7 @@ static bool bssid_was_seen(const uint8_t bssid[6])
     }
     memcpy((void *)s_bssid_seen[oldest].bssid, bssid, 6);
     s_bssid_seen[oldest].last_ms = millis();
-    s_wifi_distinct_total++;
+    s_wifi_distinct_total = s_wifi_distinct_total + 1;
     return false;
 }
 
@@ -267,7 +267,7 @@ static void enqueue_alert(uint8_t cls, const uint8_t bssid[6], const char *ssid,
     } else {
         ((char *)s_alert_q[head].detail)[0] = '\0';
     }
-    s_alert_count[cls]++;
+    s_alert_count[cls] = s_alert_count[cls] + 1;
     s_alert_q_head = next;
 }
 
@@ -306,19 +306,19 @@ static bool ble_addr_was_seen(const uint8_t addr[6])
     }
     memcpy((void *)s_ble_addrs[oldest].addr, addr, 6);
     s_ble_addrs[oldest].last_ms = millis();
-    s_ble_distinct_total++;
+    s_ble_distinct_total = s_ble_distinct_total + 1;
     return false;
 }
 
 static void ble_on_adv(const NimBLEAdvertisedDevice *dev)
 {
-    s_ble_total++;
+    s_ble_total = s_ble_total + 1;
     uint8_t addr[6];
     memcpy(addr, dev->getAddress().getBase()->val, 6);
 
     /* Flood detector */
     if (!ble_addr_was_seen(addr)) {
-        s_ble_new_now++;
+        s_ble_new_now = s_ble_new_now + 1;
     }
 
     /* Spoof detector — same advertised name from a different address. */
@@ -404,7 +404,7 @@ static void promisc_cb(void *buf, wifi_promiscuous_pkt_type_t type)
     if (len < 24) return;
     uint8_t fc = p[0];
     uint8_t subtype = (fc >> 4) & 0xF;
-    s_total++;
+    s_total = s_total + 1;
 
     const uint8_t *addr2 = p + 10;  /* src (TA) */
     const uint8_t *bssid = p + 16;  /* normally BSSID; for some subtypes addr3 isn't the BSSID, fine for our purposes */
@@ -413,7 +413,7 @@ static void promisc_cb(void *buf, wifi_promiscuous_pkt_type_t type)
 
     /* ---- detector: deauth / disassoc flood + canonical-attack signature ---- */
     if (subtype == 0xC || subtype == 0xA) {
-        s_deauth_now++;
+        s_deauth_now = s_deauth_now + 1;
         uint32_t now = millis();
 
         /* HydraESP signature: src=00:00:00:00:00:00 = canonical
@@ -443,7 +443,7 @@ static void promisc_cb(void *buf, wifi_promiscuous_pkt_type_t type)
             if (now - s_deauth_srcs[slot].window_start_ms > 1000) {
                 /* window rollover — was last window over threshold? */
                 if (s_deauth_srcs[slot].count_in_window >= DM_DEAUTH_RATE_THRESHOLD) {
-                    s_deauth_srcs[slot].consec_over++;
+                    s_deauth_srcs[slot].consec_over = s_deauth_srcs[slot].consec_over + 1;
                     if (s_deauth_srcs[slot].consec_over >= DM_DEAUTH_DEBOUNCE_WINDOWS) {
                         char detail[40];
                         snprintf(detail, sizeof(detail), "rate>%u/s x%u windows",
@@ -459,16 +459,16 @@ static void promisc_cb(void *buf, wifi_promiscuous_pkt_type_t type)
                 s_deauth_srcs[slot].count_in_window = 1;
                 s_deauth_srcs[slot].window_start_ms = now;
             } else {
-                s_deauth_srcs[slot].count_in_window++;
+                s_deauth_srcs[slot].count_in_window = s_deauth_srcs[slot].count_in_window + 1;
             }
         }
     }
 
     /* ---- detector: beacon spam + new-BSSID rate + Karma tracking ---- */
     if (subtype == 0x8) {  /* beacon */
-        s_beacons_total++;
+        s_beacons_total = s_beacons_total + 1;
         if (!bssid_was_seen(bssid)) {
-            s_new_bssids_now++;
+            s_new_bssids_now = s_new_bssids_now + 1;
             /* Queue a GPS-taggable WiGLE row for this new AP -- drained
              * and written from the main loop (no SD I/O allowed in ISR). */
             uint8_t qhead = s_wigle_q_head;
@@ -782,14 +782,19 @@ void feat_defensive_monitor(void)
 
     /* Reset state */
     s_total = 0;
-    s_deauth_now = s_beacons_total = s_new_bssids_now = 0;
+    s_new_bssids_now = 0;
+    s_beacons_total = 0;
+    s_deauth_now = 0;
     s_new_bssids_last_window = s_deauth_last_window = 0;
     s_window_start_ms = millis();
-    s_ble_total = s_ble_new_now = s_ble_new_last_window = 0;
+    s_ble_new_last_window = 0;
+    s_ble_new_now = 0;
+    s_ble_total = 0;
     s_ble_window_start_ms = millis();
     s_wifi_distinct_total = 0;
     s_ble_distinct_total  = 0;
-    s_wigle_q_head = s_wigle_q_tail = 0;
+    s_wigle_q_tail = 0;
+    s_wigle_q_head = 0;
     s_current_ch = 1;
     s_have_painted_alert = false;
     memset((void *)s_alert_count,   0, sizeof(s_alert_count));
@@ -800,7 +805,8 @@ void feat_defensive_monitor(void)
     memset((void *)s_karma,         0, sizeof(s_karma));
     memset((void *)s_ble_names,     0, sizeof(s_ble_names));
     memset((void *)s_ble_addrs,     0, sizeof(s_ble_addrs));
-    s_alert_q_head = s_alert_q_tail = 0;
+    s_alert_q_tail = 0;
+    s_alert_q_head = 0;
 
     s_running = true;
     enter_wifi_phase();

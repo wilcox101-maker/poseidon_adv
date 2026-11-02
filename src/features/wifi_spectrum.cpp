@@ -90,7 +90,7 @@ static void spec_cb(void *buf, wifi_promiscuous_pkt_type_t type)
     int ch = s_current_ch;
     if (ch < 1 || ch > CH_N) return;
     if (rssi > s_peak[ch]) s_peak[ch] = rssi;
-    s_pkts[ch]++;
+    s_pkts[ch] = s_pkts[ch] + 1;
 }
 
 static void hop_task(void *)

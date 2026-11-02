@@ -266,10 +266,10 @@ static void promisc_cb(void *buf, wifi_promiscuous_pkt_type_t type)
     s_last_rssi  = pkt->rx_ctrl.rssi;
     s_last_class = (uint8_t)cls;
     switch (cls) {
-    case SURV_FLOCK_T1:    s_hit_t1++;    break;
-    case SURV_FLOCK_T2:    s_hit_t2++;    break;
-    case SURV_FLOCK_SSID:  s_hit_ssid++;  break;
-    case SURV_FLOCK_PROBE: s_hit_probe++; break;
+    case SURV_FLOCK_T1:    s_hit_t1 = s_hit_t1 + 1;    break;
+    case SURV_FLOCK_T2:    s_hit_t2 = s_hit_t2 + 1;    break;
+    case SURV_FLOCK_SSID:  s_hit_ssid = s_hit_ssid + 1;  break;
+    case SURV_FLOCK_PROBE: s_hit_probe = s_hit_probe + 1; break;
     default: break;
     }
     portEXIT_CRITICAL_ISR(&s_mux);
@@ -341,7 +341,11 @@ void feat_surveillance_hunter(void)
     }
 
     /* Reset state */
-    s_total = s_hit_t1 = s_hit_t2 = s_hit_ssid = s_hit_probe = 0;
+    s_hit_probe = 0;
+    s_hit_ssid = 0;
+    s_hit_t2 = 0;
+    s_hit_t1 = 0;
+    s_total = 0;
     s_current_ch = 1;
     s_last_class = 0;
     s_last_ssid[0] = '\0';

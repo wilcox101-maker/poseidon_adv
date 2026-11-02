@@ -546,7 +546,7 @@ void feat_c5_deauth_5g(void)
 
     /* Live attack dashboard. */
     uint16_t dur = 8000;
-    uint8_t attack_ch = (chosen == -2) ? aps[cursor].channel : aps[chosen].channel;
+    [[maybe_unused]] uint8_t attack_ch = (chosen == -2) ? aps[cursor].channel : aps[chosen].channel;
     if (chosen >= 0) {
         c5_cmd_deauth(aps[chosen].bssid, aps[chosen].channel, 0, dur);
     }

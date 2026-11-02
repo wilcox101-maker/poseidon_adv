@@ -248,13 +248,13 @@ static void relay_phase(void) {
             String line = NRF52Hardware::read_line();
 
             if (line.startsWith("UP:")) {
-                s_relay_up++;
+                s_relay_up = s_relay_up + 1;
                 if (log_file) log_file.printf("%lu,UP,%s\n", (unsigned long)millis(), line.c_str()+3);
             } else if (line.startsWith("DN:")) {
-                s_relay_down++;
+                s_relay_down = s_relay_down + 1;
                 if (log_file) log_file.printf("%lu,DN,%s\n", (unsigned long)millis(), line.c_str()+3);
             } else if (line.startsWith("MOD:")) {
-                s_modified++;
+                s_modified = s_modified + 1;
             } else if (line.startsWith("CONN_UP")) {
                 nrf52_led_oneshot(NRF52_LED_CAPTURE, NRF52_LED_MITM, 2000);
                 sfx_capture();

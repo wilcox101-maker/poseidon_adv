@@ -476,7 +476,7 @@ static void emit_pmkid(const uint8_t *pmkid, const uint8_t *bssid, const uint8_t
     strcat(s_emit_pmk, "***\n");
     capture_enqueue(s_emit_pmk);
     wdr_append(bssid, ssid, "EAPOL_PMKID");
-    s_pmk++;
+    s_pmk = s_pmk + 1;
     s_lifetime_catches++;
     triton_add_xp(50);
     s_last_catch = millis();
@@ -506,7 +506,7 @@ static void emit_hs(const uint8_t *bssid, const uint8_t *sta,
     hexcat(line, m2, m2_len); strcat(line, "*02\n");
     capture_enqueue(line);
     wdr_append(bssid, ssid, "EAPOL_HS");
-    s_hs++;
+    s_hs = s_hs + 1;
     s_lifetime_catches++;
     triton_add_xp(150);
     s_last_catch = millis();
@@ -524,7 +524,8 @@ static m1_t *m1_slot(const uint8_t *b, const uint8_t *s)
         for (int i = 1; i < s_m1_n; ++i) if (s_m1[i].ts < s_m1[o].ts) o = i;
         return &s_m1[o];
     }
-    m1_t *e = &s_m1[s_m1_n++];
+    m1_t *e = &s_m1[s_m1_n];
+    s_m1_n = s_m1_n + 1;
     memcpy(e->bssid, b, 6); memcpy(e->sta, s, 6);
     return e;
 }
@@ -557,7 +558,7 @@ static void handle_eapol(const uint8_t *frame, int len)
      * header + its length field) so emitted handshakes verify in hashcat. */
     { int real = 4 + (((int)eapol[2] << 8) | eapol[3]); if (real > 0 && real < elen) elen = real; }
 
-    s_eapol++;
+    s_eapol = s_eapol + 1;
 
     const uint8_t *bssid, *sta;
     bool from_ap;
@@ -629,7 +630,8 @@ static void cache_beacon(const uint8_t *bssid, const uint8_t *tags, int len)
         if (!memcmp(s_bs[i].bssid, bssid, 6)) { idx = i; break; }
     if (idx < 0) {
         if (s_bs_n >= BS_N) { portEXIT_CRITICAL(&s_bs_mux); return; }
-        idx = s_bs_n++;
+        idx = s_bs_n;
+        s_bs_n = s_bs_n + 1;
         memcpy(s_bs[idx].bssid, bssid, 6);
     }
     memcpy(s_bs[idx].ssid, tags + 2, tags[1]);
@@ -666,7 +668,7 @@ static void cb(void *buf, wifi_promiscuous_pkt_type_t type)
  * progress visible through s_hop_iter, s_deauth_frames, etc. */
 static void triton_tick(uint16_t &seq, uint32_t &last_hunt)
 {
-    s_hop_iter++;
+    s_hop_iter = s_hop_iter + 1;
     extern volatile int wifi_deauth_last_rc;
     wifi_deauth_last_rc = -50;   /* iterating */
 
@@ -817,7 +819,7 @@ static mood_t mood_now(void)
     return MOOD_HUNTING;
 }
 
-static const char *mood_word(mood_t m)
+[[maybe_unused]] static const char *mood_word(mood_t m)
 {
     switch (m) {
     case MOOD_SLEEPY:  return "just waking up...";
@@ -918,7 +920,7 @@ static const char *current_voice(mood_t m)
 
 /* Triton face — cyberpunk gotchi with visor helmet + trident crown.
  * Much cooler than the old circle face. */
-static void draw_face(int cx, int cy, mood_t m, uint32_t tick)
+[[maybe_unused]] static void draw_face(int cx, int cy, mood_t m, uint32_t tick)
 {
     auto &d = M5Cardputer.Display;
     uint16_t glow  = T_ACCENT;
@@ -1530,7 +1532,7 @@ void feat_triton(void)
                     capture_enqueue(line);
                 }
                 wdr_append(hs[i].bssid, ssid, "EAPOL_HS_5G");
-                s_hs++;
+                s_hs = s_hs + 1;
                 s_lifetime_catches++;
                 triton_add_xp(150);
             }

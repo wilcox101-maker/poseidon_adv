@@ -5,10 +5,10 @@
  * Facebook, Microsoft, FreeWiFi). This header adds 12 more, hand-crafted
  * from the conventions used across these open-source pentest projects:
  *
- *   - wifiphisher/wifiphisher   (templates/*)
- *   - FluxionNetwork/fluxion    (attacks/Captive Portal/sites/*)
- *   - v1s1t0r1sh3r3/airgeddon   (captive_portal/*)
- *   - pr3y/Bruce                (src/modules/wifi/*)
+ *   - wifiphisher/wifiphisher   (templates/...)
+ *   - FluxionNetwork/fluxion    (attacks/Captive Portal/sites/...)
+ *   - v1s1t0r1sh3r3/airgeddon   (captive_portal/...)
+ *   - pr3y/Bruce                (src/modules/wifi/...)
  *   - 7h30th3r0n3/Evil-M5Project(EvilPortal portals)
  *   - lspiehler/EvilPortal      (flipperzero portal repo)
  *

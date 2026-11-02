@@ -6,6 +6,9 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- **`cardputer-launcher` compiler warnings.** Project sources no longer trip volatile increment, deprecated NimBLE/Network, format, misleading-indentation, comment, or unused-symbol diagnostics. Runtime behavior is unchanged, including the Hydra pin map. Two warnings remain in the pinned SmartRC-CC1101 driver, which is not patched in-tree.
+
 ## [0.8.1] - 2026-10-29
 
 Fork revision. Tracks [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). Hydra RF Cap fixes stay on top of upstream. Not a separate product.

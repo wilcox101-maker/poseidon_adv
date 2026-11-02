@@ -31,7 +31,7 @@ class clone_srv_cb : public NimBLEServerCallbacks {
          * was left at 0 and terminate returned ENOTCONN — peer would
          * stay connected after we thought we'd dropped it. */
         s_last_conn_handle = info.getConnHandle();
-        s_conn_count++;
+        s_conn_count = s_conn_count + 1;
         s_currently_connected = true;
         NimBLEDevice::startAdvertising();
     }
@@ -94,7 +94,8 @@ void feat_ble_clone(void)
             NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY);
         chr->setValue((uint8_t *)"POSEIDON", 8);
         chr->setCallbacks(&s_chr_cb);
-        svc->start();
+        /* NimBLE 2.x: Service::start() is a deprecated no-op. Services
+         * start with the server. */
     }
 
     /* Connectable advertising data: flags + name + HID-ish appearance. */

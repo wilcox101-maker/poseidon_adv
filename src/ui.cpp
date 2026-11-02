@@ -195,7 +195,7 @@ static void draw_footer_page(void)
         ui_layout::wrap_next(p, line, sizeof(line), paged ? 25 : 38);
     ui_label(4, FOOTER_Y + 2, paged ? 150 : SCR_W - 8, T_DIM, theme().footer_bg, line);
     if (paged) {
-        char more[16];
+        char more[24];
         snprintf(more, sizeof(more), "%d ^/ more", s_footer_page + 1);
         ui_label(166, FOOTER_Y + 2, 72, T_ACCENT, theme().footer_bg, more);
     }

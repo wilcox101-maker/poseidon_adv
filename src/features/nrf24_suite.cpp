@@ -31,7 +31,7 @@ bool           g_nrf24_last_valid = false;
  * matrix from the TFT every register write → screen tearing. */
 static void nrf_write_reg(uint8_t reg, uint8_t val)
 {
-    auto &r = nrf24_radio();
+    [[maybe_unused]] auto &r = nrf24_radio();
     SPIClass &bus = sd_get_spi();
     bus.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
     digitalWrite(NRF24_CS, LOW);

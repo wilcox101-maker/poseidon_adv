@@ -131,14 +131,13 @@ File sdlog_open_in(const char *directory, const char *stem,
                    const char *header_line, char *out_path,
                    size_t out_path_sz)
 {
-    File empty;
-    if (!directory || !*directory || !stem || !*stem) return empty;
-    if (!sd_ensure_layout()) return empty;
+    if (!directory || !*directory || !stem || !*stem) return File();
+    if (!sd_ensure_layout()) return File();
     char path[96];
     snprintf(path, sizeof(path), "%s/%s-%lu.csv",
              directory, stem, (unsigned long)(millis() / 1000));
     File f = SD.open(path, FILE_WRITE);
-    if (!f) return empty;
+    if (!f) return File();
     if (header_line && *header_line) {
         f.println(header_line);
     }
@@ -151,8 +150,7 @@ File sdlog_open_in(const char *directory, const char *stem,
 
 File sd_open_read_compat(const char *path, const char *legacy_path)
 {
-    File empty;
-    if (!sd_mount() || !path || !*path) return empty;
+    if (!sd_mount() || !path || !*path) return File();
     File f = SD.open(path, FILE_READ);
     if (!f && legacy_path && *legacy_path) f = SD.open(legacy_path, FILE_READ);
     return f;

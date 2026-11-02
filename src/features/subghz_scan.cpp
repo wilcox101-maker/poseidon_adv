@@ -24,7 +24,7 @@
 
 /* Check if captured pulses look like a real signal vs random noise.
  * Real OOK signals have at least some repeated pulse durations. */
-static bool is_real_signal(const int16_t *p, int n)
+[[maybe_unused]] static bool is_real_signal(const int16_t *p, int n)
 {
     if (n < MIN_PULSES) return false;
     /* Count how many pulse durations appear more than once (±30%). */
@@ -61,7 +61,7 @@ static const float COMMON_FREQS[] = {
 /* ISR: just count edges + record timestamp. Minimal work. */
 static void IRAM_ATTR gdo0_isr(void)
 {
-    s_isr_edges++;
+    s_isr_edges = s_isr_edges + 1;
     s_last_edge_us = micros();
 }
 
@@ -89,7 +89,7 @@ static int capture_now(int16_t *out, int max)
     return n;
 }
 
-static float s_save_freq = 433.92f;
+[[maybe_unused]] static float s_save_freq = 433.92f;
 
 static bool save_sub(float freq, const int16_t *p, int count)
 {

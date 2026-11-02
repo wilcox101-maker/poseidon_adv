@@ -399,8 +399,8 @@ static void sa_tick(void)
     }
     delay(20);
     adv->stop();
-    s_sa_count++;
-    if (data_rc == 0) s_mode_counts[mode]++;
+    s_sa_count = s_sa_count + 1;
+    if (data_rc == 0) s_mode_counts[mode] = s_mode_counts[mode] + 1;
 }
 
 void feat_ble_sourapple(void)

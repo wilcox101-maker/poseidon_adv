@@ -489,7 +489,7 @@ static void handle_smb_packet(const uint8_t *pkt, uint32_t pkt_len)
 static void handle_smb(void)
 {
     if (!s_smb.active) {
-        WiFiClient nc = s_smb_server.available();
+        WiFiClient nc = s_smb_server.accept();
         if (nc) {
             s_smb.client = nc;
             s_smb.active = true;

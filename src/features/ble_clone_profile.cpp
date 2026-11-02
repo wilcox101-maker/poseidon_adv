@@ -86,7 +86,8 @@ bool clone_profile_deserialize(const char *text, clone_profile_t *out) {
         if (len == 0) continue;
 
         if (strncmp(line, "NAME ", 5) == 0) {
-            snprintf(out->name, sizeof(out->name), "%s", line + 5);
+            snprintf(out->name, sizeof(out->name), "%.*s",
+                     (int)sizeof(out->name) - 1, line + 5);
             any = true;
         } else if (strncmp(line, "MAC ", 4) == 0) {
             if (parse_val_token(line + 4, out->mac, 6) != 6) return false;
@@ -100,7 +101,8 @@ bool clone_profile_deserialize(const char *text, clone_profile_t *out) {
             if (out->n_entries >= CLONE_MAX_ENTRIES) return false;
             clone_entry_t *e = &out->entries[out->n_entries++];
             e->type = CE_SERVICE;
-            snprintf(e->uuid, sizeof(e->uuid), "%s", line + 2);
+            snprintf(e->uuid, sizeof(e->uuid), "%.*s",
+                     (int)sizeof(e->uuid) - 1, line + 2);
             any = true;
         } else if (line[0] == 'C' && line[1] == ' ') {
             if (out->n_entries >= CLONE_MAX_ENTRIES) return false;
@@ -110,7 +112,8 @@ bool clone_profile_deserialize(const char *text, clone_profile_t *out) {
             if (m < 2) return false;
             clone_entry_t *e = &out->entries[out->n_entries++];
             e->type  = CE_CHAR;
-            snprintf(e->uuid, sizeof(e->uuid), "%s", uuid);
+            snprintf(e->uuid, sizeof(e->uuid), "%.*s",
+                     (int)sizeof(e->uuid) - 1, uuid);
             e->props = (uint8_t)props;
             if (m == 3) {
                 int n = parse_val_token(valtok, e->val, CLONE_MAX_VALUE);
@@ -125,7 +128,8 @@ bool clone_profile_deserialize(const char *text, clone_profile_t *out) {
             if (m < 1) return false;
             clone_entry_t *e = &out->entries[out->n_entries++];
             e->type = CE_DESC;
-            snprintf(e->uuid, sizeof(e->uuid), "%s", uuid);
+            snprintf(e->uuid, sizeof(e->uuid), "%.*s",
+                     (int)sizeof(e->uuid) - 1, uuid);
             if (m == 2) {
                 int n = parse_val_token(valtok, e->val, CLONE_MAX_VALUE);
                 if (n < 0) return false;

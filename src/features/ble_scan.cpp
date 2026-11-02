@@ -212,7 +212,7 @@ static volatile uint32_t s_cb_fire_count = 0;
 
 class ble_scan_cb : public NimBLEScanCallbacks {
     void onResult(const NimBLEAdvertisedDevice *d) override {
-        s_cb_fire_count++;
+        s_cb_fire_count = s_cb_fire_count + 1;
         /* Dedup by address. */
         NimBLEAddress addr = d->getAddress();
         for (int i = 0; i < s_count; ++i) {
@@ -238,7 +238,7 @@ class ble_scan_cb : public NimBLEScanCallbacks {
 /* Static-allocated so repeat-entry doesn't leak. NimBLE doesn't own
  * the object after scan stops — it just drops the callback pointer. */
 static ble_scan_cb s_cb_obj;
-static ble_scan_cb *s_cb = &s_cb_obj;
+[[maybe_unused]] static ble_scan_cb *s_cb = &s_cb_obj;
 
 static bool dev_matches_filter(const ble_dev_t &d)
 {
@@ -332,7 +332,7 @@ static void draw_list(int cursor)
  * The scan callback populates s_devs live during the scan, but if the
  * callback was somehow registered too late (miss the first few adverts)
  * this backfill catches them from the in-memory results list. */
-static void drain_scan_results(NimBLEScanResults &results)
+[[maybe_unused]] static void drain_scan_results(NimBLEScanResults &results)
 {
     for (int i = 0; i < (int)results.getCount() && s_count < BLE_MAX_DEVS; ++i) {
         const NimBLEAdvertisedDevice *d = results.getDevice(i);
@@ -635,7 +635,8 @@ void feat_ble_scan(void)
             /* Signal strength bar */
             int bar_w = 110;
             int pct = (x.rssi + 100) * 100 / 70;
-            if (pct < 0) pct = 0; if (pct > 100) pct = 100;
+            if (pct < 0) pct = 0;
+            if (pct > 100) pct = 100;
             d.setTextColor(T_FG, T_BG);
             d.setCursor(4, BODY_Y + 60); d.printf("RSSI : %d dBm", x.rssi);
             d.drawRect(95, BODY_Y + 60, bar_w, 7, T_DIM);

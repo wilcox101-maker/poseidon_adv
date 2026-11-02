@@ -110,7 +110,7 @@ static void spam_task(void *)
             rc = esp_wifi_80211_tx(WIFI_IF_STA, frame, len, false);
         }
         s_last_rc = rc;
-        s_sent++;
+        s_sent = s_sent + 1;
         i++;
         delay(30);
     }

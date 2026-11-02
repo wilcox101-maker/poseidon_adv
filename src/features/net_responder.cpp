@@ -62,13 +62,13 @@ static void build_llmnr_reply(const uint8_t *in, int in_len, IPAddress ip,
 
 static void on_llmnr(AsyncUDPPacket p)
 {
-    s_queries++;
+    s_queries = s_queries + 1;
     uint8_t reply[256];
     int rlen;
     build_llmnr_reply(p.data(), p.length(), WiFi.localIP(), reply, sizeof(reply), &rlen);
     if (rlen > 0) {
         s_llmnr.writeTo(reply, rlen, p.remoteIP(), p.remotePort());
-        s_replies++;
+        s_replies = s_replies + 1;
         if (s_log) {
             s_log.printf("[llmnr] from %s:%u\n",
                          p.remoteIP().toString().c_str(), p.remotePort());
@@ -80,13 +80,13 @@ static void on_llmnr(AsyncUDPPacket p)
 static void on_mdns(AsyncUDPPacket p)
 {
     /* mDNS uses same wire format as LLMNR; we can reuse. */
-    s_queries++;
+    s_queries = s_queries + 1;
     uint8_t reply[256];
     int rlen;
     build_llmnr_reply(p.data(), p.length(), WiFi.localIP(), reply, sizeof(reply), &rlen);
     if (rlen > 0) {
         s_mdns.writeTo(reply, rlen, p.remoteIP(), p.remotePort());
-        s_replies++;
+        s_replies = s_replies + 1;
     }
 }
 
@@ -97,7 +97,7 @@ static void on_nbtns(AsyncUDPPacket p)
     const uint8_t *in = p.data();
     int inlen = p.length();
     if (inlen < 50) return;
-    s_queries++;
+    s_queries = s_queries + 1;
 
     uint8_t reply[128] = {0};
     int n = 0;
@@ -138,7 +138,7 @@ static void on_nbtns(AsyncUDPPacket p)
     reply[n++] = ip[0]; reply[n++] = ip[1]; reply[n++] = ip[2]; reply[n++] = ip[3];
 
     s_nbtns.writeTo(reply, n, p.remoteIP(), p.remotePort());
-    s_replies++;
+    s_replies = s_replies + 1;
     if (s_log) {
         s_log.printf("[nbtns] from %s\n", p.remoteIP().toString().c_str());
         s_log.flush();
@@ -156,7 +156,7 @@ static void smb_task(void *)
      * under us at exit. Use the local copy throughout. */
     WiFiServer *srv = s_smb;
     while (s_smb && srv) {
-        WiFiClient c = srv->available();
+        WiFiClient c = srv->accept();
         if (!c) { delay(50); continue; }
         /* Read up to 512 bytes of NEGOTIATE. */
         uint8_t buf[512];
@@ -167,7 +167,7 @@ static void smb_task(void *)
             else delay(5);
         }
         if (n > 40) {
-            s_hashes++;
+            s_hashes = s_hashes + 1;
             if (s_log) {
                 s_log.printf("[smb] from %s len=%d hex=",
                              c.remoteIP().toString().c_str(), n);
@@ -199,7 +199,9 @@ void feat_net_responder(void)
     sd_rotate_on_size(SD_NTLM_PATH, 64 * 1024);
     s_log = SD.open(SD_NTLM_PATH, FILE_APPEND);
 
-    s_queries = s_replies = s_hashes = 0;
+    s_hashes = 0;
+    s_replies = 0;
+    s_queries = 0;
 
     /* LLMNR: multicast 224.0.0.252 port 5355. */
     s_llmnr.listenMulticast(IPAddress(224, 0, 0, 252), 5355);

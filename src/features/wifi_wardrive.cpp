@@ -61,7 +61,7 @@ static volatile uint8_t  s_current_ch = 1;
 static volatile bool     s_c5_hold    = false;  /* true = hop task parks on ch1 for a C5 5 GHz harvest window */
 static volatile int      s_5g_count = 0;   /* distinct 5 GHz APs from the C5 */
 static File       s_csv;
-static char       s_csv_path[64] = {0};
+static char       s_csv_path[80] = {0};
 
 enum wdr_view_t { WDR_VIEW_ARGUS = 0, WDR_VIEW_PLAIN = 1, WDR_VIEW_MATRIX = 2, WDR_VIEW__COUNT = 3 };
 #define MX_SEED 5   /* recent APs to preload into the matrix roster on entry */
@@ -298,7 +298,7 @@ static void promisc_cb(void *buf, wifi_promiscuous_pkt_type_t type)
                 return;
             }
             idx = victim;
-            s_cache_rollovers++;
+            s_cache_rollovers = s_cache_rollovers + 1;
         } else {
             idx = s_ap_count++;
         }
@@ -308,7 +308,7 @@ static void promisc_cb(void *buf, wifi_promiscuous_pkt_type_t type)
     }
     wdr_ap_t &a = s_aps[idx];
     a.last_seen = millis();
-    s_beacons++;
+    s_beacons = s_beacons + 1;
 
     /* Parse tagged parameters after the fixed beacon body. The capture may
      * contain no tags or a truncated final tag, so never read a tag length
@@ -353,12 +353,12 @@ static void promisc_cb(void *buf, wifi_promiscuous_pkt_type_t type)
 
     if (is_new_ap) {
         s_last_new_idx = idx;
-        s_new_this_run++;
+        s_new_this_run = s_new_this_run + 1;
         s_last_new_ms = millis();
         surv_class_t scls = flock_classify_oui(bssid);
         if (scls == SURV_UNKNOWN && a.ssid[0]) scls = flock_classify_ssid(a.ssid);
         if (scls != SURV_UNKNOWN) {
-            s_surv_count++;
+            s_surv_count = s_surv_count + 1;
             s_surv_pending = true;
             s_last_surv_cls = scls;
             s_last_surv_ms = millis();
@@ -446,7 +446,7 @@ static void merge_c5_5g(void)
                     continue;
                 }
                 idx = victim;
-                s_cache_rollovers++;
+                s_cache_rollovers = s_cache_rollovers + 1;
             } else {
                 idx = s_ap_count++;
             }
@@ -475,13 +475,13 @@ static void merge_c5_5g(void)
         }
         portEXIT_CRITICAL(&s_wdr_mux);
         if (is_new) {
-            s_5g_count++;
-            s_new_this_run++;
+            s_5g_count = s_5g_count + 1;
+            s_new_this_run = s_new_this_run + 1;
             s_last_new_ms = millis();
             surv_class_t scls = flock_classify_oui(buf[i].bssid);
             if (scls == SURV_UNKNOWN && buf[i].ssid[0]) scls = flock_classify_ssid(buf[i].ssid);
             if (scls != SURV_UNKNOWN) {
-                s_surv_count++;
+                s_surv_count = s_surv_count + 1;
                 s_surv_pending = true;
                 s_last_surv_cls = scls;
                 s_last_surv_ms = millis();
@@ -770,10 +770,10 @@ static void snapshot_log_wifi(void)
         ssid[sizeof(ssid) - 1] = '\0';
         char escaped[70];
         csv_escape(ssid, escaped, sizeof(escaped));
-        s_csv.printf("%02X:%02X:%02X:%02X:%02X:%02X,%s,%s,%s,%d,%d,%.6f,%.6f,%.1f,5,WIFI\n",
+        s_csv.printf("%02X:%02X:%02X:%02X:%02X:%02X,%s,%s,%s,%ld,%ld,%.6f,%.6f,%.1f,5,WIFI\n",
                      raw[0], raw[1], raw[2], raw[3], raw[4], raw[5],
                      escaped, auth_to_wigle(WiFi.encryptionType(i)), stamp,
-                     WiFi.channel(i), WiFi.RSSI(i), g.lat_deg, g.lon_deg,
+                     (long)WiFi.channel(i), (long)WiFi.RSSI(i), g.lat_deg, g.lon_deg,
                      g.alt_m);
         if (s_snapshot_wifi_seen_n < (int)(sizeof(s_snapshot_wifi_seen) / sizeof(s_snapshot_wifi_seen[0])))
             memcpy(s_snapshot_wifi_seen[s_snapshot_wifi_seen_n++], raw, 6);

@@ -3,7 +3,7 @@
  *
  * Uses the ESP32-S3's native USB in HID mode. On the host computer the
  * Cardputer appears as a standard USB keyboard. We run DuckyScript-lite
- * payloads either from the built-in library or from SD (/poseidon/ducky/*.txt).
+ * payloads either from the built-in library or from SD (/poseidon/ducky/, *.txt).
  *
  * Supported DuckyScript commands:
  *   REM <comment>
@@ -20,6 +20,15 @@
 #include "input.h"
 #include "mimir.h"
 #include "kerberos_bootmode.h"
+/* Keyboard_def.h (via M5Cardputer) defines KEY_BACKSPACE / KEY_TAB as
+ * matrix scancodes. USBHIDKeyboard.h uses those names for HID usages.
+ * Drop the matrix macros so this file sends the HID codes. */
+#ifdef KEY_BACKSPACE
+#undef KEY_BACKSPACE
+#endif
+#ifdef KEY_TAB
+#undef KEY_TAB
+#endif
 #include <USB.h>
 #include <USBHIDKeyboard.h>
 #include <SD.h>

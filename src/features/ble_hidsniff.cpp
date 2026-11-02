@@ -51,7 +51,7 @@ static void hid_notify_cb(NimBLERemoteCharacteristic *chr, uint8_t *data,
 {
     (void)chr; (void)isNotify;
     int nh = (s_q_head + 1) % HS_Q;
-    if (nh == s_q_tail) { s_dropped++; return; }   /* full: drop, keep radio happy */
+    if (nh == s_q_tail) { s_dropped = s_dropped + 1; return; }   /* full: drop, keep radio happy */
     hs_qent &e = s_q[s_q_head];
     e.len = (uint8_t)(len < HS_QBUF ? len : HS_QBUF);
     memcpy(e.buf, data, e.len);
@@ -66,7 +66,8 @@ static volatile bool s_dirty = true;
 
 static void push_line(const char *s)
 {
-    snprintf(s_lines[s_line_n % HS_LINES], sizeof(s_lines[0]), "%s", s);
+    snprintf(s_lines[s_line_n % HS_LINES], sizeof(s_lines[0]), "%.*s",
+             (int)sizeof(s_lines[0]) - 1, s);
     s_line_n++;
     s_dirty = true;
 }
@@ -164,7 +165,8 @@ void feat_ble_hidsniff(void)
     radio_switch(RADIO_BLE);
 
     /* Reset state. */
-    s_q_head = s_q_tail = 0;
+    s_q_tail = 0;
+    s_q_head = 0;
     s_dropped = 0;
     s_line_n = 0;
     s_sub_n = 0;

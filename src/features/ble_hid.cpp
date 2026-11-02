@@ -129,7 +129,8 @@ static void setup_hid(const char *name)
     s_hid->setPnp(0x02, 0x05AC, 0x820A, 0x0210);
     s_hid->setHidInfo(0x00, 0x01);
     s_hid->setReportMap((uint8_t *)HID_REPORT_MAP, sizeof(HID_REPORT_MAP));
-    s_hid->startServices();
+    /* NimBLE 2.x: startServices() is an empty deprecated wrapper.
+     * The server starts HID services when advertising starts. */
 
     NimBLEAdvertising *adv = NimBLEDevice::getAdvertising();
     adv->setAppearance(HID_KEYBOARD);

@@ -63,15 +63,15 @@ static void flood_tick(void)
         memcpy(target.val, g_ble_target.addr, 6);
         Serial.printf("[bleflood] cooperative first tick\n");
     }
-    s_flood_ticks++;
+    s_flood_ticks = s_flood_ticks + 1;
     ble_gap_conn_cancel();
     set_random_mac();
     int rc = ble_gap_connect(BLE_OWN_ADDR_RANDOM, &target, 200,
                              nullptr, flood_cb, nullptr);
     s_flood_last_rc = rc;
-    s_flood_count++;
+    s_flood_count = s_flood_count + 1;
     if (rc == 0) {
-        s_flood_ok++;
+        s_flood_ok = s_flood_ok + 1;
         delay(200);
         ble_gap_conn_cancel();
     } else {

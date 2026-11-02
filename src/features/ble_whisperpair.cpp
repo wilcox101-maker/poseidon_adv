@@ -128,7 +128,7 @@ static volatile uint32_t s_adv_seen_total = 0;
  * against a 128-bit construction can miss — so iterate and compare each. */
 class wp_scan_cb : public NimBLEScanCallbacks {
     void onResult(const NimBLEAdvertisedDevice *d) override {
-        s_adv_seen_total++;
+        s_adv_seen_total = s_adv_seen_total + 1;
         if (!d->haveServiceData()) return;
 
         std::string sd;
@@ -179,7 +179,7 @@ class wp_scan_cb : public NimBLEScanCallbacks {
         } else {
             t.mode = WP_MODE_UNKNOWN;
         }
-        s_tgt_n++;
+        s_tgt_n = s_tgt_n + 1;
     }
 };
 static wp_scan_cb s_cb;

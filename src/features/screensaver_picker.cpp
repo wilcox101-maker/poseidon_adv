@@ -43,7 +43,7 @@ void feat_screensaver_picker(void)
         if (first < 0) first = 0;
 
         if (total > rows) {
-            char pos[12];
+            char pos[24];
             snprintf(pos, sizeof(pos), "%d/%d", sel + 1, total);
             int pw = d.textWidth(pos);
             d.setTextColor(T_DIM, T_BG);
@@ -76,7 +76,7 @@ void feat_screensaver_picker(void)
                 d.setTextColor(s ? T_FG : T_ACCENT, bg);
                 d.setCursor(16, y); d.print(screensaver_pool_name(pi));
                 /* Index tag on the right for at-a-glance ordering. */
-                char idxs[6];
+                char idxs[16];
                 snprintf(idxs, sizeof(idxs), "[%d]", pi);
                 d.setTextColor(T_DIM, bg);
                 int iw = d.textWidth(idxs);

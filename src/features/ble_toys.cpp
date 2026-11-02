@@ -76,7 +76,8 @@ class ble_toys_scan_cb : public NimBLEScanCallbacks {
                 return;
             }
         if (s_toy_count >= MAX_TOYS) return;
-        toy_t &t = s_toys[s_toy_count++];
+        toy_t &t = s_toys[s_toy_count];
+        s_toy_count = s_toy_count + 1;
         memcpy(t.addr, a, 6);
         t.addr_type = d->getAddressType();
         strncpy(t.brand, brand, sizeof(t.brand) - 1);

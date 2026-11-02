@@ -48,7 +48,8 @@ static uint16_t rssi_color(int rssi)
 {
     auto &d = M5Cardputer.Display;
     int n = rssi + 130;
-    if (n < 0) n = 0; if (n > 80) n = 80;
+    if (n < 0) n = 0;
+    if (n > 80) n = 80;
     int p = (n * 255) / 80;
     if (p < 50)  return d.color565(0, 0, 40 + p * 2);
     if (p < 100) return d.color565(0, (p - 50) * 5, 140 - (p - 50) * 2);
@@ -289,7 +290,8 @@ static void run_scope(SX1262 &radio, float freq)
         for (int i = 1; i < GW; i++) {
             int s1 = (hp + i - 1) % GW, s2 = (hp + i) % GW;
             int n1 = hist[s1] + 130, n2 = hist[s2] + 130;
-            if (n1 < 0) n1 = 0; if (n2 < 0) n2 = 0;
+            if (n1 < 0) n1 = 0;
+            if (n2 < 0) n2 = 0;
             int y1 = GY + GH - (n1 * GH) / 80;
             int y2 = GY + GH - (n2 * GH) / 80;
             d.drawLine(GX + i - 1, y1, GX + i, y2, rssi_color(hist[s2]));

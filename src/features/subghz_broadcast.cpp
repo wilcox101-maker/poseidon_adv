@@ -319,7 +319,8 @@ void feat_subghz_broadcast(void)
                 int x = 4;
                 for (int i = 0; i < plen && x < SCR_W - 4; ++i) {
                     int w = abs(raw[i]) / 100;
-                    if (w < 1) w = 1; if (w > 15) w = 15;
+                    if (w < 1) w = 1;
+                    if (w > 15) w = 15;
                     uint16_t c = raw[i] > 0 ? T_ACCENT : T_ACCENT2;
                     d.fillRect(x, raw[i] > 0 ? mid - 8 : mid + 1, w, 8, c);
                     x += w;

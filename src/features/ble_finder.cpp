@@ -168,7 +168,8 @@ static void draw_meter(void)
 
         /* Signal bar, full width — confined to inside the static frame. */
         int pct = (rssi + 100) * 100 / 70;
-        if (pct < 0) pct = 0; if (pct > 100) pct = 100;
+        if (pct < 0) pct = 0;
+        if (pct > 100) pct = 100;
         int by = BODY_Y + 78;
         int fill = (SCR_W - 18) * pct / 100;
         d.fillRect(9, by + 1, fill, 6, prox_col);

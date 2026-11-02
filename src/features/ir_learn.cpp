@@ -2,7 +2,7 @@
  * ir_learn — capture a raw IR frame from a real remote on the hat's receiver
  * (IR_RX_PIN) using the ESP32-S3 RMT RX peripheral, then replay it out the
  * hat's emitter (IR_TX_PIN) via a software 38 kHz bit-bang. Raw timings only
- * (no protocol decode). Optional save to /poseidon/ir/*.ir.
+ * (no protocol decode). Optional save to /poseidon/ir/ (*.ir).
  *
  * RMT RX config mirrors cc1101_rmt.cpp (1 µs ticks, 64-symbol block, no DMA).
  * A 64-symbol block holds up to 128 edges — enough for typical consumer

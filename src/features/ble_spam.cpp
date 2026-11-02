@@ -141,7 +141,7 @@ static void spam_tick(void)
     randomize_addr();
     adv->start();
     delay(100);
-    s_sent++;
+    s_sent = s_sent + 1;
     cycle++;
 }
 

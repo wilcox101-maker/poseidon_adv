@@ -157,7 +157,7 @@ static void emit_pmkid(const uint8_t *pmkid, const uint8_t *bssid, const uint8_t
     strcat(line, "***\n");
     s_out.print(line);
     s_out.flush();
-    s_pmkids++;
+    s_pmkids = s_pmkids + 1;
 
     /* Raise notification — UI task polls this. */
     strncpy(s_notify_ssid, ssid, sizeof(s_notify_ssid) - 1);
@@ -213,7 +213,7 @@ static void emit_handshake(const uint8_t *bssid, const uint8_t *sta,
     strcat(line, "*02\n");  /* message_pair=02: M1+M2, challenge. */
     s_out.print(line);
     s_out.flush();
-    s_handshakes++;
+    s_handshakes = s_handshakes + 1;
 
     /* Full 4-way handshake — most impressive, louder notification. */
     strncpy(s_notify_ssid, ssid, sizeof(s_notify_ssid) - 1);
@@ -308,7 +308,7 @@ static void handle_eapol(const uint8_t *frame, int len)
     bool from_ap;
     eapol_key_info_t ki = {};
     if (!parse_eapol(frame, len, &bssid, &sta, &from_ap, &ki)) return;
-    s_eapol_seen++;
+    s_eapol_seen = s_eapol_seen + 1;
 
     /* Bound kd_len to the bytes actually captured — the frame's key-data-length
      * field is attacker-controlled and would otherwise walk past the RX buffer. */

@@ -248,7 +248,7 @@ static void probe_cb(void *buf, wifi_promiscuous_pkt_type_t type)
         if (ssid[i] < 0x20 || ssid[i] == 0x7F) return;
     }
 
-    s_probe_total++;
+    s_probe_total = s_probe_total + 1;
 
     portENTER_CRITICAL(&s_probe_mux);
     int idx = find_probe(client, ssid);
@@ -262,7 +262,8 @@ static void probe_cb(void *buf, wifi_promiscuous_pkt_type_t type)
             idx = oldest;
             memset(&s_probes[idx], 0, sizeof(s_probes[idx]));
         } else {
-            idx = s_probe_count++;
+            idx = s_probe_count;
+            s_probe_count = s_probe_count + 1;
             memset(&s_probes[idx], 0, sizeof(s_probes[idx]));
         }
         memcpy(s_probes[idx].client, client, 6);
@@ -299,12 +300,12 @@ static void probe_cb(void *buf, wifi_promiscuous_pkt_type_t type)
         int rc = esp_wifi_80211_tx(WIFI_IF_STA, frame, len, false);
         for (int r2 = 0; rc == ESP_ERR_NO_MEM && r2 < 3; ++r2) { delay(2); rc = esp_wifi_80211_tx(WIFI_IF_STA, frame, len, false); }
         if (rc == ESP_OK) {
-            s_resp_total++;
+            s_resp_total = s_resp_total + 1;
             portENTER_CRITICAL(&s_probe_mux);
             s_probes[idx].responses++;
             portEXIT_CRITICAL(&s_probe_mux);
         } else {
-            s_resp_err++;
+            s_resp_err = s_resp_err + 1;
         }
     }
 }
@@ -545,8 +546,8 @@ static void run_karma(void)
                 s_resp_seq = (s_resp_seq + 1) & 0x0FFF;
                 int rc = esp_wifi_80211_tx(WIFI_IF_STA, frame, len, false);
                 for (int r = 0; rc == ESP_ERR_NO_MEM && r < 4; ++r) { delay(2); rc = esp_wifi_80211_tx(WIFI_IF_STA, frame, len, false); }
-                if (rc == ESP_OK) s_resp_total++;
-                else              s_resp_err++;
+                if (rc == ESP_OK) s_resp_total = s_resp_total + 1;
+                else              s_resp_err = s_resp_err + 1;
                 vTaskDelay(pdMS_TO_TICKS(2));
             }
             /* Sticky seed SSIDs — broadcast every cycle so a fresh
@@ -560,8 +561,8 @@ static void run_karma(void)
                 s_resp_seq = (s_resp_seq + 1) & 0x0FFF;
                 int rc = esp_wifi_80211_tx(WIFI_IF_STA, frame, len, false);
                 for (int r = 0; rc == ESP_ERR_NO_MEM && r < 4; ++r) { delay(2); rc = esp_wifi_80211_tx(WIFI_IF_STA, frame, len, false); }
-                if (rc == ESP_OK) s_resp_total++;
-                else              s_resp_err++;
+                if (rc == ESP_OK) s_resp_total = s_resp_total + 1;
+                else              s_resp_err = s_resp_err + 1;
                 vTaskDelay(pdMS_TO_TICKS(2));
             }
         }

@@ -29,16 +29,21 @@ int hs_format_22000(char *out, size_t out_sz,
     if (p < 0 || (size_t)p >= out_sz) return -1;
 
     p = hexcat(out, out_sz, p, mic, 16);             if (p < 0) return -1;
-    if (p + 1 >= (int)out_sz) return -1; out[p++] = '*';
+    if (p + 1 >= (int)out_sz) return -1;
+    out[p++] = '*';
     p = hexcat(out, out_sz, p, bssid, 6);            if (p < 0) return -1;
-    if (p + 1 >= (int)out_sz) return -1; out[p++] = '*';
+    if (p + 1 >= (int)out_sz) return -1;
+    out[p++] = '*';
     p = hexcat(out, out_sz, p, sta, 6);              if (p < 0) return -1;
-    if (p + 1 >= (int)out_sz) return -1; out[p++] = '*';
+    if (p + 1 >= (int)out_sz) return -1;
+    out[p++] = '*';
     p = hexcat(out, out_sz, p, (const uint8_t *)essid, strlen(essid));
     if (p < 0) return -1;
-    if (p + 1 >= (int)out_sz) return -1; out[p++] = '*';
+    if (p + 1 >= (int)out_sz) return -1;
+    out[p++] = '*';
     p = hexcat(out, out_sz, p, anonce, 32);          if (p < 0) return -1;
-    if (p + 1 >= (int)out_sz) return -1; out[p++] = '*';
+    if (p + 1 >= (int)out_sz) return -1;
+    out[p++] = '*';
 
     /* EAPOL field: whole frame, MIC zeroed. Hex byte-by-byte so we can zero
      * the MIC region without mutating the caller's buffer. */

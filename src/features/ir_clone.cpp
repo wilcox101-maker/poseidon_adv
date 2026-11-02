@@ -8,7 +8,7 @@
  * onboard IR TX LED on GPIO 44.
  *
  * v2 will add capture (IR RX on GPIO 1 via Adafruit-IRremote) and
- * Flipper-Zero-compatible `.ir` file storage at /poseidon/ir/*.ir,
+ * Flipper-Zero-compatible `.ir` file storage at /poseidon/ir/ (*.ir),
  * letting you clone any remote into a new profile and share files
  * with the community.
  *

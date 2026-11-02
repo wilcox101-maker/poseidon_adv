@@ -197,7 +197,7 @@ static void phase_arp(IPAddress gw, IPAddress mask)
                 if (v) { strncpy(h.vendor, v, sizeof(h.vendor) - 1);
                          h.vendor[sizeof(h.vendor) - 1] = '\0'; }
             }
-            s_host_count++;
+            s_host_count = s_host_count + 1;
         }
     }
 }

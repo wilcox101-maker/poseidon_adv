@@ -206,7 +206,7 @@ static bool bd_emit(uint8_t key, uint8_t mod)
     s_input->setValue(rpt, sizeof(rpt));
     s_input->notify();
     delay(BD_KEY_GAP_MS / 2);
-    s_keys_sent++;
+    s_keys_sent = s_keys_sent + 1;
     return true;
 }
 
@@ -430,7 +430,8 @@ static void bd_setup_hid(const char *name)
     s_hid->setPnp(0x02, 0x05AC, 0x820A, 0x0210);
     s_hid->setHidInfo(0x00, 0x01);
     s_hid->setReportMap((uint8_t *)BD_REPORT_MAP, sizeof(BD_REPORT_MAP));
-    s_hid->startServices();
+    /* NimBLE 2.x: startServices() is an empty deprecated wrapper.
+     * The server starts HID services when advertising starts. */
 
     NimBLEAdvertising *adv = NimBLEDevice::getAdvertising();
     adv->setAppearance(HID_KEYBOARD);

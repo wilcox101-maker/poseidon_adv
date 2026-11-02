@@ -138,7 +138,8 @@ void feat_ble_tracker(void)
 
                     /* Signal bar (small). */
                     int pct = (t.rssi + 100) * 100 / 70;
-                    if (pct < 0) pct = 0; if (pct > 100) pct = 100;
+                    if (pct < 0) pct = 0;
+                    if (pct > 100) pct = 100;
                     d.drawRect(200, y + 1, 36, 6, T_DIM);
                     d.fillRect(201, y + 2, 34, 4, T_BG);
                     d.fillRect(201, y + 2, 34 * pct / 100, 4, prox_col);
@@ -181,7 +182,7 @@ static File s_sniff_file;
 class sniff_cb : public NimBLEScanCallbacks {
     void onResult(const NimBLEAdvertisedDevice *d) override {
         if (!s_sniff_file) return;
-        s_sniff_count++;
+        s_sniff_count = s_sniff_count + 1;
         NimBLEAddress _addr = d->getAddress();   /* bind: getAddress() returns by value */
         const uint8_t *a = _addr.getBase()->val;
         s_sniff_file.printf("%lu,%02X:%02X:%02X:%02X:%02X:%02X,%d,%u,",

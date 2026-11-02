@@ -76,7 +76,7 @@ static void fm_tick(void)
         mac[5] = (mac[5] & 0x3F) | 0xC0;
         ble_hs_id_set_rnd(mac);
         NimBLEDevice::setOwnAddrType(BLE_OWN_ADDR_RANDOM);
-        s_fm_rotated++;
+        s_fm_rotated = s_fm_rotated + 1;
 
         uint8_t pkt[31];   /* builder writes idx 0..30 = 31 bytes (0x1E len + 30 following) */
         build_findmy(pkt, key, 0xE0 /* OWNED */, 0x00);
@@ -99,7 +99,7 @@ static void fm_tick(void)
     }
     if (now - last_count_bump >= 1000) {
         last_count_bump = now;
-        s_fm_count++;
+        s_fm_count = s_fm_count + 1;
     }
 }
 
