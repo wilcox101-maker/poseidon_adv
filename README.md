@@ -18,13 +18,34 @@
 
 ## This fork (0.8.1)
 
-[wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv) tracks [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). Upstream changes are pulled and rebased over time. Fixes for the PINGEQUA Hydra RF Cap on Cardputer ADV stay on top.
+[wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv) is Dale's checkout of [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). Upstream remains the base. Fork-specific work stays in a short stack of focused commits and is kept when upstream moves. Source revision **0.8.1**. Binaries under `release_binaries/` are still the 0.8.0 Deepwater images until the next package build.
 
-This fork exists to correct Hydra bring-up (wrong pins, shared-SPI chip-selects, GPS conflict on GPIO 13). It is not a separate product.
+### What this fork keeps
 
-Official Hydra map in this tree: SPI SCK 40, MISO 39, MOSI 14; CC1101 CS 13, GDO0 5; nRF24 CS 6, CE 4; microSD CS 12. Source revision **0.8.1**. Binaries under `release_binaries/` are still the 0.8.0 Deepwater images until the next package build.
+**Hydra RF Cap.** The official PINGEQUA map for Cardputer ADV, the same wiring Bruce uses for that hat. Poseidon and Bruce are separate firmwares. Poseidon does not read `brucePins.conf`.
 
-This fork’s Hydra GPIO map matches Bruce’s Hydra RF Cap pinout for Cardputer ADV: shared SPI SCK=40, MISO=39, MOSI=14; CC1101 CS=13, GDO0=5; nRF24 CS=6, CE=4. Bruce and Poseidon are separate firmwares. Poseidon does not use `brucePins.conf`. They share the same Hydra wiring map.
+| Signal | GPIO | Role |
+|---|---|---|
+| SPI SCK / MISO / MOSI | 40 / 39 / 14 | Shared with the microSD |
+| CC1101 CS / GDO0 | 13 / 5 | CS is also LoRa-GNSS GPS UART TX |
+| nRF24 CS / CE | 6 / 4 | CE is high-Z when the radio is released |
+| microSD CS | 12 | Held high while a Hydra radio owns the bus |
+
+An earlier combo-hat map (CC1101 CS 15 / GDO0 13, nRF24 CS 4 / CE 3) drove the wrong pads. `cc1101_park_others()` holds microSD CS and nRF24 CS high before the CC1101 takes the bus, and calls `gps_end()` only while the GPS poller is running. GPIO 13 cannot be CC1101 CS and GPS UART TX at the same time. GDO0 (GPIO 5) stays an input and is not a GPS pin. GPS RX is GPIO 15, which Hydra does not use. After the bus is released, `gps_resume_if_enabled()` restarts the UART and the NMEA poller when the user had GPS on. Definitions live in `src/cc1101_hw.h`, `src/nrf24_hw.h`, and `src/gps.h`. The wiring table is also in [docs/proposals/cc1101-nrf24-hat.md](docs/proposals/cc1101-nrf24-hat.md).
+
+**SaltyJack networking notes.** STA, SoftAP, W5500, and C5 operator notes are already in [docs/saltyjack-networking.md](docs/saltyjack-networking.md) (and the HTML twin). The [SaltyJack and networking](#saltyjack-and-networking) section below is the short form of that page.
+
+**Warning cleanup.** The `cardputer-launcher` project sources were cleared of volatile-increment, deprecated NimBLE and Network, format, misleading-indentation, comment, and unused-symbol diagnostics. The edits are mechanical and leave runtime behavior as it was, including the Hydra map. Two diagnostics remain in the pinned SmartRC-CC1101 driver (`s2` unused, `a` maybe uninitialized). That driver is a git pin, so it stays unpatched here. The same warning classes can show up again when this fork takes a newer upstream tree or toolchain. Fold the next cleanup into its own commit.
+
+### How later upstream syncs should land
+
+Keep new fork work as one clear commit in one of these units:
+
+1. Hydra pin, shared-SPI, and GPS fixes
+2. Warning cleanup
+3. Docs (this note, the SaltyJack how-to, changelog)
+
+When pulling Evil0ctopus/poseidon_adv, replay those units whole so the Hydra fixes, the warning cleanup, and the docs each stay identifiable. History already on `master` stays as published. Rewrite it only when a sync cannot proceed any other way.
 
 ---
 
@@ -45,7 +66,7 @@ If you are unsure whether a use is allowed, treat it as **not allowed**. See the
 
 **POSEIDON** is a pocket-sized, keyboard-first **wireless auditing and security-research lab** built for the **M5Stack Cardputer-Advance** (ESP32-S3, QWERTY keyboard, 240×135 color display). Research modules cover Wi-Fi, Bluetooth Low Energy (BLE), Sub-GHz, 2.4 GHz, LoRa, Infrared, and LAN — intended for learning RF/embedded security concepts and testing **owned** gear.
 
-Upstream POSEIDON builds on the GeneralDussDuss release with stability work, performance tweaks, and features aimed at lab / field evaluation on authorized hardware. This wilcox101-maker checkout tracks that tree and adds the Hydra pin and SPI fixes described above.
+Upstream POSEIDON builds on the GeneralDussDuss release with stability work, performance tweaks, and features aimed at lab / field evaluation on authorized hardware. This wilcox101-maker checkout tracks that tree and keeps the Hydra, warning-cleanup, and docs commits described above.
 
 * **170+ research modules:** Broad coverage across Wi-Fi, BLE, Sub-GHz, 2.4 GHz, LoRa, Infrared, and LAN for recon and defensive assessment in authorized environments.
 * **QWERTY-driven interface:** Letter-mnemonic menus and direct parameter typing (no thumb-stick scrolling).
