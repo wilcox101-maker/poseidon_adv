@@ -20,6 +20,8 @@
 
 [wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv) is my checkout of [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). Upstream remains the base. Fork-specific work stays in a short stack of focused commits and is kept when upstream moves. Source revision **0.8.1**. Binaries under `release_binaries/` are still the 0.8.0 Deepwater images until the next package build.
 
+I keep a counted inventory of this tree in [features.md](features.md).
+
 ### What this fork keeps
 
 **Hydra RF Cap.** The official PINGEQUA map for Cardputer ADV, the same wiring Bruce uses for that hat. Poseidon and Bruce are separate firmwares. Poseidon does not read `brucePins.conf`.
@@ -66,7 +68,7 @@ If you are unsure whether a use is allowed, treat it as **not allowed**. See the
 
 **POSEIDON** is a pocket-sized, keyboard-first **wireless auditing and security-research lab** built for the **M5Stack Cardputer-Advance** (ESP32-S3, QWERTY keyboard, 240×135 color display). Research modules cover Wi-Fi, Bluetooth Low Energy (BLE), Sub-GHz, 2.4 GHz, LoRa, Infrared, and LAN — intended for learning RF/embedded security concepts and testing **owned** gear.
 
-Upstream POSEIDON builds on the GeneralDussDuss release with stability work, performance tweaks, and features aimed at lab / field evaluation on authorized hardware. This wilcox101-maker checkout tracks that tree and keeps the Hydra, warning-cleanup, and docs commits described above.
+Upstream POSEIDON builds on the GeneralDussDuss release with stability work, performance tweaks, and features aimed at lab / field evaluation on authorized hardware. I track that tree and keep the Hydra, warning-cleanup, and docs commits described above.
 
 * **170+ research modules:** Broad coverage across Wi-Fi, BLE, Sub-GHz, 2.4 GHz, LoRa, Infrared, and LAN for recon and defensive assessment in authorized environments.
 * **QWERTY-driven interface:** Letter-mnemonic menus and direct parameter typing (no thumb-stick scrolling).

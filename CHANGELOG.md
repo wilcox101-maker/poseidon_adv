@@ -6,11 +6,14 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- **Feature inventory.** `features.md` counts the menu rows, radio paths, Hydra pin map, SaltyJack STA/SoftAP tools, themes, screensavers, and PlatformIO environments in this tree. The README links it. The W5500 stays pinout-only there.
+
 ### Fixed
 - **`cardputer-launcher` compiler warnings.** Project sources no longer trip volatile increment, deprecated NimBLE/Network, format, misleading-indentation, comment, or unused-symbol diagnostics. Runtime behavior is unchanged, including the Hydra pin map. Two warnings remain in the pinned SmartRC-CC1101 driver, which is not patched in-tree.
 
 ### Changed
-- **Fork tracking note.** README records the Hydra pin/SPI/GPS fixes, the existing SaltyJack networking how-to, and the warning cleanup that Dale keeps while tracking Evil0ctopus/poseidon_adv. Later upstream syncs should land those as separate commits and leave published `master` history in place.
+- **Fork tracking note.** README records the Hydra pin, shared-SPI, and GPS fixes, the SaltyJack networking how-to, and the warning cleanup that I keep while tracking Evil0ctopus/poseidon_adv. Later upstream syncs should land those as separate commits and leave published `master` history in place. Ownership notes in the Markdown are in the first person.
 
 ## [0.8.1] - 2026-10-29
 
