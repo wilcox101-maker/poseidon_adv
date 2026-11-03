@@ -1,6 +1,6 @@
 # Next phase: C5 node and Poseidon ESP-NOW
 
-This is my next move on the ESP32-C5 node and the ESP-NOW link back to the Cardputer. The command IDs are already on the wire. I finish those before I add anything new.
+The next step for me(wilcox101-maker) is work on the ESP32-C5 node and the ESP-NOW link back to the Cardputer. The command IDs are already on the wire. I will finish those before I add anything new.
 
 ## Where I am
 
