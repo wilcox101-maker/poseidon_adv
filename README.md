@@ -170,29 +170,6 @@ Separate board, ESP-NOW, for 5 GHz, Zigbee, and 5 GHz PMKID. SaltyJack never rou
 
 ## Quick Start & Installation
 
-Use the **Deepwater binaries from this fork**, not upstream's older release.
-The [release downloads](https://github.com/Evil0ctopus/poseidon_adv/releases/latest)
-and [tracked binaries](release_binaries/) contain the same design:
-
-| Installation | Binary | Use |
-|---|---|---|
-| Standalone / M5Burner | `poseidon-factory.bin` | Full factory image at `0x0`; replaces the flash layout |
-| M5Stack Launcher | `poseidon-launcher.bin` | App-only image; install through Launcher's SD/WebUI flow |
-| Existing custom dual-app unit | `poseidon-launcher-dual.bin` | App-only image for the verified layout below; never a factory flash |
-
-**Do not flash the factory image over Launcher or another multi-app installation.**
-Back up your device and verify its partition table before a manual update.
-
-### Web Flasher
-
-Open [the personal website's Flash hub](https://evil0ctopus.github.io/flash.html#poseidon_adv)
-in Chrome or Edge, connect a Cardputer-Advance and install the standalone image.
-The standalone package is hosted in the separate
-[website repository](https://github.com/Evil0ctopus/Evil0ctopus.github.io/tree/main/firmware/poseidon_adv).
-Do not use a factory installer over an existing Launcher/Meshtastic layout.
-
-### M5Burner
-
 Use [M5Stack WebBurner](https://burner.m5stack.com/) with the Deepwater factory image for a
 standalone installation. The versioned [catalog metadata](docs/m5burner.json)
 describes this fork's release. An upstream POSEIDON listing is maintained
@@ -255,16 +232,12 @@ retained no additional heap. Application-only flashing passed hash verification;
 partition-table readback matched the backup byte-for-byte. This was shared UI
 and safe navigation validation, not a transmit/destructive-operation audit.
 
-## Support My Work
-
-If you find this firmware or related open-source security tools helpful, consider supporting future development:
-
-[![PayPal](https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/Evil0ctopus)
-
 ## Acknowledgments & Shoutouts
 
+* **[@7h30th3r0n3](https://github.com/Evil0ctopus)**
 * **[@7h30th3r0n3](https://github.com/7h30th3r0n3)** — Evil-M5Project and RaspyJack (inspiration for the SaltyJack LAN toolkit).
 * **[@justcallmekoko](https://github.com/justcallmekoko)** — ESP32Marauder wireless research / promiscuous-mode frameworks.
-* **[@bmorcelli](https://github.com/bmorcelli)** / **[@pr3y](https://github.com/pr3y)** — Bruce hardware reference implementations.
+* **[@bmorcelli](https://github.com/bmorcelli)** — Custom M5Burner firmware browser and webflasher.
+* **[@pr3y](https://github.com/pr3y)** — Bruce hardware reference implementations.
 * **[@UberGuidoZ](https://github.com/UberGuidoZ)** — Flipper Sub-GHz signal libraries.
 * **[@M5Stack](https://github.com/M5Stack)** — Hardware design and SDKs.
