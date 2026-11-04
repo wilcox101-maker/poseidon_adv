@@ -4,6 +4,7 @@
   <p><b>Commander of the Deep</b></p>
   <p><i>Educational RF / embedded security lab for the M5Stack Cardputer-Advance — authorized use on owned hardware only</i></p>
 
+  [![build](https://github.com/wilcox101-maker/poseidon_adv/actions/workflows/build.yml/badge.svg)](https://github.com/wilcox101-maker/poseidon_adv/actions/workflows/build.yml)
   [![target](https://img.shields.io/badge/target-Cardputer--Adv-blue)](https://m5stack.com)
   [![framework](https://img.shields.io/badge/framework-Arduino%2FPlatformIO-green)](https://platformio.org/)
   [![license](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
