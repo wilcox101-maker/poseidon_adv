@@ -234,7 +234,7 @@ and safe navigation validation, not a transmit/destructive-operation audit.
 
 ## Acknowledgments & Shoutouts
 
-* **[@7h30th3r0n3](https://github.com/Evil0ctopus)**
+* **[@Evil0ctopus](https://github.com/Evil0ctopus)** — Fork of origin
 * **[@7h30th3r0n3](https://github.com/7h30th3r0n3)** — Evil-M5Project and RaspyJack (inspiration for the SaltyJack LAN toolkit).
 * **[@justcallmekoko](https://github.com/justcallmekoko)** — ESP32Marauder wireless research / promiscuous-mode frameworks.
 * **[@bmorcelli](https://github.com/bmorcelli)** — Custom M5Burner firmware browser and webflasher.
