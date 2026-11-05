@@ -319,6 +319,7 @@ void feat_wifi_deauth(void)
 
             ui_freq_bars(SCR_W - 70, BODY_Y + 16, 4, 36);
             ui_draw_status(radio_name(), paused ? "paused" : "flooding");
+            ui_dashboard_radar();
         }
         uint16_t k = input_poll();
         if (k == PK_NONE) { delay(20); continue; }

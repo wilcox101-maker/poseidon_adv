@@ -146,6 +146,8 @@ void ui_action_overlay_with_tick(const char *headline, const char *subtitle,
 /* Shared dashboard title, subtle event underline and a small radar.
  * Middle rows remain feature-owned; reduced motion suppresses the pulse. */
 void ui_dashboard_chrome(const char *title, bool flash_now);
+/* Doubled upper-right radar; call at the END of a redraw (after body paint). */
+void ui_dashboard_radar(void);
 
 /* Cyan frequency bars. Anchor them anywhere in the body. Bar values
  * random-walk internally so consecutive calls produce smooth motion. */

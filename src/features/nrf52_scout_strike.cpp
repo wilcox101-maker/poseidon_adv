@@ -278,6 +278,7 @@ static void strike_phase(void) {
                 d.fillRect(0, BODY_Y+16, SCR_W, 20, T_BG);
                 d.setTextColor(T_ACCENT, T_BG); d.setCursor(4, BODY_Y+18);
                 d.printf("LL_TERMINATE: %lu", (unsigned long)sent);
+                ui_dashboard_radar();
                 if (input_poll() == PK_ESC) break;
                 delay(50);
             }

@@ -151,6 +151,7 @@ void c5_deauth_dashboard(const ap_t &a, bool broadcast)
 
             ui_freq_bars(SCR_W - 70, BODY_Y + 16, 4, 36);
             ui_draw_status(radio_name(), paused ? "paused" : "C5-DAUTH");
+            ui_dashboard_radar();
         }
 
         uint16_t k = input_poll();
@@ -282,8 +283,7 @@ void feat_c5_status(void)
                 }
             }
             draw_status_header();
-            d.fillRect(SCR_W - 30, BODY_Y + BODY_H - 24, 24, 22, T_BG);
-            ui_radar(SCR_W - 20, BODY_Y + BODY_H - 14, 8, T_ACCENT);
+            ui_dashboard_radar();
         }
         uint16_t k = input_poll();
         if (k == PK_NONE) { delay(40); continue; }
@@ -395,6 +395,7 @@ void feat_c5_scan_5g(void)
                 }
             }
             }
+            ui_dashboard_radar();
         }
         uint16_t k = input_poll();
         if (k == PK_NONE) { delay(40); continue; }
@@ -604,6 +605,7 @@ void feat_c5_deauth_5g(void)
             d.printf("time  : %lus", (unsigned long)left);
             ui_freq_bars(SCR_W - 70, BODY_Y + 16, 4, 36);
             ui_draw_status(radio_name(), "C5-DAUTH");
+            ui_dashboard_radar();
         }
         uint16_t k = input_poll();
         if (k == PK_NONE) { delay(20); continue; }
@@ -693,6 +695,7 @@ void feat_c5_scan_zb(void)
                     d.printf("PAN%04X src%04X", e.pan_id, e.src_short);
                 }
             }
+            ui_dashboard_radar();
         }
         uint16_t k = input_poll();
         if (k == PK_NONE) { delay(40); continue; }
@@ -861,6 +864,7 @@ void feat_c5_pmkid_5g(void)
             d.printf("time    : %lus  -> hashcat.22000", (unsigned long)left);
             ui_freq_bars(SCR_W - 70, BODY_Y + 16, 4, 36);
             ui_draw_status(radio_name(), "C5-PMKID");
+            ui_dashboard_radar();
         }
         uint16_t k = input_poll();
         if (k == PK_NONE) { delay(20); continue; }
