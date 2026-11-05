@@ -1,5 +1,7 @@
 <div align="center">
 
+  <img src="docs/assets/logo.png" alt="POSEIDON ADV" width="680">
+
   <h1>POSEIDON: ADVANCED</h1>
   <p><b>Commander of the Deep</b></p>
   <p><i>Educational RF / embedded security lab for the M5Stack Cardputer-Advance — authorized use on owned hardware only</i></p>
