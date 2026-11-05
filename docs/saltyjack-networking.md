@@ -2,7 +2,7 @@
 
 Authorized use only. Run these tools on networks and hardware you own, or where you have explicit written permission. DHCP starvation and rogue DHCP disrupt address assignment. Responder and WPAD collect authentication material. Unauthorized use is illegal in most places. If you are unsure, do not run the tool. See [Legal](legal.html) and the README safety section.
 
-This page is the operator guide for **this** `master` tree of [wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv). The source revision in the README, `CHANGELOG.md`, and `docs/m5burner.json` is **0.9.0**, and the factory binary those entries point at is now the **Deepwater v0.9.0** image, published on the [v0.9.0 release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.0) and under `release_binaries/`. SaltyJack over Wi-Fi station mode, and the SoftAP rogue-DHCP path, are in the image you flash today. The W5500 driver is not.
+This page is the operator guide for **this** `master` tree of [wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv). The source revision in the README, `CHANGELOG.md`, and `docs/m5burner.json` is **0.9.1**, and the factory binary those entries point at is now the **Deepwater v0.9.1** image, published on the [v0.9.1 release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.1) and under `release_binaries/`. SaltyJack over Wi-Fi station mode, and the SoftAP rogue-DHCP path, are in the image you flash today. The W5500 driver is not.
 
 The same guide is on the docs site: [saltyjack-networking.html](saltyjack-networking.html).
 
@@ -21,11 +21,11 @@ The Cardputer-Adv radio is an ESP32-S3. It has 2.4 GHz Wi-Fi. It does not speak 
 
 Rogue DHCP (AP) is the contrast. It does not join the target AP. `wifi_raw_ap_up("POSEIDON-SaltyJack")` starts an open SoftAP (channel 1, not hidden, up to 4 stations) via the raw-IDF helper, because Arduino `WiFi.softAP()` crashes on the Bruce-pinned libraries this tree builds with. The AP address is lwIP’s default **192.168.4.1**. The tool then stops the IDF DHCP **server** on `WIFI_AP_DEF` and binds UDP/67 itself. Clients that join `POSEIDON-SaltyJack` are leased by the Cardputer, with the Cardputer as gateway and DNS.
 
-## 0.9.0 vs future W5500
+## 0.9.1 vs future W5500
 
-This fork is **0.9.0** — the source revision in the README, `CHANGELOG.md`, and `docs/m5burner.json`, and the factory image they now point at. The table is what that image does today, and what is still future — the W5500 driver in particular.
+This fork is **0.9.1** — the source revision in the README, `CHANGELOG.md`, and `docs/m5burner.json`, and the factory image they now point at. The table is what that image does today, and what is still future — the W5500 driver in particular.
 
-| Capability | This tree (Deepwater v0.9.0) | Later, not in this tree |
+| Capability | This tree (Deepwater v0.9.1) | Later, not in this tree |
 | --- | --- | --- |
 | Join an authorized AP (`WiFi` → Connect, `Network` → Connect, or System → Settings → Saved Wi-Fi) | Yes | — |
 | SaltyJack DHCP Starve, Rogue DHCP (STA), Responder, WPAD on that STA netif | Yes | — |
@@ -52,7 +52,7 @@ This is the path that works now.
 
 ### 1. Flash this fork
 
-Use the Deepwater binaries from **this** repository's [v0.9.0 release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.0) (or `release_binaries/`), not an upstream POSEIDON build. The tagged image in-tree is v0.9.0.
+Use the Deepwater binaries from **this** repository's [v0.9.1 release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.1) (or `release_binaries/`), not an upstream POSEIDON build. The tagged image in-tree is v0.9.1.
 
 - Standalone / M5Burner: `poseidon-factory.bin` at offset `0x0`.
 - M5Stack Launcher: `poseidon-launcher.bin` through Launcher’s installer.
