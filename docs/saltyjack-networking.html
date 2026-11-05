@@ -71,11 +71,11 @@
     <p style="margin:.45rem 0 0">Run these tools on networks and hardware you own, or where you have explicit written permission. DHCP starvation and rogue DHCP disrupt address assignment. Responder and WPAD collect authentication material. Unauthorized use is illegal in most places. If you are unsure, do not run the tool. Read <a href="legal.html">Legal</a> before you transmit.</p>
   </div>
 
-  <p>This page matches <strong>this</strong> <code>master</code> tree. The version string in the README, <code>CHANGELOG.md</code>, and <code>docs/m5burner.json</code> is <strong>Deepwater v0.9.0</strong>, and the factory binary they point at is now the v0.9.0 image, published on the <a href="https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.0">v0.9.0 release</a> and under <code>release_binaries/</code>. SaltyJack over Wi-Fi STA, and Rogue DHCP on the SoftAP, are in the image you flash today. The W5500 driver is not. The same text is in <a href="saltyjack-networking.md">saltyjack-networking.md</a>.</p>
+  <p>This page matches <strong>this</strong> <code>master</code> tree. The version string in the README, <code>CHANGELOG.md</code>, and <code>docs/m5burner.json</code> is <strong>Deepwater v0.9.1</strong>, and the factory binary they point at is now the v0.9.1 image, published on the <a href="https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.1">v0.9.1 release</a> and under <code>release_binaries/</code>. SaltyJack over Wi-Fi STA, and Rogue DHCP on the SoftAP, are in the image you flash today. The W5500 driver is not. The same text is in <a href="saltyjack-networking.md">saltyjack-networking.md</a>.</p>
 
   <nav class="toc" aria-label="On this page">
     <a href="#paths">Four paths</a>
-    <a href="#scope">0.9.0 vs future W5500</a>
+    <a href="#scope">0.9.1 vs future W5500</a>
     <a href="#prereq">Prerequisites</a>
     <a href="#sta">How-to A · STA</a>
     <a href="#not-connected">Not connected</a>
@@ -124,11 +124,11 @@
 
   <p><strong>Rogue DHCP (AP)</strong> is the contrast. It does not join the target AP. <code>wifi_raw_ap_up("POSEIDON-SaltyJack")</code> starts an open SoftAP on channel 1 (not hidden, up to 4 stations) through the raw-IDF helper. Arduino <code>WiFi.softAP()</code> crashes on the Bruce-pinned libraries this tree builds with, so the firmware does not use it. The AP address is lwIP’s default <strong>192.168.4.1</strong>. The tool stops the IDF DHCP <em>server</em> on <code>WIFI_AP_DEF</code> and binds UDP/67 itself. Clients that join <code>POSEIDON-SaltyJack</code> are leased by the Cardputer, with the Cardputer as gateway and DNS.</p>
 
-  <h2 id="scope">0.9.0 vs future W5500</h2>
-  <p>This fork is <strong>0.9.0</strong> — the version string tagged in the README, <code>CHANGELOG.md</code>, and <code>docs/m5burner.json</code>, and the Deepwater v0.9.0 factory image they now point at. The table is what that image does today. The W5500 driver is the future row, not a hidden option in this tree.</p>
+  <h2 id="scope">0.9.1 vs future W5500</h2>
+  <p>This fork is <strong>0.9.1</strong> — the version string tagged in the README, <code>CHANGELOG.md</code>, and <code>docs/m5burner.json</code>, and the Deepwater v0.9.1 factory image they now point at. The table is what that image does today. The W5500 driver is the future row, not a hidden option in this tree.</p>
   <table class="map">
     <thead>
-      <tr><th>Capability</th><th>This tree (Deepwater v0.9.0)</th><th>Not in this tree</th></tr>
+      <tr><th>Capability</th><th>This tree (Deepwater v0.9.1)</th><th>Not in this tree</th></tr>
     </thead>
     <tbody>
       <tr>
@@ -184,7 +184,7 @@
   <p>This is the path that works now.</p>
 
   <h3>1. Flash this fork</h3>
-  <p>Use the Deepwater binaries from this repository's <a href="https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.0">v0.9.0 release</a> (or <code>release_binaries/</code>), not an upstream POSEIDON build. The tagged image in-tree is v0.9.0.</p>
+  <p>Use the Deepwater binaries from this repository's <a href="https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.1">v0.9.1 release</a> (or <code>release_binaries/</code>), not an upstream POSEIDON build. The tagged image in-tree is v0.9.1.</p>
   <ul>
     <li>Standalone / M5Burner: <code>poseidon-factory.bin</code> at offset <code>0x0</code>.</li>
     <li>M5Stack Launcher: <code>poseidon-launcher.bin</code> through Launcher’s installer.</li>

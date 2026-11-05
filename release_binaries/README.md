@@ -1,7 +1,7 @@
-# POSEIDON Advanced — 0.9.0
+# POSEIDON Advanced — 0.9.1
 
-Firmware source in this fork is revision **0.9.0** (the TRIDENT C5-node release on top of upstream Deepwater). The binaries in this directory were **built as 0.9.0** from the matching source and carry the `0.9.0` version string.
-`SHA256SUMS.txt` covers every binary in this directory and matches the assets attached to the [v0.9.0 GitHub release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.0).
+Firmware source in this fork is revision **0.9.1** (the TRIDENT C5-node release on top of upstream Deepwater). The binaries in this directory were **built as 0.9.1** from the matching source and carry the `0.9.1` version string.
+`SHA256SUMS.txt` covers every binary in this directory and matches the assets attached to the [v0.9.1 GitHub release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.1).
 
 | File | Purpose |
 | --- | --- |
@@ -26,7 +26,7 @@ pio run -e cardputer -e cardputer-launcher -e cardputer-launcher-dual
 Then refresh these tracked release artifacts:
 
 ```powershell
-.\scripts\prepare_deepwater_release.ps1 -Version 0.9.0
+.\scripts\prepare_deepwater_release.ps1 -Version 0.9.1
 ```
 
 The personal website's Flash hub serves a checksum-verified copy of the
@@ -46,8 +46,8 @@ without waiting for a catalog entry.
 
 ## Release status (2026-11-05)
 
-The **0.9.0** binaries above are published as assets on the
-[v0.9.0 GitHub release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.0)
+The **0.9.1** binaries above are published as assets on the
+[v0.9.1 GitHub release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.1)
 and can be downloaded and flashed directly without waiting for any catalog.
 `docs/m5burner.json` points its firmware `url` at the standalone factory asset
 of that release.

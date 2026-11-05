@@ -151,6 +151,7 @@ void c5_deauth_dashboard(const ap_t &a, bool broadcast)
 
             ui_freq_bars(SCR_W - 70, BODY_Y + 16, 4, 36);
             ui_draw_status(radio_name(), paused ? "paused" : "C5-DAUTH");
+            ui_dashboard_radar();
         }
 
         uint16_t k = input_poll();
@@ -282,8 +283,7 @@ void feat_c5_status(void)
                 }
             }
             draw_status_header();
-            d.fillRect(SCR_W - 30, BODY_Y + BODY_H - 24, 24, 22, T_BG);
-            ui_radar(SCR_W - 20, BODY_Y + BODY_H - 14, 8, T_ACCENT);
+            ui_dashboard_radar();
         }
         uint16_t k = input_poll();
         if (k == PK_NONE) { delay(40); continue; }
@@ -395,6 +395,7 @@ void feat_c5_scan_5g(void)
                 }
             }
             }
+            ui_dashboard_radar();
         }
         uint16_t k = input_poll();
         if (k == PK_NONE) { delay(40); continue; }
@@ -604,6 +605,7 @@ void feat_c5_deauth_5g(void)
             d.printf("time  : %lus", (unsigned long)left);
             ui_freq_bars(SCR_W - 70, BODY_Y + 16, 4, 36);
             ui_draw_status(radio_name(), "C5-DAUTH");
+            ui_dashboard_radar();
         }
         uint16_t k = input_poll();
         if (k == PK_NONE) { delay(20); continue; }
@@ -674,18 +676,26 @@ void feat_c5_scan_zb(void)
                     d.setCursor(32, y); d.printf("%4d", e.rssi);
                     d.setTextColor(T_WARN, T_BG);
                     d.setCursor(64, y);
-                    switch (e.frame_type) {
+                    /* T1.0: low nibble is the raw 802.15.4 FCF type; high
+                     * nibble is a best-effort Zigbee(1)/Thread(2) class. */
+                    switch (e.frame_type & 0x0F) {
                     case 0: d.print("BCN "); break;
                     case 1: d.print("DATA"); break;
                     case 2: d.print("ACK "); break;
                     case 3: d.print("CMD "); break;
-                    default: d.printf("t%d", e.frame_type);
+                    default: d.printf("t%d", e.frame_type & 0x0F);
+                    }
+                    uint8_t zcls = (e.frame_type >> 4) & 0x0F;
+                    if (zcls) {
+                        d.setTextColor(zcls == 2 ? T_ACCENT2 : T_ACCENT, T_BG);
+                        d.print(zcls == 2 ? "Thd?" : "Zig?");
                     }
                     d.setTextColor(T_FG, T_BG);
                     d.setCursor(102, y);
                     d.printf("PAN%04X src%04X", e.pan_id, e.src_short);
                 }
             }
+            ui_dashboard_radar();
         }
         uint16_t k = input_poll();
         if (k == PK_NONE) { delay(40); continue; }
@@ -854,6 +864,7 @@ void feat_c5_pmkid_5g(void)
             d.printf("time    : %lus  -> hashcat.22000", (unsigned long)left);
             ui_freq_bars(SCR_W - 70, BODY_Y + 16, 4, 36);
             ui_draw_status(radio_name(), "C5-PMKID");
+            ui_dashboard_radar();
         }
         uint16_t k = input_poll();
         if (k == PK_NONE) { delay(20); continue; }

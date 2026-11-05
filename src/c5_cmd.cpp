@@ -33,6 +33,12 @@ struct c5_peer_t {
     uint32_t last_seen;
     uint8_t  has_5g;
     uint8_t  has_ieee802154;
+    /* Phase A diagnostics (no protocol change): heap_kb comes from HELLO,
+     * rssi from the ESP-NOW recv rx_ctrl, rtt from ping/pong timing. */
+    uint16_t heap_kb;
+    int8_t   rssi;
+    uint32_t rtt_ms;
+    uint32_t ping_sent_ms;
 };
 
 static c5_peer_t s_peers[MAX_PEERS];
@@ -125,6 +131,7 @@ static void handle_hello(const uint8_t *mac, const c5_msg_t *m)
         s_peers[idx].name[sizeof(s_peers[idx].name) - 1] = '\0';
         s_peers[idx].has_5g          = h->has_5g;
         s_peers[idx].has_ieee802154  = h->has_ieee802154;
+        s_peers[idx].heap_kb         = (uint16_t)h->heap_kb;
         s_peers[idx].last_seen       = millis();
     }
     portEXIT_CRITICAL(&s_mux);
@@ -299,9 +306,13 @@ static void on_recv(const esp_now_recv_info_t *recv_info,
                     const uint8_t *data, int len)
 {
     const uint8_t *mac = recv_info->src_addr;
+    /* Phase A: link RSSI for the diagnostics screen. rx_ctrl is only present
+     * on the IDF 5.x recv-info variant; default to 0 ("—") otherwise. */
+    int8_t rssi_now = recv_info->rx_ctrl ? recv_info->rx_ctrl->rssi : 0;
 #else
 static void on_recv(const uint8_t *mac, const uint8_t *data, int len)
 {
+    int8_t rssi_now = 0;
 #endif
     if (len < (int)sizeof(c5_msg_t)) return;
     const c5_msg_t *m = (const c5_msg_t *)data;
@@ -314,7 +325,9 @@ static void on_recv(const uint8_t *mac, const uint8_t *data, int len)
      * that was the "drops after a bit, go to Status to re-sync" bug. Guarded
      * like the PONG path since the RX callback races evict_locked compaction. */
     portENTER_CRITICAL(&s_mux);
-    { int _li = find_peer(mac); if (_li >= 0) s_peers[_li].last_seen = millis(); }
+    { int _li = find_peer(mac);
+      if (_li >= 0) { s_peers[_li].last_seen = millis();
+                      if (rssi_now) s_peers[_li].rssi = rssi_now; } }
     portEXIT_CRITICAL(&s_mux);
     switch (m->type) {
     case C5_TYPE_HELLO:      handle_hello(mac, m); break;
@@ -325,7 +338,12 @@ static void on_recv(const uint8_t *mac, const uint8_t *data, int len)
          * array compaction, or idx goes stale and we clobber a neighbour. */
         portENTER_CRITICAL(&s_mux);
         int idx = find_peer(mac);
-        if (idx >= 0) s_peers[idx].last_seen = millis();
+        if (idx >= 0) {
+            s_peers[idx].last_seen = millis();
+            /* Phase A: round-trip time since the matching ping. */
+            if (s_peers[idx].ping_sent_ms)
+                s_peers[idx].rtt_ms = millis() - s_peers[idx].ping_sent_ms;
+        }
         portEXIT_CRITICAL(&s_mux);
         break;
     }
@@ -500,6 +518,36 @@ const char *c5_peer_name(int idx)
     return s_peers[idx].name;
 }
 
+/* Phase A diagnostics snapshot — one entry per known peer. channel/frames are
+ * the latest global RESP_STATUS (only meaningful while a node is attacking/
+ * scanning), shared across peers. online = seen within 30 s (eviction window). */
+int c5_diag(c5_diag_t *out, int max)
+{
+    if (!out || max <= 0) return 0;
+    uint32_t now = millis();
+    int n = 0;
+    portENTER_CRITICAL(&s_mux);
+    for (int i = 0; i < s_peer_n && n < max; ++i) {
+        c5_diag_t &d = out[n];
+        memset(&d, 0, sizeof(d));
+        memcpy(d.name, s_peers[i].name, sizeof(d.name) - 1);
+        d.name[sizeof(d.name) - 1] = '\0';
+        uint32_t age = now - s_peers[i].last_seen;
+        d.online          = (age < 30000) ? 1 : 0;
+        d.last_seen_age_ms = age;
+        d.rssi            = s_peers[i].rssi;
+        d.heap_kb         = s_peers[i].heap_kb;
+        d.has_5g          = s_peers[i].has_5g;
+        d.has_ieee802154  = s_peers[i].has_ieee802154;
+        d.rtt_ms          = s_peers[i].rtt_ms;
+        d.channel         = s_last_status_channel;
+        d.frames          = s_last_status_frames;
+        n++;
+    }
+    portEXIT_CRITICAL(&s_mux);
+    return n;
+}
+
 static uint16_t send_simple_cmd(uint8_t type, const uint8_t *extra, int extra_len)
 {
     uint16_t seq = s_next_seq;
@@ -537,6 +585,11 @@ static uint16_t send_simple_cmd(uint8_t type, const uint8_t *extra, int extra_le
                   (int)mode_now, (unsigned)prim_ch);
 #endif
 
+    /* TODO(phase1-infra): gate 5 GHz / 15.4 cmds on peer capability
+     * (s_peers[].has_5g / has_ieee802154, stored by handle_hello but not
+     * yet consulted) before sending — a 2.4-only peer should not receive a
+     * 5 GHz command. Separate from the role->capability routing work; not
+     * Tier 2. */
     for (int i = 0; i < count; ++i) {
         esp_err_t r = esp_now_send(macs[i], (const uint8_t *)&m, sizeof(m));
 #ifdef POSEIDON_DEBUG_C5
@@ -554,7 +607,15 @@ static uint16_t send_simple_cmd(uint8_t type, const uint8_t *extra, int extra_le
     return seq;
 }
 
-uint16_t c5_cmd_ping(void)   { return send_simple_cmd(C5_TYPE_CMD_PING, nullptr, 0); }
+uint16_t c5_cmd_ping(void)
+{
+    /* Stamp the send time per peer so RESP_PONG can compute RTT (Phase A). */
+    uint32_t now = millis();
+    portENTER_CRITICAL(&s_mux);
+    for (int i = 0; i < s_peer_n; ++i) s_peers[i].ping_sent_ms = now;
+    portEXIT_CRITICAL(&s_mux);
+    return send_simple_cmd(C5_TYPE_CMD_PING, nullptr, 0);
+}
 uint16_t c5_cmd_stop(void)   { return send_simple_cmd(C5_TYPE_CMD_STOP, nullptr, 0); }
 uint16_t c5_cmd_scan_5g(uint16_t duration_ms) {
     uint16_t d = duration_ms;

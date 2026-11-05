@@ -6,6 +6,40 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-11-05
+
+Phase 1 Tier 1 release: the passive C5 node features and their Cardputer UI,
+plus a C5 diagnostics screen and a dashboard-radar cleanup. Validated on
+hardware (C5 + Cardputer). No wire-protocol change — `POSEI_VERSION ==
+C5_VERSION == 4` is untouched, so a 0.9.0 C5 node interoperates, though the new
+passive features need the 0.9.1 C5 firmware to respond.
+
+### Added
+
+- **C5 passive features (Tier 1).** Probe-request sniffer, passive deauth/
+  disassoc detector, client (STA) hunt, and a per-channel frame-activity sweep,
+  each as a C5 handler (`probe_sniffer.c` / `deauth_detect.c` / `clients_hunt.c`
+  / `spectrum.c`) plus a live Cardputer dashboard (`C5 nodes` → `r` / `w` / `h`
+  / `a`). The Zigbee sniffer now labels frames Zigbee-vs-Thread (best effort).
+- **C5 diagnostics screen (`C5 nodes` → `g`).** Read-only per-node RSSI, free
+  heap, last-seen, capability badges, ping RTT, and latest channel/frames —
+  built from data already on the wire (HELLO / PONG / STATUS). Zero protocol
+  change; `p` re-pings.
+- **Tier 2 prep.** Shared sniffer-job scaffold + run-length safety watchdog
+  (`c5_job.h`), a documented raw-TX entry point (`wifi_tx_raw`), and a
+  capability-routing marker.
+
+### Changed
+
+- **Dashboard radar standardized + enlarged.** One upper-right radar
+  (`ui_dashboard_radar`), doubled and positioned clear of the top banner,
+  drawn after each screen's content so it is no longer clipped.
+
+### Fixed
+
+- C5 node image rebuilt from the hardware-validated Tier 1 source; Cardputer
+  and C5 0.9.1 binaries published on the v0.9.1 GitHub release.
+
 ## [0.9.0] - 2026-11-05
 
 TRIDENT C5-node release. The Cardputer source revision bumps `0.8.1 → 0.9.0` (per `C5_NEXT-PHASE_PLAN.md`) once for the whole C5 hardening pass. Cardputer factory, Launcher app-only, and dual-app images are now **built at 0.9.0** and published under `release_binaries/` and on the [v0.9.0 GitHub release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.0), alongside the C5 companion firmware under `c5_node/`. No Cardputer-facing contract (saved files, menu keys) or wire protocol (`POSEI_VERSION`) changed, so this is a minor bump.

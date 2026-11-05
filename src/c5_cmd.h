@@ -128,6 +128,22 @@ struct __attribute__((packed)) c5_hello_t {
     uint8_t  has_ieee802154;
 };
 
+/* Phase A diagnostics snapshot (S3-local; not a wire struct). Filled by
+ * c5_diag() from data already received — HELLO (name/heap/caps), the ESP-NOW
+ * recv RSSI, ping/pong RTT, and the latest global RESP_STATUS. */
+struct c5_diag_t {
+    char     name[12];
+    uint8_t  online;           /* seen within the 30 s eviction window */
+    uint32_t last_seen_age_ms;
+    int8_t   rssi;             /* 0 = unknown */
+    uint16_t heap_kb;
+    uint8_t  has_5g;
+    uint8_t  has_ieee802154;
+    uint32_t rtt_ms;           /* 0 = no ping answered yet */
+    uint8_t  channel;          /* latest RESP_STATUS (attack/scan only) */
+    uint32_t frames;
+};
+
 /* ---- NEW v3 request/response structs ---- */
 
 struct __attribute__((packed)) c5_clients_req_t {
@@ -218,6 +234,7 @@ int      c5_peer_count(void);
 uint32_t c5_last_seen_ms(void);
 const char *c5_peer_name(int idx);
 void c5_peer_name_copy(int idx, char *out, int max);
+int  c5_diag(c5_diag_t *out, int max);   /* Phase A per-peer diagnostics */
 
 /* Existing command senders. */
 uint16_t c5_cmd_scan_5g(uint16_t duration_ms);

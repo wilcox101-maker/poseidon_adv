@@ -9,7 +9,7 @@
   [![framework](https://img.shields.io/badge/framework-Arduino%2FPlatformIO-green)](https://platformio.org/)
   [![license](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
   [![modules](https://img.shields.io/badge/research%20modules-170%2B-orange)](FEATURES.md)
-  [![release](https://img.shields.io/badge/release-v0.9.0-blueviolet)](https://github.com/wilcox101-maker/poseidon_adv)
+  [![release](https://img.shields.io/badge/release-v0.9.1-blueviolet)](https://github.com/wilcox101-maker/poseidon_adv)
   [![version](https://img.shields.io/badge/version-Deepwater-success)](CHANGELOG.md)
   [![use](https://img.shields.io/badge/use-authorized%20%2F%20owned%20hardware-important)](#safety--authorized-use)
 
@@ -17,9 +17,9 @@
 
 ---
 
-## This fork (0.9.0)
+## This fork (0.9.1)
 
-[wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv) is my checkout of [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). Upstream remains the base. Fork-specific work stays in a short stack of focused commits and is kept when upstream moves. Source revision **0.9.0** (the TRIDENT C5-node release: deauth stop path, scan/zigbee hardening, reproducible libnet80211 patch). Binaries under `release_binaries/` are built at 0.9.0 and published on the [v0.9.0 release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.0).
+[wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv) is my checkout of [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). Upstream remains the base. Fork-specific work stays in a short stack of focused commits and is kept when upstream moves. Source revision **0.9.1** (the TRIDENT C5-node release: deauth stop path, scan/zigbee hardening, reproducible libnet80211 patch). Binaries under `release_binaries/` are built at 0.9.1 and published on the [v0.9.1 release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.1).
 
 I keep a counted inventory of this tree in [FEATURES.md](FEATURES.md).
 
@@ -120,9 +120,9 @@ The default POSEIDON theme now uses navy, ice-white and cyan with restrained lav
 
 Authorized use only: networks and hardware you own, or explicit written permission. DHCP starvation and rogue DHCP disrupt address assignment. Responder and WPAD collect authentication material.
 
-**Comprehensive how-to** (STA meaning, SoftAP contrast, How-to A/B/C, pins, hat conflicts, C5 offsets, “Not connected” troubleshooting, 0.9.0 vs future W5500): **[docs/saltyjack-networking.md](docs/saltyjack-networking.md)** and **[docs/saltyjack-networking.html](docs/saltyjack-networking.html)**.
+**Comprehensive how-to** (STA meaning, SoftAP contrast, How-to A/B/C, pins, hat conflicts, C5 offsets, “Not connected” troubleshooting, 0.9.1 vs future W5500): **[docs/saltyjack-networking.md](docs/saltyjack-networking.md)** and **[docs/saltyjack-networking.html](docs/saltyjack-networking.html)**.
 
-The tagged image in this tree is Deepwater **v0.9.0** — built from this source and published on the [v0.9.0 release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.0) and under `release_binaries/`. W5500 firmware is future work, not this image.
+The tagged image in this tree is Deepwater **v0.9.1** — built from this source and published on the [v0.9.1 release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.1) and under `release_binaries/`. W5500 firmware is future work, not this image.
 
 ### Wi-Fi STA
 
@@ -216,7 +216,7 @@ On Windows, with development firmware running on a connected Cardputer:
 For release packaging after building all three profiles:
 
 ```powershell
-.\scripts\prepare_deepwater_release.ps1 -Version 0.9.0
+.\scripts\prepare_deepwater_release.ps1 -Version 0.9.1
 ```
 
 This refreshes the [distribution binaries](release_binaries/README.md), legacy

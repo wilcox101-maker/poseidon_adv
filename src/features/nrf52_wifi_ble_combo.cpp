@@ -120,6 +120,7 @@ void feat_nrf52_wifi_ble_combo(void)
             d.setTextColor(T_WARN, T_BG); d.setCursor(4, BODY_Y+30);
             d.printf("BLE phase in %lus", (unsigned long)remain);
             ui_freq_bars(SCR_W-70, BODY_Y+16, 4, 30);
+            ui_dashboard_radar();
         }
 
         uint16_t k = input_poll();

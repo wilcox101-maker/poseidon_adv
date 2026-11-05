@@ -2,7 +2,7 @@
 
 Running inventory of what this fork ships. I recount from the files named here when a menu, pin map, or payload table changes. Numbers are from those sources. Where an on-screen blurb disagrees with the table, I say so.
 
-Source revision is **0.9.0** (`POSEIDON_VERSION` in `platformio.ini` and `src/version.h`). The README badge and the `version` field in `docs/m5burner.json` match that. The files under `release_binaries/`, and the assets on the [v0.9.0 GitHub release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.0) that `docs/m5burner.json` points at, are now **0.9.0** Deepwater images built from this source. The image you flash is the 0.9.0 binary. The W5500 driver is still absent — that remains future work.
+Source revision is **0.9.1** (`POSEIDON_VERSION` in `platformio.ini` and `src/version.h`). The README badge and the `version` field in `docs/m5burner.json` match that. The files under `release_binaries/`, and the assets on the [v0.9.1 GitHub release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.1) that `docs/m5burner.json` points at, are now **0.9.1** Deepwater images built from this source. The image you flash is the 0.9.1 binary. The W5500 driver is still absent — that remains future work.
 
 Authorized use only: hardware and networks I own, or where I have written permission.
 

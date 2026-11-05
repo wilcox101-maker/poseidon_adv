@@ -65,10 +65,39 @@ IRAM_ATTR void esp_ieee802154_receive_done(uint8_t *frame,
     z.channel = s_channel;
     z.rssi    = info ? info->rssi : 0;
     uint8_t fc0 = frame[1];
-    z.frame_type = fc0 & 0x07;
+    uint8_t fc1 = frame[2];
     /* Dest PAN id at offset 3 (little endian). */
     if (len >= 5) z.pan_id = frame[3] | (frame[4] << 8);
     if (len >= 7) z.seq = frame[2];
+
+    /* T1.0: classify the frame as Zigbee-likely vs Thread-likely in the
+     * HIGH nibble of frame_type, keeping the raw 802.15.4 FCF frame type
+     * (bits 0-2: 0=beacon,1=data,2=ack,3=MAC-cmd) in the LOW nibble so the
+     * existing Zigbee view (which masks 0x0F) is unaffected.
+     *   frame_type = (class << 4) | (fcf_type & 0x07)
+     *   class: 0 = unknown, 1 = Zigbee-likely, 2 = Thread-likely
+     * Heuristic only (labels read "Zigbee?"/"Thread?"): on a 15.4 *data*
+     * frame, inspect the first payload byte after the variable-length MAC
+     * header. A Zigbee NWK header carries protocol version 2 in bits 2-5;
+     * 6LoWPAN dispatch bytes (0x41 uncompressed IPv6, 0x60-0xEF IPHC/mesh/
+     * frag) indicate Thread. Full decode is Tier 3. All pure arithmetic —
+     * IRAM-safe, no calls. */
+    uint8_t fcf_type = fc0 & 0x07;
+    uint8_t cls = 0;
+    if (fcf_type == 1) {   /* data frame */
+        uint8_t dst_mode = (fc1 >> 2) & 0x03;   /* 0=none 2=short(2) 3=ext(8) */
+        uint8_t src_mode = (fc1 >> 6) & 0x03;
+        uint8_t pan_comp = (fc0 >> 6) & 0x01;
+        int off = 4;   /* frame[0]=PHY len, [1..2]=FCF, [3]=seq, [4]=addr */
+        if (dst_mode) { off += 2; off += (dst_mode == 2) ? 2 : 8; }
+        if (src_mode) { if (!pan_comp) off += 2; off += (src_mode == 2) ? 2 : 8; }
+        if (off < len) {   /* a payload byte exists before the 2-byte FCS */
+            uint8_t b = frame[off];
+            if (((b >> 2) & 0x0F) == 2)                 cls = 1;  /* Zigbee NWK v2 */
+            else if (b == 0x41 || (b >= 0x60 && b <= 0xEF)) cls = 2;  /* 6LoWPAN → Thread */
+        }
+    }
+    z.frame_type = (uint8_t)((cls << 4) | fcf_type);
 
     BaseType_t hp_woken = pdFALSE;
     /* Non-blocking; if queue is full we drop the frame rather than stall

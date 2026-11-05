@@ -7,7 +7,7 @@
  */
 
 #ifndef POSEIDON_VERSION
-#define POSEIDON_VERSION "0.9.0"
+#define POSEIDON_VERSION "0.9.1"
 #endif
 
 /* __DATE__ can't be passed through a -D flag as a literal, so bake it

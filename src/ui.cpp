@@ -587,9 +587,21 @@ void ui_dashboard_chrome(const char *title, bool flash_now)
         d.drawFastHLine(6, BODY_Y + 14, SCR_W - 12, c);
     }
 
-    /* Corner radar (static sweep animation, self-clearing). */
-    d.fillRect(SCR_W - 24, BODY_Y + BODY_H - 24, 20, 20, T_BG);
-    ui_radar(SCR_W - 14, BODY_Y + BODY_H - 14, 9, T_ACCENT);
+    /* Radar is drawn separately by ui_dashboard_radar(), which each screen
+     * calls AFTER painting its body. A doubled (r12) radar is taller than the
+     * 14px strip between the top banner and the body-content clear, so drawing
+     * it here (before the body fillRect) would clip it. */
+}
+
+/* Upper-right dashboard radar, doubled (r12) and nudged down+left so it clears
+ * the top status banner (y<BODY_Y) and stays on-screen. MUST be called at the
+ * end of a redraw — after the screen's body fillRect and content — or the body
+ * clear slices it. Self-clearing via the pre-clear box. */
+void ui_dashboard_radar(void)
+{
+    auto &d = M5Cardputer.Display;
+    d.fillRect(SCR_W - 36, BODY_Y + 2, 34, 30, T_BG);
+    ui_radar(SCR_W - 20, BODY_Y + 16, 12, T_ACCENT);
 }
 
 void ui_freq_bars(int x, int y, int bar_w, int bar_h_max)
