@@ -20,9 +20,16 @@ void feat_about(void)
     d.setCursor(4, BODY_Y + 32); d.printf("built %s", poseidon_build_date());
     d.setCursor(4, BODY_Y + 44); d.print("keyboard-first pentesting");
     d.setCursor(4, BODY_Y + 54); d.print("M5Stack Cardputer");
+    d.drawFastHLine(4, BODY_Y + 62, SCR_W - 8, T_DIM);
+    d.setTextColor(T_ACCENT, T_BG);
+    d.setCursor(4, BODY_Y + 66); d.print("github.com/");
+    d.setTextColor(T_FG, T_BG);
+    d.print("wilcox101-maker/poseidon_adv");
     d.setTextColor(T_DIM, T_BG);
-    d.setCursor(4, BODY_Y + 70); d.print("github.com/Evil0ctopus/poseidon_adv");
-    d.setCursor(4, BODY_Y + 80); d.print("commander of the deep");
+    d.setCursor(4, BODY_Y + 78); d.print("Forked from");
+    d.setCursor(4, BODY_Y + 88); d.print("github.com/Evil0ctopus/poseidon_adv");
+    d.setTextColor(T_ACCENT, T_BG);
+    d.setCursor(4, BODY_Y + 100); d.print("commander of the deep");
     ui_draw_footer("`=back");
     while (true) {
         uint16_t k = input_poll();
