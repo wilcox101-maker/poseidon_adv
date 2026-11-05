@@ -167,11 +167,11 @@ The complete touch list from the v0.5.0 → 0.6 audit:
     "target":      "M5Cardputer-Adv",
     "flash_size":  "8MB",
     "psram":       true,
-    "url":         "https://github.com/Evil0ctopus/poseidon_adv/releases/download/vX.Y.Z/poseidon-factory.bin",
+    "url":         "https://github.com/wilcox101-maker/poseidon_adv/releases/download/vX.Y.Z/poseidon-factory.bin",
     "offset":      "0x0",
     "description": "<one-paragraph release headline>",
     "date":        "YYYY-MM-DD",
-    "changelog":   "https://github.com/Evil0ctopus/poseidon_adv/blob/master/CHANGELOG.md",
+    "changelog":   "https://github.com/wilcox101-maker/poseidon_adv/blob/master/CHANGELOG.md",
     "license":     "MIT"
   }
   ```
@@ -243,7 +243,7 @@ For this fork's Deepwater release, build all three Cardputer profiles and run
 `scripts/prepare_deepwater_release.ps1 -Version X.Y.Z` to refresh tracked
 standalone/Launcher/dual-app binaries and SHA256 sums. Update the separate
 `Evil0ctopus/Evil0ctopus.github.io` personal website package from those artifacts.
-Publish against `Evil0ctopus/poseidon_adv`, not the upstream repository.
+Publish against `wilcox101-maker/poseidon_adv`, not the upstream repository.
 Use `firmware.bin`, never `firmware.factory.bin`, for the Launcher release asset.
 The dual-app asset is only for the verified custom layout; never distribute it
 as a factory install. Do not rebuild or relabel unchanged TRIDENT firmware for
@@ -257,7 +257,7 @@ app-only GitHub release directly through SD/WebUI or a URL favorite.
 ## 7. Post-push verification
 
 GitHub Pages is not enabled for this fork or for
-`Evil0ctopus/poseidon_adv`. Do not poll a `github.io` host. Confirm
+`wilcox101-maker/poseidon_adv`. Do not poll a `github.io` host. Confirm
 the docs files on `master` via raw GitHub. Raw updates a few seconds
 after the push.
 
@@ -280,10 +280,10 @@ curl -fsSL -o /dev/null -w "%{http_code} %{size_download}\n" \
 If a raw URL 404s, that file is not on `master` yet.
 
 If the release-asset flow is broken, check the upstream asset list
-(releases are published on `Evil0ctopus/poseidon_adv`):
+(releases are published on `wilcox101-maker/poseidon_adv`):
 
 ```bash
-gh release view vX.Y.Z --repo Evil0ctopus/poseidon_adv --json assets --jq '.assets[].name'
+gh release view vX.Y.Z --repo wilcox101-maker/poseidon_adv --json assets --jq '.assets[].name'
 ```
 
 ## 8. Common gotchas (each cost a debug round)

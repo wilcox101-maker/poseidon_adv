@@ -1,10 +1,10 @@
 {
   "name": "POSEIDON Advanced",
-  "author": "Evil0ctopus",
-  "homepage": "https://evil0ctopus.github.io/flash.html#poseidon_adv",
-  "repo": "https://github.com/Evil0ctopus/poseidon_adv",
+  "author": "wilcox101-maker",
+  "homepage": "https://github.com/wilcox101-maker/poseidon_adv",
+  "repo": "https://github.com/wilcox101-maker/poseidon_adv",
   "description": "Keyboard-first educational RF and embedded security lab for M5Stack Cardputer-Adv, for authorized use on owned hardware. Deepwater navy/cyan interface, eleven themes, crisp icons, scrollable help, reduced motion and memory-conscious rendering. Listed below: the current factory image and the republished v0.7.0 factory image. Older catalog rows are omitted because those binaries were not republished.",
-  "icon": "https://evil0ctopus.github.io/assets/deepwater-cover.png",
+  "icon": "https://raw.githubusercontent.com/wilcox101-maker/poseidon_adv/master/docs/assets/logo.png",
   "firmware": [
     {
       "name": "POSEIDON Advanced v0.9.1 - Deepwater",
