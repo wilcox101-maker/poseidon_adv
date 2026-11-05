@@ -537,6 +537,11 @@ static uint16_t send_simple_cmd(uint8_t type, const uint8_t *extra, int extra_le
                   (int)mode_now, (unsigned)prim_ch);
 #endif
 
+    /* TODO(phase1-infra): gate 5 GHz / 15.4 cmds on peer capability
+     * (s_peers[].has_5g / has_ieee802154, stored by handle_hello but not
+     * yet consulted) before sending — a 2.4-only peer should not receive a
+     * 5 GHz command. Separate from the role->capability routing work; not
+     * Tier 2. */
     for (int i = 0; i < count; ++i) {
         esp_err_t r = esp_now_send(macs[i], (const uint8_t *)&m, sizeof(m));
 #ifdef POSEIDON_DEBUG_C5

@@ -674,12 +674,19 @@ void feat_c5_scan_zb(void)
                     d.setCursor(32, y); d.printf("%4d", e.rssi);
                     d.setTextColor(T_WARN, T_BG);
                     d.setCursor(64, y);
-                    switch (e.frame_type) {
+                    /* T1.0: low nibble is the raw 802.15.4 FCF type; high
+                     * nibble is a best-effort Zigbee(1)/Thread(2) class. */
+                    switch (e.frame_type & 0x0F) {
                     case 0: d.print("BCN "); break;
                     case 1: d.print("DATA"); break;
                     case 2: d.print("ACK "); break;
                     case 3: d.print("CMD "); break;
-                    default: d.printf("t%d", e.frame_type);
+                    default: d.printf("t%d", e.frame_type & 0x0F);
+                    }
+                    uint8_t zcls = (e.frame_type >> 4) & 0x0F;
+                    if (zcls) {
+                        d.setTextColor(zcls == 2 ? T_ACCENT2 : T_ACCENT, T_BG);
+                        d.print(zcls == 2 ? "Thd?" : "Zig?");
                     }
                     d.setTextColor(T_FG, T_BG);
                     d.setCursor(102, y);

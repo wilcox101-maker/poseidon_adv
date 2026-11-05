@@ -105,6 +105,10 @@ extern void feat_c5_scan_zb(void);
 extern void feat_c5_deauth_5g(void);
 extern void feat_c5_pmkid_5g(void);
 extern void feat_c5_nuke_5g(void);
+extern void feat_c5_probe_sniff(void);
+extern void feat_c5_deauth_detect(void);
+extern void feat_c5_clients(void);
+extern void feat_c5_spectrum(void);
 extern void feat_tool_sd_format(void);
 extern void feat_tool_flashlight(void);
 extern void feat_tool_screen_test(void);
@@ -363,6 +367,25 @@ static const menu_node_t MENU_C5[] = {
       "window. Both handshakes (WPA*02*) and PMKIDs (WPA*01*) that land go "
       "straight to /poseidon/captures/wifi/hashcat.22000. Runs until ESC. Glitch splash "
       "aesthetic — live target + hit counts on-screen." },
+    { 'r', "Probe sniff", "Log probe requests (passive)", nullptr, feat_c5_probe_sniff,
+      "Sends CMD_PROBE_SNIFF (hop 1-13). C5 logs 802.11 probe requests — the "
+      "SSIDs nearby phones/laptops are actively searching for, plus wildcard "
+      "(broadcast) probes. Dedup by (source, SSID). Passive: receive-only, no "
+      "frames transmitted. Walk a device with WiFi on to see it appear." },
+    { 'w', "Deauth detect", "Spot deauth/disassoc (passive)", nullptr, feat_c5_deauth_detect,
+      "Sends CMD_DEAUTH_DETECT (hop 1-13). C5 passively watches for deauth "
+      "(0xC0) and disassoc (0xA0) management frames and reports source, "
+      "destination and reason code. Spot someone else's deauth attack, or "
+      "confirm your own Deauth 5G is landing. Receive-only." },
+    { 'h', "Client hunt", "Find STAs per AP (passive)", nullptr, feat_c5_clients,
+      "Sends CMD_CLIENTS_HUNT (5 GHz hop 36-165). C5 watches data frames and "
+      "reports STA<->BSSID associations — which clients are on which access "
+      "point. Dedup by (STA, BSSID). Receive-only passive reconnaissance." },
+    { 'a', "Activity sweep", "Per-channel peak RSSI", nullptr, feat_c5_spectrum,
+      "Sends CMD_SPECTRUM. C5 sweeps 2.4 GHz 1-13 plus a 5 GHz spread and "
+      "reports the peak RSSI of received frames per channel as a bar chart. "
+      "This is a frame-activity heatmap, not a true RF spectrum analyzer "
+      "(the driver has no energy-detect API). Runs until ESC." },
     { 0, nullptr, nullptr, nullptr, nullptr, nullptr },
 };
 

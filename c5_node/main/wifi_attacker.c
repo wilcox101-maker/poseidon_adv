@@ -97,6 +97,36 @@ static const uint8_t s_frame_tmpl[26] = {
     0x07, 0x00,                               /* reason code */
 };
 
+/* Tier 2 prep (phase1-infra): documented raw 802.11 TX entry point.
+ *
+ * This is exactly how a crafted management/data frame is put on air from
+ * the C5, factored out of the deauth loops below so BEACON_SPAM and CIW can
+ * reuse one audited path instead of re-deriving the sequence:
+ *
+ *   1. The radio must be in promiscuous mode for raw injection to work —
+ *      esp_wifi_80211_tx() silently no-ops otherwise on this stack.
+ *   2. Tune to the target channel (2.4 or 5 GHz; the C5 can do both).
+ *   3. esp_wifi_80211_tx(WIFI_IF_STA, frame, len, en_sys_seq=false). The
+ *      `false` keeps our hand-written sequence-control field intact rather
+ *      than letting the driver overwrite it.
+ *
+ * NOTE on the deauth/disassoc subtype filter: IDF's libnet80211.a drops
+ * mgmt subtypes 0xA/0xC inside ieee80211_raw_frame_sanity_check and
+ * esp_wifi_80211_tx() still returns ESP_OK — the frame just never leaves.
+ * tools/patch_libnet80211.sh binary-patches that check to always pass; a
+ * C5 build must be flashed from a patched toolchain for injection to land.
+ * Beacon (0x80) / probe-response (0x50) frames are NOT filtered, so
+ * BEACON_SPAM works without the patch. Caller builds the frame; this does
+ * not craft one. Returns the esp_wifi_80211_tx() result. DO NOT implement
+ * beacon spam here — this is the entry point only. */
+esp_err_t wifi_tx_raw(const uint8_t *frame, size_t len, uint8_t channel)
+{
+    if (!frame || len < 24) return ESP_ERR_INVALID_ARG;
+    esp_wifi_set_promiscuous(true);
+    esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+    return esp_wifi_80211_tx(WIFI_IF_STA, frame, len, false);
+}
+
 /* attack_ch is the channel we're currently attacking on (e.g. 157 for
  * 5 GHz). POSEIDON (ESP32-S3) physically cannot tune to 5 GHz channels,
  * so it stays pinned to ch 1. If we send RESP_STATUS while on attack_ch,

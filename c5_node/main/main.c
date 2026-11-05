@@ -39,6 +39,14 @@ extern void pmkid_capture_start(const uint8_t *, const posei_pmkid_req_t *, uint
 extern void pmkid_capture_stop(void);
 extern void hs_capture_start(const uint8_t *, const posei_hs_req_t *, uint16_t);
 extern void hs_capture_stop(void);
+extern void probe_sniffer_start(const uint8_t *, const posei_probe_sniff_req_t *, uint16_t);
+extern void probe_sniffer_stop(void);
+extern void deauth_detect_start(const uint8_t *, const posei_deauth_detect_req_t *, uint16_t);
+extern void deauth_detect_stop(void);
+extern void clients_hunt_start(const uint8_t *, const posei_clients_req_t *, uint16_t);
+extern void clients_hunt_stop(void);
+extern void spectrum_start(const uint8_t *, const posei_spectrum_req_t *, uint16_t);
+extern void spectrum_stop(void);
 
 static char s_node_name[12] = "C5-?";
 
@@ -190,6 +198,35 @@ static void on_recv(const esp_now_recv_info_t *info,
         hs_capture_start(info->src_addr, r, m->seq);
         break;
     }
+    case POSEI_TYPE_CMD_PROBE_SNIFF: {
+        if (m->payload_len < (int)sizeof(posei_probe_sniff_req_t)) break;
+        led_fx_set(LED_MODE_SCAN);
+        const posei_probe_sniff_req_t *r = (const posei_probe_sniff_req_t *)m->payload;
+        probe_sniffer_start(info->src_addr, r, m->seq);
+        break;
+    }
+    case POSEI_TYPE_CMD_DEAUTH_DETECT: {
+        if (m->payload_len < (int)sizeof(posei_deauth_detect_req_t)) break;
+        led_fx_set(LED_MODE_SCAN);
+        const posei_deauth_detect_req_t *r = (const posei_deauth_detect_req_t *)m->payload;
+        deauth_detect_start(info->src_addr, r, m->seq);
+        break;
+    }
+    case POSEI_TYPE_CMD_CLIENTS_HUNT:
+    case POSEI_TYPE_CMD_CLIENTS_AP: {
+        if (m->payload_len < (int)sizeof(posei_clients_req_t)) break;
+        led_fx_set(LED_MODE_SCAN);
+        const posei_clients_req_t *r = (const posei_clients_req_t *)m->payload;
+        clients_hunt_start(info->src_addr, r, m->seq);
+        break;
+    }
+    case POSEI_TYPE_CMD_SPECTRUM: {
+        if (m->payload_len < (int)sizeof(posei_spectrum_req_t)) break;
+        led_fx_set(LED_MODE_SCAN);
+        const posei_spectrum_req_t *r = (const posei_spectrum_req_t *)m->payload;
+        spectrum_start(info->src_addr, r, m->seq);
+        break;
+    }
     case POSEI_TYPE_CMD_STOP:
         led_fx_set(LED_MODE_DONE);   /* success blip, then auto-returns to idle */
         zb_sniffer_stop();
@@ -201,18 +238,17 @@ static void on_recv(const esp_now_recv_info_t *info,
          * ESC/pause on the Cardputer side did nothing until the full
          * duration elapsed. */
         wifi_attacker_deauth_stop();
+        probe_sniffer_stop();
+        deauth_detect_stop();
+        clients_hunt_stop();
+        spectrum_stop();
         break;
     /* v3 CMDs that the C5 firmware hasn't implemented yet. POSEIDON-side
      * stubs send these to keep the API surface alive; here we just log.
      * Each will get a real handler when its feature lands. */
-    case POSEI_TYPE_CMD_CLIENTS_HUNT:
-    case POSEI_TYPE_CMD_CLIENTS_AP:
     case POSEI_TYPE_CMD_BEACON_SPAM:
-    case POSEI_TYPE_CMD_PROBE_SNIFF:
-    case POSEI_TYPE_CMD_DEAUTH_DETECT:
     case POSEI_TYPE_CMD_KARMA:
     case POSEI_TYPE_CMD_APCLONE:
-    case POSEI_TYPE_CMD_SPECTRUM:
     case POSEI_TYPE_CMD_CIW:
         ESP_LOGW(TAG, "v3 CMD %u not implemented yet, dropping seq=%u", m->type, m->seq);
         break;
