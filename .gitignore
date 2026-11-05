@@ -55,3 +55,4 @@ c5_node/_build_flash.bat
 # Scratch web-design demos + merge backups
 _webdemos/
 *.orig
+PROJECT_MEMORY.md
