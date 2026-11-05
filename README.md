@@ -184,13 +184,21 @@ can be installed directly through Launcher without waiting for a catalog update.
 
 Install `poseidon-launcher.bin` through M5Stack Launcher's application installer.
 For raw flashing, determine the destination slot from the actual partition
-table; do not assume the standard profile's `0x170000` offset.
+table; do not assume a fixed offset.
 
-The connected development unit uses [launcher_dual_app_8Mb.csv](support_files/launcher_dual_app_8Mb.csv):
-POSEIDON at `0x1E0000`, capacity `0x2D0000`; Meshtastic at `0x4B0000`.
-`cardputer-launcher-dual` describes that existing layout. Update only its
-POSEIDON application slot. Do not flash its table, a factory image, or use
-PlatformIO's full upload target over that installation.
+The connected development unit runs the **standard single-app bmorcelli
+Launcher** — app slot at `0x170000`, built with `cardputer-launcher`. Install
+its `firmware.bin` (not `firmware.factory.bin`) via Launcher's *Install from
+SD* or WebUI.
+
+The `cardputer-launcher-dual` env and [launcher_dual_app_8Mb.csv](support_files/launcher_dual_app_8Mb.csv)
+(POSEIDON at `0x1E0000`, Meshtastic at `0x4B0000`) describe an alternative
+dual-app layout — not what this unit currently runs. For a unit on that layout,
+update only its POSEIDON slot; never flash its table, a factory image, or use
+PlatformIO's full upload target.
+
+See [docs/firmware-targets.md](docs/firmware-targets.md) for the full
+build-target → use-case → install-method reference, including the C5 node.
 
 ## Building and validation
 
