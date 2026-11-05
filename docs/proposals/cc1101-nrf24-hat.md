@@ -48,7 +48,7 @@ restores the UART only when the user has opted into GPS. GDO0 stays an
 input (boot uses `INPUT_PULLUP` so a LoRa NSS on the same pad reads as
 deselected).
 
-```
+```text
 SCK         → GPIO 40
 MISO        → GPIO 39
 MOSI        → GPIO 14
@@ -80,7 +80,7 @@ is effectively instantaneous compared to the WiFi stack init.
 
 Two top-level mnemonics:
 
-```
+```text
 R Radio (sub-GHz)
   s Scan       — RSSI sweep 300-928 MHz, live waterfall, favorite-bands
   c Capture    — record signal to SD (.sub format, Flipper-compatible)
@@ -106,6 +106,7 @@ N nRF / 2.4G raw
 ## Protocols we'd support
 
 **CC1101 decoders (ship minimum viable):**
+
 - PT2240 / EV1527 (fixed-code garage/gate remotes)
 - HT6P20D
 - Princeton PT2262
@@ -113,6 +114,7 @@ N nRF / 2.4G raw
 - Weather stations: Ambient/Acurite (parse-only)
 
 **nRF24L01+ targets:**
+
 - Microsoft Wireless Keyboard 3000/800/850 (Mousejack)
 - Logitech Unifying M series (unpatched firmware only)
 - Amazon Basics wireless mice / keyboards

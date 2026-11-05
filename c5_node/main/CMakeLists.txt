@@ -5,9 +5,10 @@ idf_component_register(
     REQUIRES esp_wifi esp_netif nvs_flash esp_event ieee802154 esp_timer esp_driver_rmt
 )
 
-# Sanity-check bypass now done by direct binary patch to
-# ESP-IDF's libnet80211.a (see c5_node/README or tools/patch_libnet80211.sh
-# if we later formalize it). The wifi_sanity_override.c source file and
+# Sanity-check bypass is a direct binary patch to ESP-IDF's libnet80211.a,
+# applied to the toolchain install itself (not to anything built here) via
+# tools/patch_libnet80211.sh — see c5_node/README.md's Building section,
+# which this must run before. The wifi_sanity_override.c source file and
 # its --wrap / --allow-multiple-definition flags are gone — neither
 # approach worked because esp_wifi_80211_tx and its call to the sanity
 # check live in the same object file, so the linker already treated the

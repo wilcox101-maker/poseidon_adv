@@ -35,7 +35,7 @@ If you're cutting a release and reading this, work top-to-bottom.
 
 - [ ] **POSEIDON (S3, Cardputer-Adv):**
 
-  ```
+  ```bash
   PYTHONIOENCODING=utf-8 PYTHONUTF8=1 \
     /c/Users/D/.platformio/penv/Scripts/pio.exe run -e cardputer
   ```
@@ -46,7 +46,7 @@ If you're cutting a release and reading this, work top-to-bottom.
 
 - [ ] **TRIDENT (C5):**
 
-  ```
+  ```bash
   cd c5_node
   ./_build.bat build
   ```
@@ -57,7 +57,7 @@ If you're cutting a release and reading this, work top-to-bottom.
       `install.html` flow) — concatenate the three C5 bins at their
       flash offsets:
 
-  ```
+  ```bash
   cd c5_node/build
   esptool.py --chip esp32c5 merge_bin -o trident-factory.bin \
     --flash_mode dio --flash_freq 80m --flash_size 4MB \
@@ -73,7 +73,7 @@ If you're cutting a release and reading this, work top-to-bottom.
 
 - [ ] Copy fresh C5 bins into the docs flasher tree:
 
-  ```
+  ```bash
   cp c5_node/build/bootloader/bootloader.bin            docs/flash/bin/trident-c5/
   cp c5_node/build/partition_table/partition-table.bin  docs/flash/bin/trident-c5/
   cp c5_node/build/poseidon_c5_node.bin                 docs/flash/bin/trident-c5/
@@ -92,7 +92,7 @@ If you're cutting a release and reading this, work top-to-bottom.
       in past versions got cp1252-encoded by editors and broke
       browser parsing. The current file uses `-` not `—` for safety:
 
-  ```
+  ```bash
   python -c "raw=open('docs/flash/manifest-trident-c5.json','rb').read(); print('all ASCII:', all(b<0x80 for b in raw))"
   ```
 
@@ -209,7 +209,7 @@ or the counts drift:
 
 ## 5. Commit + push order
 
-```
+```bash
 # Stage doc updates separately from version bumps if you want a
 # clean release commit history. Otherwise one commit is fine.
 git add CHANGELOG.md README.md TESTERS.md docs/
@@ -225,7 +225,7 @@ git push origin master --tags
 
 ## 6. GitHub release
 
-```
+```bash
 gh release create vX.Y.Z \
   --title "POSEIDON vX.Y.Z — <release codename>" \
   --notes-file CHANGELOG-extract.md \
@@ -261,14 +261,14 @@ GitHub Pages is not enabled for this fork or for
 the docs files on `master` via raw GitHub. Raw updates a few seconds
 after the push.
 
-```
+```bash
 until curl -fsSL https://raw.githubusercontent.com/wilcox101-maker/poseidon_adv/master/docs/index.html | grep -q "vX.Y.Z"; do sleep 5; done
 echo "on master"
 ```
 
 Check each file independently:
 
-```
+```bash
 base=https://raw.githubusercontent.com/wilcox101-maker/poseidon_adv/master
 curl -fsSL -o /dev/null -w "%{http_code}\n" $base/docs/index.html
 curl -fsSL -o /dev/null -w "%{http_code}\n" $base/docs/flash/index.html
@@ -282,7 +282,7 @@ If a raw URL 404s, that file is not on `master` yet.
 If the release-asset flow is broken, check the upstream asset list
 (releases are published on `Evil0ctopus/poseidon_adv`):
 
-```
+```bash
 gh release view vX.Y.Z --repo Evil0ctopus/poseidon_adv --json assets --jq '.assets[].name'
 ```
 

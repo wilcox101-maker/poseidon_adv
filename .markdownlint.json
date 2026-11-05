@@ -1,0 +1,10 @@
+{
+  "comment": "Mechanical nits were auto-fixed in-file; code fences were given languages. These rules stay off: MD013 (prose not wrapped at 80), MD024 (CHANGELOG repeats ### Added/Changed/Fixed per version), MD033/MD041 (README's intentional centered HTML banner + badges), MD036 (bold field labels in .github issue templates are labels, not headings), MD060 (table column alignment is cosmetic and has no clean auto-fix here).",
+  "default": true,
+  "MD013": false,
+  "MD024": false,
+  "MD033": false,
+  "MD036": false,
+  "MD041": false,
+  "MD060": false
+}

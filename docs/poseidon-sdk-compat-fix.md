@@ -17,7 +17,7 @@ keeps working on both — it just becomes dead code in the 5.x branch.
 ESP-NOW callback signatures differ:
 
 | SDK | Signature |
-|---|---|
+| --- | --- |
 | IDF 4.x (current `espressif32@6.7.0`) | `void (*)(const uint8_t *mac, const uint8_t *data, int len)` |
 | IDF 5.x+ (pioarduino migration) | `void (*)(const esp_now_recv_info_t *info, const uint8_t *data, int len)` |
 

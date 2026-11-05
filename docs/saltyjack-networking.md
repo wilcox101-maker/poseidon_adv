@@ -2,7 +2,7 @@
 
 Authorized use only. Run these tools on networks and hardware you own, or where you have explicit written permission. DHCP starvation and rogue DHCP disrupt address assignment. Responder and WPAD collect authentication material. Unauthorized use is illegal in most places. If you are unsure, do not run the tool. See [Legal](legal.html) and the README safety section.
 
-This page is the operator guide for **this** `master` tree of [wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv). The version string in the README, `CHANGELOG.md`, and `docs/m5burner.json` is **Deepwater v0.8.0**. There is no separate v0.8.1 firmware image in this repository. Lab notes that say “0.8.1 fork” mean this Deepwater tree: SaltyJack over Wi-Fi station mode, and the SoftAP rogue-DHCP path, are in the image you flash today. The W5500 driver is not.
+This page is the operator guide for **this** `master` tree of [wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv). The source revision in the README, `CHANGELOG.md`, and `docs/m5burner.json` is now **0.9.0**, but the factory binary those entries still point at is **Deepwater v0.8.0**. There is no separate v0.9.0 firmware image in this repository. Lab notes that say “0.9.0 fork” mean this Deepwater tree: SaltyJack over Wi-Fi station mode, and the SoftAP rogue-DHCP path, are in the image you flash today. The W5500 driver is not.
 
 The same guide is on the docs site: [saltyjack-networking.html](saltyjack-networking.html).
 
@@ -11,7 +11,7 @@ The same guide is on the docs site: [saltyjack-networking.html](saltyjack-networ
 The Cardputer-Adv radio is an ESP32-S3. It has 2.4 GHz Wi-Fi. It does not speak 5 GHz. SaltyJack does not grow a second radio by plugging in a hat.
 
 | Path | Who is the access point? | What the Cardputer does | SaltyJack in this tree |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Wi-Fi STA** | An authorized AP you already run | Joins that AP as a client. lwIP attaches to the STA netif `WIFI_STA_DEF`. | **Works.** DHCP Starve, Rogue DHCP (STA), Responder, and WPAD bind here. |
 | **SoftAP** | The Cardputer | Brings up an open AP named `POSEIDON-SaltyJack` and serves DHCP itself. | **Works**, but only the Rogue DHCP (AP) tool. This is not the STA path. |
 | **W5500 RJ45** | Whatever is on the Ethernet segment | Would be an SPI Ethernet netif, if a driver existed. | **Not implemented.** Hardware pinout only. [hardware.html](hardware.html) — “Not wired in this tree.” |
@@ -21,12 +21,12 @@ The Cardputer-Adv radio is an ESP32-S3. It has 2.4 GHz Wi-Fi. It does not speak 
 
 Rogue DHCP (AP) is the contrast. It does not join the target AP. `wifi_raw_ap_up("POSEIDON-SaltyJack")` starts an open SoftAP (channel 1, not hidden, up to 4 stations) via the raw-IDF helper, because Arduino `WiFi.softAP()` crashes on the Bruce-pinned libraries this tree builds with. The AP address is lwIP’s default **192.168.4.1**. The tool then stops the IDF DHCP **server** on `WIFI_AP_DEF` and binds UDP/67 itself. Clients that join `POSEIDON-SaltyJack` are leased by the Cardputer, with the Cardputer as gateway and DNS.
 
-## 0.8.1 vs future W5500
+## 0.9.0 vs future W5500
 
-Lab notes call this fork “0.8.1”. The version string actually tagged in the README, `CHANGELOG.md`, and `docs/m5burner.json` is **Deepwater v0.8.0**. There is no v0.8.1 binary to flash. The table is what that image does today, and what is still future — the W5500 driver in particular.
+Lab notes call this fork “0.9.0”. That is the source revision in the README, `CHANGELOG.md`, and `docs/m5burner.json`; the factory image they point at is still **Deepwater v0.8.0**. There is no v0.9.0 binary to flash. The table is what that image does today, and what is still future — the W5500 driver in particular.
 
 | Capability | This tree (Deepwater v0.8.0) | Later, not in this tree |
-|---|---|---|
+| --- | --- | --- |
 | Join an authorized AP (`WiFi` → Connect, `Network` → Connect, or System → Settings → Saved Wi-Fi) | Yes | — |
 | SaltyJack DHCP Starve, Rogue DHCP (STA), Responder, WPAD on that STA netif | Yes | — |
 | SaltyJack Rogue DHCP (AP), SSID `POSEIDON-SaltyJack` | Yes | — |
@@ -52,7 +52,7 @@ This is the path that works now.
 
 ### 1. Flash this fork
 
-Use the Deepwater binaries from **this** repository, not an upstream POSEIDON build and not a guessed “0.8.1” filename. The tagged image in-tree is v0.8.0.
+Use the Deepwater binaries from **this** repository, not an upstream POSEIDON build and not a guessed “0.9.0” filename. The tagged image in-tree is v0.8.0.
 
 - Standalone / M5Burner: `poseidon-factory.bin` at offset `0x0`.
 - M5Stack Launcher: `poseidon-launcher.bin` through Launcher’s installer.
@@ -71,7 +71,7 @@ The Cardputer has to be a client of that AP **before** you open Starve, Rogue DH
 Three menus call the same connect screen (`feat_wifi_connect`):
 
 | From the root menu | Then | On-screen title |
-|---|---|---|
+| --- | --- | --- |
 | `w` Wi-Fi | `n` Connect | WIFI CONNECT |
 | `n` Network | `c` Connect | WIFI CONNECT |
 | `s` System | `s` Settings, then `w` Saved Wi-Fi | WIFI CONNECT |
@@ -94,7 +94,7 @@ Stay associated. Opening a raw SoftAP feature (portals, evil twin, beacon spam, 
 From the root menu press `j`. SaltyJack is its own screen, not a child of Network. Keys inside it:
 
 | Key | Action |
-|---|---|
+| --- | --- |
 | `;` / `.` | Move |
 | Enter | Run the highlighted tool |
 | `i` | Long description of the highlighted tool |
@@ -114,7 +114,7 @@ Use this order when the goal is the STA suite. Skip any step you are not authori
    - domain (option 15) = `poseidon.lan`
    - WPAD (option 252) = `http://poseidon.lan/wpad.dat`
    - lease time 24 h
-   
+
    The screen shows offers, ACKs, client count, and the last lease (IP and MAC), or `racing real server...` until the first lease. This races the real DHCP server; it is not the SoftAP.
 3. **Responder** and/or **WPAD NTLM**. Both require `WL_CONNECTED`. Run the one your test plan calls for. They are separate menu items; starting one leaves the previous tool. Pairing means: starve and rogue-STA first so clients receive option 252 and treat the Cardputer as DNS, then open Responder or WPAD and leave it running.
    - **Responder** listens for LLMNR (UDP/5355, multicast 224.0.0.252), NetBIOS name service (UDP/137), and SMB (TCP/445). It answers name lookups with the Cardputer’s STA address and writes NTLMv2 material to `/poseidon/saltyjack/ntlm_hashes.txt` (hashcat 5600 shape `user::domain:challenge:proof:blob`). NetBIOS name used by the module is `POSEIDON-SJ`. The same line is printed on serial.
@@ -128,7 +128,7 @@ Stop a live tool with backtick. Do not pull power in the middle of Starve if you
 The STA tools refuse to start when the S3 is not a client with a usable lease. The exact strings:
 
 | Tool | Condition | What the screen says |
-|---|---|---|
+| --- | --- | --- |
 | DHCP Starve | `WiFi.status() != WL_CONNECTED` **or** `localIP` is `0.0.0.0` | `Not connected.` / `Join target WiFi first` / `via System > Connect.` |
 | Rogue DHCP (STA) | `WiFi.status() != WL_CONNECTED` | `STA not connected` / `join target WiFi first` |
 | Responder | `WiFi.status() != WL_CONNECTED` | `Not connected.` / `Join target WiFi first` / `via System > Connect.` |
@@ -157,7 +157,7 @@ Until a driver exists, use How-to A.
 SPI matches the Cardputer bus already used by the microSD (`src/sd_helper.cpp`: SCK 40, MISO 39, MOSI 14, SD chip-select 12). Chip-select and interrupt below are the Bruce-style W5500 assignment for this header. Reset is not connected. The firmware does not claim these GPIOs for Ethernet.
 
 | Signal | Cardputer-Adv GPIO | Notes |
-|---|---|---|
+| --- | --- | --- |
 | SCLK | **40** | Shared HSPI clock (microSD and hats, not the display FSPI) |
 | MOSI | **14** | Shared HSPI MOSI |
 | MISO | **39** | Shared HSPI MISO |
@@ -204,7 +204,7 @@ Authorized use only. 5 GHz deauth and PMKID capture are radio transmissions and 
 5. Connect, then flash. The image is three parts, under `docs/flash/bin/trident-c5/`:
 
 | Offset | File |
-|---|---|
+| --- | --- |
 | `0x2000` | `bootloader.bin` |
 | `0x8000` | `partition-table.bin` |
 | `0x10000` | `poseidon_c5_node.bin` |
@@ -238,7 +238,7 @@ Other C5 entries (Scan 5G+2G, Zigbee sniff, Deauth 5G, PMKID 5G, Nuke 5G) send E
 ### What the C5 is for
 
 | C5 menu item | Role | SaltyJack? |
-|---|---|---|
+| --- | --- | --- |
 | Status | Peer table, auto-connect via HELLO | No |
 | Scan 5G+2G | Remote dual-band scan; results return over ESP-NOW | No |
 | Zigbee sniff | 802.15.4 channel hop, frame summaries back over ESP-NOW | No |
@@ -260,8 +260,8 @@ Use the SoftAP when the test is “clients that associate to an open lab AP we o
 
 ## Quick map
 
-|  | STA | SoftAP | W5500 | C5 |
-|---|---|---|---|---|
+| | STA | SoftAP | W5500 | C5 |
+| --- | --- | --- | --- | --- |
 | Radio / link | S3 joins your AP | S3 is `POSEIDON-SaltyJack` | SPI RJ45, pins above | ESP-NOW to a second board |
 | lwIP interface | `WIFI_STA_DEF` | `WIFI_AP_DEF` (AP tool only) | None in this tree | None for SaltyJack |
 | DHCP Starve | Yes | No | No | No |

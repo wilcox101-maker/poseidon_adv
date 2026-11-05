@@ -24,7 +24,7 @@ labels: bug
 <!-- If you can capture USB CDC serial output at 115200, paste it here.
      Panics show the crash site after "Backtrace:". -->
 
-```
+```text
 
 ```
 

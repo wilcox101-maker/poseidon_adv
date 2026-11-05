@@ -448,7 +448,7 @@ void feat_c5_scan_5g(void)
 static int c5_collect_5g(c5_ap_t *out, int max)
 {
     auto &d = M5Cardputer.Display;
-    c5_ap_t all[64];
+    static c5_ap_t all[64];  // POS-AUDIT-125: off loopTask stack, not reentrant/not recursive
     int n = c5_aps(all, 64);
     int f = 0;
     for (int i = 0; i < n && f < max; ++i) if (all[i].is_5g) out[f++] = all[i];
@@ -762,7 +762,7 @@ void feat_c5_pmkid_5g(void)
     if (!c5_present()) { ui_toast("no C5 online", T_BAD, 1500); return; }
 
     /* Reuse cached 5 GHz results, or sweep + poll until they stream in. */
-    c5_ap_t aps[64];
+    static c5_ap_t aps[64];  // POS-AUDIT-125: off loopTask stack
     int n = c5_collect_5g(aps, 64);
     if (n == 0) { ui_toast("no 5 GHz APs found", T_WARN, 1500); return; }
 
@@ -813,7 +813,8 @@ void feat_c5_pmkid_5g(void)
     uint32_t end = millis() + dur + 2000;
     uint32_t last = 0;
     int last_count = -1;
-    c5_saved_set saved = {};   /* PMKIDs already written to SD, keyed by pmkid[] */
+    static c5_saved_set saved = {};   /* PMKIDs already written to SD, keyed by pmkid[] */  // POS-AUDIT-125: off stack
+    saved = {};  // static storage: must reset by hand each entry, init-only runs once
     ui_clear_body();
     ui_draw_footer("`=stop early");
     while (millis() < end) {
@@ -895,7 +896,7 @@ void feat_c5_nuke_5g(void)
     c5_begin();
     if (!c5_present()) { ui_toast("no C5 online", T_BAD, 1500); return; }
 
-    c5_ap_t aps[64];
+    static c5_ap_t aps[64];  // POS-AUDIT-125: off loopTask stack
     int n = c5_aps(aps, 64);
     int five_n = 0;
     for (int i = 0; i < n; ++i) if (aps[i].is_5g) aps[five_n++] = aps[i];
@@ -967,8 +968,10 @@ void feat_c5_nuke_5g(void)
     int cursor = 0;
     uint32_t last = 0;
     uint32_t last_rotate = 0;
-    c5_saved_set hs_saved = {};    /* handshakes on SD, keyed by bssid+sta+anonce */
-    c5_saved_set pmk_saved = {};   /* PMKIDs on SD, keyed by pmkid[] */
+    static c5_saved_set hs_saved = {};    /* handshakes on SD, keyed by bssid+sta+anonce */  // POS-AUDIT-125: off stack
+    hs_saved = {};   // static storage: must reset by hand each entry, init-only runs once
+    static c5_saved_set pmk_saved = {};   /* PMKIDs on SD, keyed by pmkid[] */  // POS-AUDIT-125: off stack
+    pmk_saved = {};  // static storage: must reset by hand each entry, init-only runs once
     uint32_t last_rescan = millis();
 
     ui_draw_footer("`=stop   deauth-all + HS capture loop");
@@ -984,7 +987,7 @@ void feat_c5_nuke_5g(void)
     {
         const char *headline = "5 GHz NUKE";
         d.setTextSize(3);
-        int hw = d.textWidth(headline) * 3;
+        int hw = d.textWidth(headline);  // POS-AUDIT-126: textWidth() already scales by the active setTextSize(3); the old *3 tripled it, pushing hx negative and clipping the headline to its tail end at the left edge
         int hx = (SCR_W - hw) / 2;
         int hy = 22;
         d.setTextColor(0xF81F, 0);

@@ -67,7 +67,21 @@ void wifi_scanner_run(const uint8_t requester[6],
     }
 
     wifi_ap_record_t *records = malloc(sizeof(wifi_ap_record_t) * n);
-    if (!records) return;
+    if (!records) {
+        /* POS-AUDIT-121: without a terminator here, the Cardputer side
+         * (which distinguishes "in progress" from "done, zero results"
+         * purely by waiting for this empty RESP_AP) hangs until its own
+         * UI-side deadline expires instead of showing the failure now.
+         * n APs were found, so this is heap pressure, not "no results" —
+         * log it as such. */
+        ESP_LOGE(TAG, "malloc(%u AP records) failed, aborting scan", (unsigned)n);
+        posei_msg_t msg;
+        proto_init_msg(&msg, POSEI_TYPE_RESP_AP);
+        msg.seq = seq;
+        msg.payload_len = 0;
+        proto_send_to(requester, &msg);
+        return;
+    }
     esp_wifi_scan_get_ap_records(&n, records);
 
     int n_2g = 0, n_5g = 0;

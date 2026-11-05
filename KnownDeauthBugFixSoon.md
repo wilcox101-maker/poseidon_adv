@@ -7,6 +7,18 @@ reaching the air on v0.3. That's no longer the case. Keeping the file
 around with a short post-mortem in case anyone hits the same class of
 issue elsewhere.
 
+> **Scope:** this post-mortem is the **Cardputer / ESP32-S3** side. The
+> link-time symbol override below works there because our `.o` and the
+> blob's `.a` are separate objects the linker resolves together. The
+> **ESP32-C5 node** hits the *same* `ieee80211_raw_frame_sanity_check`
+> filter but the override does **not** work there — on the C5 the caller
+> (`esp_wifi_80211_tx`) and the check live in the *same* object inside
+> `libnet80211.a`, already resolved internally before our object is seen,
+> so neither `--wrap` nor `--allow-multiple-definition` can intercept it.
+> The C5 fix is a direct in-place binary patch of the function, applied to
+> the ESP-IDF toolchain by `tools/patch_libnet80211.sh` — see
+> `c5_node/README.md` and `C5_NEXT-PHASE_PLAN.md`.
+
 ## What was broken
 
 WiFi deauth on POSEIDON v0.3 — targeted, broadcast-all, per-client, and
@@ -26,11 +38,12 @@ which is called from `esp_wifi_80211_tx` before every raw-frame TX. It
 returns non-zero for MGMT subtypes `0xC` (deauth) and `0xA` (disassoc),
 causing TX to return `ESP_ERR_INVALID_ARG (258)` with the log:
 
-```
+```text
 E (xxx) wifi:unsupport frame type: 0c0
 ```
 
 This filter runs regardless of:
+
 - WiFi mode (STA, AP, AP_STA)
 - Interface used (WIFI_IF_STA, WIFI_IF_AP)
 - Promiscuous mode
@@ -44,7 +57,7 @@ widely repeated in the ESP32 deauth community is wrong. The symbol is
 still `T` (strong-global) in every Bruce zip we checked (20260407,
 20260123, older ones). The patch was never there.
 
-## The real fix
+## The real fix (Cardputer / ESP32-S3)
 
 Link-time symbol override. Credit to
 [GANESH-ICMC/esp32-deauther](https://github.com/GANESH-ICMC/esp32-deauther)

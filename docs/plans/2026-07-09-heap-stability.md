@@ -38,11 +38,13 @@
 ## Task 1: heap_budget instrumentation core (host-testable)
 
 **Files:**
+
 - Create: `src/heap_budget.h`
 - Create: `src/heap_budget.cpp`
 - Test: `test/test_heap_budget/test_main.cpp`
 
 **Interfaces:**
+
 - Produces:
   - `void hb_set_query(size_t (*free_fn)(void), size_t (*largest_fn)(void));` (test seam)
   - `size_t heap_free_internal(void);`
@@ -53,6 +55,7 @@
 - [ ] **Step 1: Write the failing test**
 
 `test/test_heap_budget/test_main.cpp`:
+
 ```cpp
 #include <unity.h>
 #include <stdint.h>
@@ -96,6 +99,7 @@ Expected: FAIL to compile ("heap_budget.cpp: No such file").
 - [ ] **Step 3: Write minimal implementation**
 
 `src/heap_budget.h`:
+
 ```cpp
 #pragma once
 #include <stddef.h>
@@ -112,6 +116,7 @@ void   heap_report(const char *tag);
 ```
 
 `src/heap_budget.cpp`:
+
 ```cpp
 #include "heap_budget.h"
 
@@ -172,11 +177,13 @@ git commit -m "feat(heap): budget core with injectable query + min-ever watermar
 ## Task 2: reclaim registry
 
 **Files:**
+
 - Modify: `src/heap_budget.h`
 - Modify: `src/heap_budget.cpp`
 - Test: `test/test_heap_budget/test_main.cpp`
 
 **Interfaces:**
+
 - Consumes: Task 1 query seam.
 - Produces:
   - `typedef void (*heap_reclaim_fn)(void);`
@@ -186,6 +193,7 @@ git commit -m "feat(heap): budget core with injectable query + min-ever watermar
 - [ ] **Step 1: Write the failing test**
 
 Append to `test/test_heap_budget/test_main.cpp` (and add both to `main`). Note: two DISTINCT reclaimer functions, so the test verifies BOTH idempotency (same fn registered twice is called once) AND that multiple different reclaimers all run. `reclaimer_frees_10k` is reused by Task 3, so keep that exact name.
+
 ```cpp
 static int g_reclaim_calls = 0;
 static void reclaimer_frees_10k(void)   { g_fake_free += 10000; g_reclaim_calls++; }
@@ -206,6 +214,7 @@ void test_reclaim_all_empty_is_zero(void) {
     TEST_ASSERT_EQUAL_UINT32(0, heap_reclaim_all());
 }
 ```
+
 Add `RUN_TEST(test_registry_dedups_and_runs_all);` and `RUN_TEST(test_reclaim_all_empty_is_zero);` to `main`.
 Add `RUN_TEST(test_registry_runs_all_and_reports_recovered);` and `RUN_TEST(test_reclaim_all_empty_is_zero);` to `main`. Note: `hb_test_reset()` in `setUp` must clear the registry so suites do not bleed.
 
@@ -217,6 +226,7 @@ Expected: FAIL ("heap_reclaim_register not declared").
 - [ ] **Step 3: Write minimal implementation**
 
 Add to `src/heap_budget.h`:
+
 ```cpp
 typedef void (*heap_reclaim_fn)(void);
 void   heap_reclaim_register(heap_reclaim_fn fn);
@@ -224,6 +234,7 @@ size_t heap_reclaim_all(void);
 ```
 
 Add to `src/heap_budget.cpp` (above `hb_test_reset`):
+
 ```cpp
 #define HB_MAX_RECLAIMERS 16
 static heap_reclaim_fn s_reclaimers[HB_MAX_RECLAIMERS];
@@ -242,6 +253,7 @@ size_t heap_reclaim_all(void) {
     return after > before ? after - before : 0;
 }
 ```
+
 Update `hb_test_reset()` body to also `s_reclaimer_n = 0;`.
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -261,11 +273,13 @@ git commit -m "feat(heap): cooperative reclaim registry"
 ## Task 3: rf_preflight gate
 
 **Files:**
+
 - Modify: `src/heap_budget.h`
 - Modify: `src/heap_budget.cpp`
 - Test: `test/test_heap_budget/test_main.cpp`
 
 **Interfaces:**
+
 - Consumes: Tasks 1 and 2.
 - Produces: `bool rf_preflight(const char *tag, size_t need_bytes);`
   - Runs `heap_reclaim_all()`, then returns `heap_largest_internal() >= need_bytes`.
@@ -274,6 +288,7 @@ git commit -m "feat(heap): cooperative reclaim registry"
 - [ ] **Step 1: Write the failing test**
 
 Append (and register in `main`):
+
 ```cpp
 void test_preflight_true_when_largest_fits_after_reclaim(void) {
     g_fake_free = 8000; g_fake_largest = 8000;
@@ -295,16 +310,20 @@ Expected: FAIL ("rf_preflight not declared").
 - [ ] **Step 3: Write minimal implementation**
 
 Add to `src/heap_budget.h`:
+
 ```cpp
 bool rf_preflight(const char *tag, size_t need_bytes);
 ```
 
 Add to the ESP-only include block at the top of `src/heap_budget.cpp` (inside the existing `#if !defined(PIO_UNIT_TESTING)`):
+
 ```cpp
 #include "ui.h"      // ui_toast(const char*, uint16_t color, uint32_t ms)
 #include "theme.h"   // T_BAD == theme().bad (runtime themed color)
 ```
+
 Add to `src/heap_budget.cpp`:
+
 ```cpp
 bool rf_preflight(const char *tag, size_t need_bytes) {
     heap_reclaim_all();
@@ -319,6 +338,7 @@ bool rf_preflight(const char *tag, size_t need_bytes) {
     return true;
 }
 ```
+
 Note: `ui_toast` is `void ui_toast(const char *msg, uint16_t color, uint32_t ms)` (`src/ui.h:34`); `T_BAD` is `#define T_BAD (theme().bad)` (`src/theme.h:64`). The host test never compiles this branch (guarded), so no UI stub is needed.
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -338,22 +358,27 @@ git commit -m "feat(heap): rf_preflight reclaim-and-veto gate"
 ## Task 4: install ESP query + boot census
 
 **Files:**
+
 - Modify: `src/heap_budget.h`
 - Modify: `src/heap_budget.cpp`
 - Modify: `src/main.cpp` (or the file with `setup()`; grep for `void setup(`)
 
 **Interfaces:**
+
 - Consumes: Task 1.
 - Produces: `void hb_install_esp_query(void);` and `void heap_census(void);`
 
 - [ ] **Step 1: Add device query install + census (no host test; device-only glue)**
 
 Add to `src/heap_budget.h`:
+
 ```cpp
 void hb_install_esp_query(void);
 void heap_census(void);
 ```
+
 Add to `src/heap_budget.cpp` (inside `#if !defined(PIO_UNIT_TESTING)` region for the body):
+
 ```cpp
 void hb_install_esp_query(void) { hb_set_query(esp_free, esp_largest); }
 void heap_census(void) {
@@ -366,15 +391,18 @@ void heap_census(void) {
 #endif
 }
 ```
+
 For host builds add a no-op `void hb_install_esp_query(void){}` and `void heap_census(void){}` under `#else`.
 
 - [ ] **Step 2: Wire into setup()**
 
 In `setup()`, after `Serial.begin`, add:
+
 ```cpp
     hb_install_esp_query();
     heap_census();
 ```
+
 Add `#include "heap_budget.h"` at the top of that file.
 
 - [ ] **Step 3: Build to verify it compiles**
@@ -399,9 +427,11 @@ git commit -m "feat(heap): install esp heap query + boot census"
 ## Task 5: ARGUS cooperative reclaim
 
 **Files:**
+
 - Modify: `src/argus.cpp` (holder at line 45; alloc at line 148)
 
 **Interfaces:**
+
 - Consumes: Task 2 (`heap_reclaim_register`).
 - Produces: `void heap_argus_release(void);` (file-local, registered once).
 
@@ -409,6 +439,7 @@ git commit -m "feat(heap): install esp heap query + boot census"
 
 Add `#include "heap_budget.h"` near the top of `src/argus.cpp`.
 Add, near the `s_ram_sprite` definition:
+
 ```cpp
 // Reclaimable cache: the 18 KB DMA mascot sprite refills from flash on the
 // next draw, so it yields to any RF feature that needs the internal heap.
@@ -418,12 +449,14 @@ static void heap_argus_release(void) {
     s_ram_mood = (argus_mood_t)-1; // force a memcpy refresh when it comes back
 }
 ```
+
 Note: confirm the real name/type of the mood cache variable (`s_ram_mood`) at `argus.cpp:157-161` and match it; the invalidation must force the `cur != s_ram_mood` refresh branch.
 `s_ram_sprite_tried` is currently a function-local `static` at `argus.cpp:144`. Promote it to a file-scope `static bool s_ram_sprite_tried = false;` (remove the local) so `heap_argus_release` can reset it. Update the draw function to use the file-scope one.
 
 - [ ] **Step 2: Register once**
 
 In the ARGUS init path (grep for the argus setup/first-draw function), add once:
+
 ```cpp
     static bool s_reg = false;
     if (!s_reg) { s_reg = true; heap_reclaim_register(heap_argus_release); }
@@ -446,15 +479,18 @@ git commit -m "feat(heap): ARGUS sprite yields its 18KB DMA cache on reclaim"
 ## Task 6: blanket per-feature leak instrumentation
 
 **Files:**
+
 - Modify: `src/menu.cpp:1353-1368` and `src/menu.cpp:1388-1404`
 
 **Interfaces:**
+
 - Consumes: Tasks 1, 2.
 
 - [ ] **Step 1: Instrument the ENTER seam (around line 1355)**
 
 Add `#include "heap_budget.h"` at the top of `src/menu.cpp`.
 Replace the block at 1355-1359:
+
 ```cpp
             if (sel->action) {
                 Serial.printf("[FEAT_ENTER] %s\n", sel->label);
@@ -462,7 +498,9 @@ Replace the block at 1355-1359:
                 sel->action();
                 g_current_feature_item = nullptr;
 ```
+
 with:
+
 ```cpp
             if (sel->action) {
                 heap_reclaim_all();
@@ -476,6 +514,7 @@ with:
                   Serial.printf("[FEAT_EXIT] %s free=%u delta=%ld%s\n",
                       sel->label, (unsigned)now, d, d < -2048 ? " LEAK" : ""); }
 ```
+
 Remove the now-duplicate `[FEAT_EXIT]` printf at line 1364.
 
 - [ ] **Step 2: Instrument the hotkey seam (around line 1392)**
@@ -499,27 +538,33 @@ git commit -m "feat(heap): reclaim + per-feature heap delta at both dispatch sea
 ## Task 7: route wifi_portal through rf_preflight
 
 **Files:**
+
 - Modify: `src/features/wifi_portal.cpp:418-521`
 
 **Interfaces:**
+
 - Consumes: Task 3.
 
 - [ ] **Step 1: Add preflight at the top of run_portal AP bring-up**
 
 Add `#include "heap_budget.h"` near the top of the file.
 Immediately after the `[portal] AP-up entry free=` printf (line 418-419), add:
+
 ```cpp
     if (!rf_preflight("portal", 12288)) return;   // reclaim + veto; 12KB contiguous for hostap_attach
 ```
+
 (12288 is the initial estimate; Task 13 calibrates it from real serial numbers.)
 
 - [ ] **Step 2: Replace the ad-hoc pre-start log with heap_report**
 
 Replace the `[portal] pre-start largest_free=` printf at 514-516 with:
+
 ```cpp
     heap_report("portal pre-start");
     size_t lblk = heap_largest_internal();
 ```
+
 Keep the existing `if (lblk < 10240)` last-resort guard below it unchanged.
 
 - [ ] **Step 3: Build**
@@ -539,17 +584,21 @@ git commit -m "feat(heap): portal AP bring-up gated by rf_preflight"
 ## Task 8: route remaining RF features through rf_preflight
 
 **Files:**
+
 - Modify each RF feature entry: `src/features/wifi_beacon_spam.cpp`, `src/features/wifi_deauth*.cpp`, `src/features/wifi_karma.cpp`, `src/features/wifi_pmkid.cpp`, `src/features/wifi_apclone.cpp`, evil-twin (grep `feat_evil_twin`).
 
 **Interfaces:**
+
 - Consumes: Task 3.
 
 - [ ] **Step 1: Add preflight at each feature entry**
 
 For each `feat_*` that calls `esp_wifi_init`/`esp_wifi_start`, add `#include "heap_budget.h"` and, at the top of the feature function (after SD/arg checks, before radio bring-up):
+
 ```cpp
     if (!rf_preflight("<feature-name>", 12288)) return;
 ```
+
 Use the feature's own tag string. If a feature already toasts on its own low-memory path, keep only the `rf_preflight` guard and remove the redundant older check.
 
 - [ ] **Step 2: Build**
@@ -569,6 +618,7 @@ git commit -m "feat(heap): gate all RF features through rf_preflight"
 ## Task 9: lazy-alloc g_wdr_aps (20 KB) — alloc once, no free-on-exit
 
 **Files:**
+
 - Modify: `src/features/wifi_wardrive.cpp:30` (definition), `src/wifi_wardrive.h:30` (extern decl)
 - Modify consumers: `src/features/triton.cpp:1119-1120`, `src/features/wifi_pmkid.cpp:563-566`
 
@@ -579,20 +629,26 @@ wardrive exit (that would corrupt triton/pmkid reads). The win: sessions that
 never wardrive keep the 20 KB free, and it starts free after every reboot.
 
 **Interfaces:**
+
 - Produces: `wdr_ap_t *g_wdr_aps` (was `wdr_ap_t g_wdr_aps[WARDRIVE_MAX_APS]`), plus `bool wdr_aps_ensure(void)` that lazily allocates it.
 
 - [ ] **Step 1: Convert array to lazy pointer + ensure helper**
 
 In `src/wifi_wardrive.h:30`, change:
+
 ```cpp
 extern wdr_ap_t g_wdr_aps[WARDRIVE_MAX_APS];
 ```
+
 to:
+
 ```cpp
 extern wdr_ap_t *g_wdr_aps;   // lazy: allocated on first wardrive use, then resident
 bool wdr_aps_ensure(void);    // returns true if g_wdr_aps is non-null (allocs if needed)
 ```
+
 In `src/features/wifi_wardrive.cpp:30`, change the definition to:
+
 ```cpp
 wdr_ap_t *g_wdr_aps = nullptr;
 bool wdr_aps_ensure(void) {
@@ -606,6 +662,7 @@ bool wdr_aps_ensure(void) {
 - [ ] **Step 2: Guard the writer**
 
 At the top of `feat_wifi_wardrive` (before it first writes `g_wdr_aps`), add:
+
 ```cpp
     if (!wdr_aps_ensure()) return;
 ```
@@ -613,10 +670,12 @@ At the top of `feat_wifi_wardrive` (before it first writes `g_wdr_aps`), add:
 - [ ] **Step 3: Null-guard the later readers**
 
 In `triton.cpp` before the `g_wdr_aps[i]` loop (near 1119) and in `wifi_pmkid.cpp` before the loop (near 563), add:
+
 ```cpp
     if (!g_wdr_aps) { /* no wardrive data this session */ }
     else for (...) { ... existing loop ... }
 ```
+
 Concretely: wrap the existing copy loop in `if (g_wdr_aps) { ... }`. These readers already gate on a populated count, but the null check is defense in depth since the buffer can now be null.
 
 - [ ] **Step 4: Build + confirm the symbol left .bss**
@@ -637,9 +696,11 @@ git commit -m "perf(heap): lazy-alloc g_wdr_aps once, freeing 20KB until first w
 ## Task 10: lazy-alloc the next-largest app caches
 
 **Files:**
+
 - Modify owners of `s_capq` (8 KB), `feat_wifi_ciwv active` (6.9 KB), `feat_usb_guard hits` (5 KB), `s_hits` (4.7 KB). Grep each symbol for its definition and owning feature.
 
 **Interfaces:**
+
 - Same lazy pattern as Task 9, one buffer at a time.
 
 **IMPORTANT — classify each buffer's lifetime first.** Before converting, grep
@@ -676,10 +737,12 @@ git commit -m "perf(heap): lazy-alloc <symbol>, freeing <N>KB when idle"
 ## Task 11: Settings heap census screen
 
 **Files:**
+
 - Modify: the settings menu builder (grep for the Settings submenu node array) and add a `feat_heap_census` entry.
 - Create/modify: a small `feat_heap_census(void)` (place in `src/features/` or an existing settings feature file).
 
 **Interfaces:**
+
 - Consumes: Task 1/4 (`heap_free_internal`, `heap_largest_internal`, `heap_min_ever_internal`, `heap_reclaim_all`).
 
 - [ ] **Step 1: Implement the screen**
@@ -703,6 +766,7 @@ void feat_heap_census(void) {
     }
 }
 ```
+
 Match the real UI primitives used by other simple screens (grep a small existing `feat_*` for `ui_title`/`ui_text`/`ui_wait_key` exact names) and mirror them.
 
 - [ ] **Step 2: Register the menu entry**
@@ -743,6 +807,7 @@ Read serial at boot. Record `[heap] census ...`. Expected: internal free higher 
 Open Triton, BLE scan, ARGUS home, spectrum, wardrive; return to menu after each. On serial, every `[FEAT_EXIT]` delta should be near 0. Any line tagged `LEAK` names a feature to fix (add its buffer to the reclaim registry or fix its exit path). Iterate until no `LEAK`.
 
 **Expected non-leaks (do NOT chase these):**
+
 - The **first** entry of `wardrive`, `CCTV scan`, and `CIW` each allocates a lazy-once buffer that is intentionally never freed (`g_wdr_aps` 20 KB, `s_hits` 4.7 KB, `active` ~7 KB). That first entry shows a one-time negative delta and may tag `LEAK`; the second entry of the same feature nets ~0. This is expected, not a leak.
 - The baseline is captured before `heap_reclaim_all()`, so a feature that reallocates the ARGUS sprite (18 KB) nets ~0 rather than a phantom leak.
 

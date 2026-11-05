@@ -1,6 +1,7 @@
 # POSEIDON C5 Node
 
 Companion firmware for the ESP32-C5. The C5 is the only Espressif chip with:
+
 - **5 GHz WiFi** (2.4 + 5, 802.11ax)
 - **802.15.4** (Zigbee / Thread)
 
@@ -8,7 +9,7 @@ This firmware turns a C5 into a remote radio for POSEIDON (running on the Cardpu
 
 ## Protocol (over PigSync ESP-NOW)
 
-```
+```c
 struct posei_msg_t {
     uint32_t magic;       // 0x504F5345 "POSE"
     uint8_t  version;     // 3
@@ -20,6 +21,7 @@ struct posei_msg_t {
 ```
 
 Types:
+
 | Type | Name | Direction | Payload |
 |------|------|-----------|---------|
 | 1    | HELLO            | both | node name, heap, gps |
@@ -38,8 +40,18 @@ Types:
 
 Requires ESP-IDF v5.2 or newer (first version with C5 support). This firmware builds against v5.5.4.
 
+**Required one-time patch — do this before the first build, and again after any ESP-IDF
+reinstall/upgrade.** Stock `libnet80211.a` filters raw-TX management frames (deauth/disassoc,
+subtypes 0xA/0xC) the same way it does on the Cardputer side — `esp_wifi_80211_tx()` returns
+`ESP_OK` even when the blob drops the frame internally, so an unpatched build *looks* like deauth
+is working (status counter climbs, no error anywhere) while nothing actually reaches the air. See
+`tools/patch_libnet80211.sh` for the technical detail; it's a direct binary patch, not a config
+flag, because the caller and the filter function live in the same object file inside the blob —
+neither a linker `--wrap` nor `--allow-multiple-definition` can intercept it on this target.
+
 ```bash
 . $IDF_PATH/export.sh
+../tools/patch_libnet80211.sh        # patches $IDF_PATH's esp32c5 libnet80211.a in place; safe to re-run
 cd c5_node
 idf.py set-target esp32c5
 idf.py build

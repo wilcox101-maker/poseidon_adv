@@ -1,0 +1,7 @@
+# Shell scripts must stay LF — a CRLF .sh is unrunnable in bash
+# ("$'\r': command not found"). This bit tools/patch_libnet80211.sh once.
+*.sh text eol=lf
+
+# Docs are LF too. Most already are; this makes it the standard and keeps
+# markdownlint/editors from reintroducing CRLF (autocrlf=true on Windows).
+*.md text eol=lf

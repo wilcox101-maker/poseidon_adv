@@ -6,13 +6,27 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-04
+
+TRIDENT C5-node release. The Cardputer source revision bumps `0.8.1 → 0.9.0` (per `C5_NEXT-PHASE_PLAN.md`) once for the whole C5 hardening pass. The shipped Cardputer factory image is still the Deepwater **0.8.0** binary; this tag covers source + the C5 companion firmware under `c5_node/`. No Cardputer-facing contract (saved files, menu keys) or wire protocol (`POSEI_VERSION`) changed, so this is a minor bump.
+
 ### Added
-- **Feature inventory.** `features.md` counts the menu rows, radio paths, Hydra pin map, SaltyJack STA/SoftAP tools, themes, screensavers, and PlatformIO environments in this tree. The README links it. The W5500 stays pinout-only there.
+
+- **Reproducible C5 deauth-blob patch — `tools/patch_libnet80211.sh`.** The ESP32-C5's IDF 5.5 `libnet80211.a` filters management subtypes 0xA/0xC inside `ieee80211_raw_frame_sanity_check`, and `esp_wifi_80211_tx()` still returns `ESP_OK` while silently dropping the frame — so an unpatched build *looks* like deauth works (status counter climbs) while transmitting nothing. The Cardputer's link-time symbol override doesn't work on the C5 because the caller and the sanity check live in the same object file, already internally resolved before our object is considered. This script binary-patches the function to unconditionally return 0 (`li a0,0; ret`, NOP-padded) in place in the toolchain's archive: it parses the `ar` format and the member's ELF section/symbol tables in pure Python (needs only `python3`), overwrites the function at its absolute archive offset length-preservingly, backs up to `.bak`, and verifies from disk. It deliberately does **not** use `ar` extract/modify/re-insert — that round trip was not byte-stable under the Windows riscv toolchain and silently rolled back every patch. Idempotent and refuses to guess. Previously a hand-patch on the maintainer's machine; a fresh clone shipped a C5 whose deauth did nothing. Must be run before a `c5_node` build — see `c5_node/README.md`.
+- **Feature inventory.** `FEATURES.md` counts the menu rows, radio paths, Hydra pin map, SaltyJack STA/SoftAP tools, themes, screensavers, and PlatformIO environments in this tree. The README links it. The W5500 stays pinout-only there.
 
 ### Fixed
+
+- **C5 deauth had no stop path (POS-AUDIT-119).** A targeted or broadcast burst (up to 60 s from the Cardputer's live dashboard) ran to completion regardless of `CMD_STOP` — ESC/pause on the Cardputer did nothing until the full duration elapsed. `wifi_attacker_deauth_stop()` now exists and `CMD_STOP` calls it; both TX loops poll a per-attack `stop` flag every frame. The restart path (119b/c/d) adds single-active-attack ownership (`s_ctx`) so a duplicate `CMD_DEAUTH` can't spawn a second task fighting the first over the radio, a binary-semaphore handshake so a restart waits for the outgoing task to fully exit (not just notice stop) before re-running setup — closing a window where a slow old task's channel/promiscuous setup could land *after* the new task's and silently retarget the live burst — and a spawn-failure unwind so a failed `xTaskCreate` can't wedge every later call behind the restart timeout forever.
+- **C5 WiFi scan hung the Cardputer on heap pressure (POS-AUDIT-121).** If the AP-records `malloc` failed after APs were found, `wifi_scanner_run()` returned with no reply; the Cardputer — which tells "in progress" from "done, zero results" purely by waiting for the empty `RESP_AP` terminator — hung until its own UI deadline. It now logs the failure and sends the zero-payload `RESP_AP` so the failure surfaces immediately.
+- **C5 Zigbee sniffer could panic the chip on restart (POS-AUDIT-120).** `esp_ieee802154_enable()` is refcounted; `zb_sniffer_stop()` already guarded `disable()` against a double-call, but a second `CMD_SCAN_ZB` while a sniff was active (retransmit, or re-picking the feature) called `enable()` again unconditionally — the mirror-image refcount hazard. `enable()` now fires only on the real stopped→running transition; channel/filter/promiscuous/receive still re-apply every call so a restart can retarget channel or hop mode.
 - **`cardputer-launcher` compiler warnings.** Project sources no longer trip volatile increment, deprecated NimBLE/Network, format, misleading-indentation, comment, or unused-symbol diagnostics. Runtime behavior is unchanged, including the Hydra pin map. Two warnings remain in the pinned SmartRC-CC1101 driver, which is not patched in-tree.
+- **C5-feature stack-canary panic/reboot on live hardware (POS-AUDIT-125).** `feat_c5_pmkid_5g()` and `feat_c5_nuke_5g()` each carried one or more `c5_ap_t[64]` (~2.7KB) and/or `c5_saved_set` (~1KB) buffers as plain stack locals, stacked through the menu call chain (`loopTask -> loop -> menu_run -> run_submenu x2 -> menu_execute_action -> feat_c5_*`). On real hardware, entering PMKID 5G or Nuke 5G+HS with live C5 scan results cached tripped a `Stack canary watchpoint triggered (loopTask)` panic, rebooting the Cardputer mid-session (the C5 link itself never dropped; the reboot just re-established it, which read as "drops and reconnects"). The affected locals in both functions (and in `c5_collect_5g()`, which both call into) are now `static`, removing them from the stack; the `c5_saved_set` locals are explicitly re-zeroed on each entry since a `static` local's `= {}` initializer runs only once. `CONFIG_ARDUINO_LOOP_STACK_SIZE` was also raised from Arduino's 8192-byte default to 16384 as additional headroom. Confirmed via a full live hardware sweep: Status, Scan 5G+2G (incl. the AP-detail `ENTER` path), Zigbee sniff, Deauth 5G (through a complete live burst), PMKID 5G, and Nuke 5G+HS all run clean with stable free heap across repeats.
+- **Nuke 5G+HS headline clipped to its last couple characters (POS-AUDIT-126).** The "5 GHz NUKE" banner's centering math called `d.textWidth(headline)` *after* `d.setTextSize(3)`, then multiplied the result by `3` again -- `textWidth()` already returns the width scaled by the active text size, so the extra `*3` tripled it. The inflated width pushed the centering offset far negative, drawing the headline mostly off the left edge of the screen with only its tail end ("K"/"E") visible. Removed the redundant multiplier.
 
 ### Changed
+
+- **C5 sanity-check bypass is now a documented toolchain patch.** `c5_node/main/CMakeLists.txt` and `c5_node/README.md` record that the bypass is the `tools/patch_libnet80211.sh` binary patch applied to the ESP-IDF install, not an in-tree source override. The dead `wifi_sanity_override.c` source and its `--wrap` / `--allow-multiple-definition` link flags (neither of which worked on the C5) are gone.
 - **Fork tracking note.** README records the Hydra pin, shared-SPI, and GPS fixes, the SaltyJack networking how-to, and the warning cleanup that I keep while tracking Evil0ctopus/poseidon_adv. Later upstream syncs should land those as separate commits and leave published `master` history in place. Ownership notes in the Markdown are in the first person.
 - **Upstream credit.** Present-facing docs name Evil0ctopus/poseidon_adv as the tree I track. I removed the previous upstream host from links and from the burner catalog. Older factory images that were never republished are no longer listed in `docs/m5burner.json`. The About screen names that same upstream. Shipped binaries still carry the previous About string until the next package build.
 
@@ -21,6 +35,7 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 Fork revision. Tracks [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). Hydra RF Cap fixes stay on top of upstream. Not a separate product.
 
 ### Fixed
+
 - **Hydra pin map.** CC1101 is CS 13 / GDO0 5 and nRF24 is CS 6 / CE 4 on the shared SPI bus (SCK 40, MISO 39, MOSI 14, microSD CS 12). An earlier combo-hat map (CC1101 CS 15 / GDO0 13, nRF24 CS 4 / CE 3) talked to the wrong GPIOs. GDO0 is not a GPS pin and is not driven as a chip-select.
 - **Chip-select idle.** CC1101 CS and nRF24 CS stay high after init failure and after the nRF24 session ends, so a floating select cannot answer later SPI. nRF24 CE stays high-Z (that pad is LoRa DIO1 on the other hat).
 - **GPS restore.** GPIO 13 is the LoRa-GNSS UART TX and the CC1101 chip-select. Bring-up still calls `gps_end()` before driving it. Restore now restarts the NMEA poller as well as the UART, and only when the user had GPS enabled.
@@ -28,6 +43,7 @@ Fork revision. Tracks [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/
 ## [0.8.0] - 2026-10-03
 
 ### Added
+
 - **Deepwater UI:** shared bounded headers/text, pixel-aligned domain icons,
   scrollable help, paged shortcut footers (`Ctrl+/`), and System > Display
   controls for reduced motion, large text and ambient decoration.
@@ -39,6 +55,7 @@ Fork revision. Tracks [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/
 - **Defensive Monitor: GPS-tagged WiGLE CSV + live wifi/ble device counters.** DefMon's existing WiFi+BLE time-slicing now also exports every newly-seen WiFi AP to a GPS-tagged WiGLE v1.6 CSV (same schema as Wardrive's, drops into the same upload flow) alongside its anomaly JSONL log, and the screen shows uncapped running totals of distinct WiFi networks and distinct BLE devices seen this session. GPS auto-starts if the user has already opted in (same NVS flag as Wardrive). Real live BLE counting *inside Wardrive itself* was attempted and reverted — see Fixed section; DefMon is the right tool for combined WiFi+BLE because it doesn't carry Wardrive's GPS+SD+AP-table baseline overhead.
 
 ### Fixed
+
 - **UI fit and redraw:** root satellite/count overlap removed, WiFi/BLE/file
   selections use theme colors, names fit their columns, help no longer loses
   off-screen paragraphs, and clears no longer silently skip legitimate redraws.
@@ -52,6 +69,7 @@ Fork revision. Tracks [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/
 - **BLE controller memory stuck resident after a failed NimBLE init.** `radio_switch(RADIO_BLE)`'s failure path only checked `NimBLEDevice::isInitialized()` before deciding whether to release the Bluetooth controller — but `NimBLEDevice::init()` can fail *after* `esp_bt_controller_init()` already succeeded, leaving the controller status at INITED while NimBLE's own flag stays false. That combination meant a failed BLE bring-up (common under memory pressure — Bluetooth needs ~60KB contiguous) permanently stole ~50-60KB for the rest of the boot, starving the very next WiFi/BLE init attempt. Found while adding BLE device counting to Defensive Monitor. Fixed by force-releasing the controller whenever `esp_bt_controller_get_status()` isn't IDLE, regardless of NimBLE's own initialized flag. Benefits every feature that calls `radio_switch(RADIO_BLE)`.
 
 ### Changed
+
 - **POSEIDON now uses Deepwater:** navy/ice/cyan with restrained lavender, cleaner
   Terminal and Carousel layouts, optional ambient (new default off), and an
   automatic ~900 ms trident boot reveal with immediate key skip. Existing theme
@@ -70,6 +88,7 @@ Fork revision. Tracks [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/
 - **Recovered another ~10.8KB of static RAM without reducing live capture buffers:** C5 result caches now allocate only while C5 is active and are freed on stop (same capacities retained), while the already-bounded C5 result lists were reduced modestly, MIMIR's AP list changed from 64 to 32, and the BLE scan display list changed from 48 to 32. Static RAM is now 185,036 bytes (56.5%), down 20,824 bytes from the original 205,860-byte baseline. The device reports 103KB free / 57.3KB largest contiguous at the menu. Hardware validation showed standalone BLE and the actual Defensive Monitor WiFi-to-BLE phase both succeed with `NimBLEDevice::init() -> 1`; the C5 allocation failure paths free every partial allocation.
 
 ### Known issue (not yet fixed)
+
 - System > Layout (`feat_menu_style_toggle`) crashed once during the sweep with `assert failed: xQueueSemaphoreTake queue.c:1713 (pxQueue->uxItemSize == 0)` — a FreeRTOS semaphore-take called on a handle that's actually a data queue. Did not reproduce in 10 isolated attempts, nor in 6 further attempts after deliberately re-recreating the same heap fragmentation (~14.5 KB free / 7.7 KB largest block) that preceded the original crash. Layout itself contains no queue/semaphore code (it only reads/writes an NVS pref and enqueues one SFX toast) and grep found zero direct `xSemaphoreTake`/`xQueueCreate` misuse in the codebase, so the likely cause is a rare cross-task race inside a library (SFX player task vs. I2S Speaker/Mic, or NVS) rather than a bug in Layout. Needs a live GDB/core-dump session to pin down further.
   - Decoded the panic's own backtrace with `addr2line` (no coredump needed — the panic handler already prints one over serial): the real call chain is a menu toggle feature -> `Preferences::begin()` -> `nvs_open_from_partition` -> `nvs_flash_init_partition` -> `nvs::Item::checkHeaderConsistency` -> `_lock_acquire` -> `lock_acquire_generic` -> `xQueueSemaphoreTake` (assert). It's a real assert inside NVS/newlib's internal locking, not our own Preferences call sites (all of ours use the plain default "nvs" partition, no custom `partition_label`). Most likely heap corruption from something else during the long sweep tripping NVS's internal lock object under severe fragmentation, surfacing here rather than at its true origin.
   - Tried live JTAG via the ESP32-S3's built-in USB-JTAG (OpenOCD is already installed): got past a stray `OPENOCD_SCRIPTS` env var pointing at a mismatched ESP-IDF install, but Windows has the JTAG USB interface bound to a driver `libusb`/WinUSB can't open (`LIBUSB_ERROR_NOT_FOUND`). Needs a one-time WinUSB driver swap via Zadig (manual GUI step, ~2 minutes, targets only the JTAG interface — not the COM port used for the serial harness).
@@ -79,6 +98,7 @@ Fork revision. Tracks [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/
 ## [0.7.0] - 2026-09-11
 
 ### Added
+
 - **Wardrive Live Surveillance Alarm:** Integrated real-time Flock Safety ALPR camera and ShotSpotter Raven sensor fingerprinting directly into Wardrive with siren tone alarms (`sfx_alert`), matrix alert banners, and Argus rage mood flashes.
 - **Triton RPG Gotchi Leveling & XP:** Persistent 10-rank leveling progression (`Novice` to `Leviathan`) with XP earned on PMKIDs/Handshakes and NVS brain persistence.
 - **GATT Explorer Suite:** Human-readable Bluetooth SIG service and characteristic name resolution, live notification streaming (`N`), and full profile SD tree dumps (`S`).
@@ -89,6 +109,7 @@ Fork revision. Tracks [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/
 - **Visuals & Audio:** 11 cybernetic themes with a scrollable 6-row window, 13 screensavers (including Sat Skyplot, SDR Waterfall, Starfield Warp), 4 audio profiles (Cyberpunk, 8-Bit, Minimal, SDR Radio), and a top status bar battery percentage/charging indicator.
 
 ### Fixed
+
 - Fixed Wardrive AP counter starting at zero on boot.
 - Fixed Wardrive audio click cues dying after 256 in-RAM AP cache rollover.
 - Fixed Matrix Rain screensaver spanning only half the screen; now spans all 42 columns across the full 240px width.
@@ -148,7 +169,7 @@ Fork revision. Tracks [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/
 
 - **Argus** (the handshake-hunter gotchi) now hunts 5 GHz handshakes via the
   TRIDENT C5 satellite when one is online, and got a cursed-demigod character
-  + lore pass.
+  - lore pass.
 - Full website + docs refresh: magenta cyberpunk re-skin, glitch accordions,
   two-lane README (newcomers + nerds), self-hosted Cardputer web-flash bin,
   six previously-uncredited devs added to the credits wall.
@@ -174,7 +195,7 @@ Fork revision. Tracks [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/
   Lidl, talking-novelty, Honeywell + Heath/Zenith chimes), restaurant
   pagers (LRS + Genesys), keychain panic alarm, cricket chirp, TV-B-Gone
   RF beep, air horn, wireless outlet packs (5-pack A/B + Etekcity ON/OFF
-  + master ALL ON/OFF), ceiling fan (LOW/MED/HIGH/OFF), smoke alarm
+  - master ALL ON/OFF), ceiling fan (LOW/MED/HIGH/OFF), smoke alarm
   test, window sensor alert, PIR motion tripped, glass break alert.
   Baked signals merge into their natural category alongside any user
   recordings dropped into `/poseidon/signals/<cat>/`; SD entries
@@ -455,7 +476,7 @@ section.
 - **Triton mid-session `sd_remount`** that deadlocked HSPI — removed.
 - **Web flasher 404.** `docs/flash/` was untracked locally so
   `/flash/` returned 404 on Pages. Now committed with `!docs/flash/bin/**/*.bin`
-  + `!docs/bin/**/*.bin` negation rules in `.gitignore` so the
+  - `!docs/bin/**/*.bin` negation rules in `.gitignore` so the
   binaries actually ship.
 - **Web flasher CDN.** `docs/flash/index.html` was on `unpkg.com`
   which served an edge-cached old 10.0-era bundle with no ESP32-C5
@@ -635,6 +656,7 @@ users build from source. Cleaner release page, no user confusion.
 ### Added — three-tier polish pass (15 items)
 
 Tier 1 (QoL wins):
+
 - WiFi scan: **S=save** dumps filtered results to `/poseidon/wifiscan-<ts>.csv` (ssid/bssid/channel/rssi/auth).
 - BLE scan: **S=save** dumps filtered results to `/poseidon/blescan-<ts>.csv` (mac/type/name/rssi).
 - BLE scan: **W=whisper** in the detail popup jumps straight into WhisperPair on the selected device; skips the rescan phase.
@@ -643,6 +665,7 @@ Tier 1 (QoL wins):
 - Deleted `src/deauth_autotest.cpp` and its `#ifdef POSEIDON_AUTO_DEAUTH_TEST` call site in `main.cpp` — served its purpose during v0.4 debug; the real fix is shipped in `wifi_sanity_override.cpp`.
 
 Tier 2 (architectural):
+
 - **Wardrive AP table now public** (`src/wifi_wardrive.h`). `g_wdr_aps[256]` + `g_wdr_ap_count` survive across feature exits — the session's richest BSSID→SSID→auth dictionary is now queryable by any WiFi-centric feature.
 - **Triton seeds from wardrive on entry**: closes the "first 30s of hashcat lines have blank ESSID" gap. Serial logs the seed count.
 - **wifi_pmkid seeds from wardrive too**: handshakes captured right after a wardrive session now carry the real ESSID field from frame zero.
@@ -651,9 +674,10 @@ Tier 2 (architectural):
 - **In-feature `?` help**: `menu.cpp` exports `g_current_feature_item` + `ui_show_current_help()`. Press `?` inside a feature to render its own long-form info paragraph without ESCing back to the menu. Wired into wifi_scan / ble_scan / ble_whisperpair / subghz_jam_detect as the starter set; other features can add the binding with one line.
 
 Tier 3 (strategic):
+
 - **TRIDENT `status` command**: desktop companion can now query `{"cmd":"status"}` to get fw version, active radio, free heap, wardrive AP count without screen-scraping.
 - **TRIDENT `loot` command**: `{"cmd":"loot","which":"creds|ntlm|responder|whisperpair|wigle"}` streams SD logs as JSON-line events (`loot_begin` / `loot_row` / `loot_end`) — live credential relay to the desktop without pulling the SD card.
-- **Mesh `!poseidon ping` / `!poseidon status`**: LoRa Meshtastic messages prefixed with `!poseidon ` are parsed in the RX path and respond with broadcast text. Turns the mesh into a C2 channel for field-deployed nodes.
+- **Mesh `!poseidon ping` / `!poseidon status`**: LoRa Meshtastic messages prefixed with `!poseidon` are parsed in the RX path and respond with broadcast text. Turns the mesh into a C2 channel for field-deployed nodes.
 - **New feature: `Radio → Sub-GHz → Jam Detect`**: RSSI-anomaly monitor. 10-second baseline warmup, then alerts on sustained `baseline + 15 dBm` spikes — the signature of a jammer or sustained TX in-band. Red overlay + two-tone siren + CSV log to `/poseidon/jamdetect.csv`. Peer to the WiFi deauth-detect feature.
 - **New menu: `Tools → Hunt`**: bundles all four hot/cold RSSI locators (BLE tracker hunt + passive tracker scan + sub-GHz finder + 2.4 GHz finder) under one submenu. Operator picks "what am I hunting?" first instead of digging through per-radio menus.
 
@@ -772,6 +796,7 @@ NimBLE/RadioLib/lwIP versions — deauth was solved separately by the
 symbol override above.
 
 Toolchain fallout (fixed):
+
 - `c5_cmd.cpp`, `mesh.cpp` — ESP-NOW recv callback signature changed in
   IDF 5.x from `(mac, data, len)` to `(recv_info, data, len)`. Wrapped
   in `#if ESP_IDF_VERSION_MAJOR >= 5` for dual-platform builds.
@@ -813,7 +838,6 @@ Hardware path: works now on WiFi STA mode (device joins target). Once the
 user's W5500 SPI Ethernet module arrives, same attacks work over wired too
 via lwIP's transport-agnostic `netif`.
 
-
 ## [0.3.0] - 2026-04-17
 
 ### Added — Meshtastic node (full participant)
@@ -829,6 +853,7 @@ not just a listener. Four new menu entries under LoRa:
   pin on other Meshtastic apps when GPS has a fix
 
 Wire-level compatibility (byte-exact vs firmware v2.7.23):
+
 - LoRa PHY: 906.875 MHz, SF11, BW250, CR4/5, preamble 16, sync 0x2B, CRC on
 - 16-byte packet header (to/from/id/flags/channel/next_hop/relay_node) LE
 - AES-CTR-128 with default LongFast PSK, counter block in bytes 12-15 of nonce
@@ -837,6 +862,7 @@ Wire-level compatibility (byte-exact vs firmware v2.7.23):
 - Packet ID = 10-bit counter | 22-bit random, non-zero guarantee
 
 Leaf-only design:
+
 - We receive and send but do not forward other nodes' packets
 - No PKI (AES-CCM + Curve25519), MQTT, ACKs, telemetry, multi-channel
 
@@ -853,6 +879,7 @@ is wideband at the tuned frequency — you can't actually get per-bin
 spectrum from a single reading, so the sweep was misleading anyway.
 
 **Rewrite:**
+
 - Tune once at band center, stay in continuous RX (no sweep per frame)
 - Sample ambient RSSI per frame — non-blocking, ~1 ms
 - X-axis reinterpreted as time instead of frequency (honest about what
@@ -882,6 +909,7 @@ a hard boot loop cycling every few hundred ms — `rst:0x3 RTC_SW_SYS_RST`
 forever, device unusable.
 
 **Fix:**
+
 - Replaced `M5.getIOExpander(0)` with direct I2C writes to the
   PI4IOE5V6408 at address 0x43 via `M5.In_I2C` — register 0x01 for
   direction, 0x05 for output, with a presence probe so missing hats
@@ -900,11 +928,13 @@ no client ever saw a frame addressed to it or broadcast. Plus several
 secondary issues that added up to real-world ineffectiveness.
 
 **Core fix:**
+
 - `wifi_deauth.cpp` — `addr1` (destination) now correctly set to broadcast
   `FF:FF:FF:FF:FF:FF` for the sweep phase, and to specific STA MACs for unicast
   rounds. Was previously hardcoded to the target BSSID, which is a no-op.
 
 **Attack pipeline hardening:**
+
 - Every deauth frame is now paired with a disassoc frame (subtype 0xA0,
   reason 8). Mirrors aircrack-ng `--deauth`, Marauder, and Ghost ESP patterns.
   Some client drivers ignore one but honor the other.
@@ -923,17 +953,20 @@ secondary issues that added up to real-world ineffectiveness.
   burst, restore after.
 
 **New safety:**
+
 - PMF / 802.11w / WPA3 warning screen before firing targeted deauth against
   WPA3-PSK, WPA2/WPA3 transition, WPA2-Enterprise, or WPA3-ENT-192 targets.
   These use Protected Management Frames which cryptographically drop plain
   deauth — previously the UI showed "flooding 40fps" with zero actual kicks.
 
 **New shared code:**
+
 - `src/features/wifi_deauth_frame.h` — single source of truth for frame
   construction. Deauth + disassoc pair builder, correct 802.11-2016 Sequence
   Control encoding, PMF detection helper. All four deauth sites now use it.
 
 **Docs:**
+
 - `docs/deauth-injection-patch.md` — explains why stock ESP-IDF's WiFi blob
   filters some spoofed-addr2 frames at the TX FIFO, and documents the
   platform-fork approach for full parity with Marauder/Ghost ESP on-air
@@ -941,6 +974,7 @@ secondary issues that added up to real-world ineffectiveness.
   is a multiplier, not a replacement.
 
 **Triton integration:**
+
 - Triton's background hunt task now routes all broadcast deauths through the
   shared `wifi_deauth_broadcast` helper — so TM_HUNT, TM_STORM, and TM_SURGICAL
   modes inherit the disassoc pair + seq increment. Previously Triton was
@@ -967,6 +1001,7 @@ LoRa feature. Two bugs compounded:
   and RadioLib eventually aborted mid-sweep.
 
 **Fix:**
+
 - Pass `cfg.bw_khz` unchanged (no divide-by-1000)
 - Check return values on every post-`begin()` setter so future invalid config
   fails loud at init instead of crashing later
@@ -984,7 +1019,7 @@ First tagged release. Everything up to this point.
   per-item info panels via the `=` key, lazy radio-domain switcher
   (WiFi ↔ BLE ↔ off) to survive ESP32-S3 RAM constraints.
 - **Visuals:** Hokusai Great Wave splash with magenta scanline materialization
-  + title glow-in, per-feature dashboard chrome (hex storm backdrop,
+  - title glow-in, per-feature dashboard chrome (hex storm backdrop,
   magenta title bar, cyan frequency bars, corner radar sweep, smooth
   border-fade strobe on events), full-screen action overlays for
   capture moments (matrix rain / radar / waves / glitch blocks).

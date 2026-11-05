@@ -34,11 +34,11 @@ extern void wifi_scanner_run(const uint8_t *, uint16_t, uint16_t);
 extern void zb_sniffer_start(const uint8_t *, uint8_t, uint16_t);
 extern void zb_sniffer_stop(void);
 extern void wifi_attacker_deauth(const uint8_t *, const posei_deauth_req_t *, uint16_t);
+extern void wifi_attacker_deauth_stop(void);
 extern void pmkid_capture_start(const uint8_t *, const posei_pmkid_req_t *, uint16_t);
 extern void pmkid_capture_stop(void);
 extern void hs_capture_start(const uint8_t *, const posei_hs_req_t *, uint16_t);
 extern void hs_capture_stop(void);
-extern void pmkid_capture_stop(void);
 
 static char s_node_name[12] = "C5-?";
 
@@ -195,6 +195,12 @@ static void on_recv(const esp_now_recv_info_t *info,
         zb_sniffer_stop();
         pmkid_capture_stop();
         hs_capture_stop();
+        /* POS-AUDIT-119: deauth previously had no stop path at all — a
+         * targeted or broadcast burst (up to 60 s from the Cardputer's
+         * live dashboard) ran to completion regardless of CMD_STOP, so
+         * ESC/pause on the Cardputer side did nothing until the full
+         * duration elapsed. */
+        wifi_attacker_deauth_stop();
         break;
     /* v3 CMDs that the C5 firmware hasn't implemented yet. POSEIDON-side
      * stubs send these to keep the API surface alive; here we just log.

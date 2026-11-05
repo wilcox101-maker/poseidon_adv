@@ -129,7 +129,19 @@ void zb_sniffer_start(const uint8_t requester[6], uint8_t channel, uint16_t seq)
         xTaskCreate(zb_drain_task, "zb_drain", 4096, NULL, 4, &s_zb_drain);
     }
 
-    esp_ieee802154_enable();
+    /* POS-AUDIT-120: esp_ieee802154_enable()/disable() are refcounted —
+     * zb_sniffer_stop() already guards disable() with s_running because a
+     * stray double-disable (e.g. a duplicate CMD_STOP, which ESP-NOW
+     * delivers often enough to matter per that function's own comment)
+     * underflows the modem-clock refcount and panics the chip. The same
+     * risk runs the other way: a second CMD_SCAN_ZB arriving while a sniff
+     * is already active — retransmit, or the user just re-picking the
+     * feature — previously called enable() again unconditionally. Only
+     * enable on the actual stopped->running transition; channel/filter/
+     * promiscuous/receive are safe and intentional to re-apply every call
+     * so a restart can retarget the channel or hop mode. */
+    if (!s_running) esp_ieee802154_enable();
+
     if (channel == 0xFF) {
         s_hop = true;
         s_channel = 15;

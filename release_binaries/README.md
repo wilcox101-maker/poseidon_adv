@@ -4,7 +4,7 @@ Firmware source in this fork is revision 0.8.1 (Hydra RF Cap pin and SPI fixes o
 `SHA256SUMS.txt` covers every binary in this directory.
 
 | File | Purpose |
-|---|---|
+| --- | --- |
 | `poseidon-factory.bin` | Standalone/M5Burner factory image at `0x0` |
 | `poseidon_adv_factory.bin` | Legacy alias of the factory image |
 | `poseidon_adv.bin` | Standalone application only, for a matching existing partition layout |

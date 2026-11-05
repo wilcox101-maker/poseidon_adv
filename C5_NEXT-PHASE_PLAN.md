@@ -12,6 +12,20 @@ Those nine commands are defined on both sides and unimplemented on the C5. `c5_n
 
 Wardrive stays out of the protocol. `proto.h` says so on purpose. The Cardputer wardrive already merges C5 scan results into the WiGLE CSV during a channel-1 hold.
 
+## Done this cycle — deauth actually transmits, and stops
+
+The 5 GHz deauth path now actually goes on air and can be stopped. Two things were in the way.
+
+- **The blob filter.** `esp_wifi_80211_tx()` returned `ESP_OK` while `ieee80211_raw_frame_sanity_check()` inside `libnet80211.a` silently dropped management subtypes 0xC (deauth) / 0xA (disassoc): the status counter climbed and nothing left the radio. The Cardputer-side link override (`src/features/wifi_sanity_override.cpp`) cannot reach it here — on the C5 the caller and the check live in the **same object** inside the archive, so the call is resolved internally before our object is considered, and both `--wrap` and `--allow-multiple-definition` miss. The fix is a direct in-place binary patch of the function body to `li a0,0 ; ret` (return 0 = "not filtered"), now reproducible as `tools/patch_libnet80211.sh`. It parses the `ar` archive and the member's ELF section/symbol tables in pure Python, overwrites the function at its absolute offset length-preservingly, backs up to `.bak`, and verifies — no `ar` extract/re-insert (that round trip was not byte-stable under the Windows riscv toolchain). It is idempotent and must be re-applied after any ESP-IDF reinstall/update. Confirmed in the linked `poseidon_c5_node.elf` on ESP-IDF 5.5.5 / esp32c5.
+- **No stop path (POS-AUDIT-119).** Deauth had no stop at all — a targeted or broadcast burst (up to 60 s from the Cardputer's live dashboard) ran to completion regardless of `CMD_STOP`. Now `wifi_attacker_deauth_stop()` is wired into `CMD_STOP`, and the TX loops poll a per-attack `stop` flag every frame. There is one active attack at a time (`s_ctx`); a restart signals the current attack and the **new worker** waits (bounded, off the ESP-NOW receive callback so the Wi-Fi task never blocks) for the outgoing one to fully exit before it touches the radio; a failed `xTaskCreate`/`malloc` unwinds instead of wedging every later call; and the enumerated broadcast AP list is task-local so an overlapped restart can't corrupt it.
+
+Two adjacent hardening fixes landed with it:
+
+- **Scan (POS-AUDIT-121).** A `malloc` failure in `wifi_scanner_run` now sends the zero-payload `RESP_AP` end-of-stream terminator, so the Cardputer shows "done/failed" immediately instead of waiting out its own UI deadline.
+- **Zigbee (POS-AUDIT-120).** `esp_ieee802154_enable()` is guarded to the real stopped→running edge to match the refcounted `disable()` in `zb_sniffer_stop()`; a duplicate `CMD_SCAN_ZB` (ESP-NOW redelivery, or the user re-picking the feature) no longer double-enables and underflows the modem-clock refcount.
+
+The six existing C5 rows are unchanged. This cycle was correctness on the paths that already shipped, not new commands — the command build-out below is still the next phase.
+
 ## Priority
 
 ### 1. Finish the commands already in the headers
@@ -21,7 +35,7 @@ Highest value, lowest protocol risk. Same IDs, same structs, `POSEI_VERSION` sta
 Order inside this band follows radio risk. Passive first, then transmit that stays in station mode, then anything that brings up a SoftAP.
 
 | Order | Command | ID | Why this slot |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | `DEAUTH_DETECT` | 22 | Passive. Response is `RESP_DEAUTH_HIT` (48). Smallest new handler. |
 | 2 | `PROBE_SNIFF` | 21 | Passive. `RESP_PROBE` (47). Karma needs these SSIDs later, so this lands first. |
 | 3 | `CLIENTS_AP` | 19 | Channel-locked STA list. `RESP_STA` (46). This is the 5 GHz client list. |
@@ -34,7 +48,7 @@ Order inside this band follows radio risk. Passive first, then transmit that sta
 
 Per command I touch:
 
-- `c5_node/main/main.c` — replace the drop case, and make `CMD_STOP` call the new stop function. Today stop only tears down Zigbee, PMKID, and handshake capture.
+- `c5_node/main/main.c` — replace the drop case, and make `CMD_STOP` call the new stop function. Stop already tears down Zigbee, PMKID, handshake capture, and (this cycle) deauth; each new transmit/SoftAP mode adds its own stop in the same `CMD_STOP` case.
 - A small `.c` next to `wifi_scanner.c` when the handler does not fit in `main.c`.
 - `src/menu.cpp` — one `MENU_C5` row.
 - `src/features/c5_scan.cpp` — the screen, same shape as the existing C5 pages.
@@ -80,7 +94,7 @@ Implementing `CLIENTS_HUNT` through `CIW` stays on version 4. IDs 18–26 and re
 
 `RELEASE_CHECKLIST.md` says to bump `POSEI_VERSION` when CMD/RESP IDs change, and that most C5 commits do not need it. The handshake shrink is the exception already in the tree: the IDs stayed put, the struct changed, and the constant went 3 → 4. Struct layout counts the same as a new ID. On the next real bump I also rewrite the "wire protocol v3" comments in `proto.h` and `c5_cmd.h` so they match the constant.
 
-**Cardputer version string.** SemVer, separate from the wire integer. The build flag is `-DPOSEIDON_VERSION=\"0.8.1\"` in `platformio.ini`. `src/version.h` falls back to `"0.8.1"` when the flag is missing. Splash, About, and the serial line print `poseidon_version()`. Checklist rule: patch for a fix, minor for a backward-compatible feature, major when the Cardputer-facing contract breaks (saved files, menu keys). The first release that ships a band-1 C5 menu row is a minor bump, **0.8.1 → 0.9.0**, once for the release, not once per command. Protocol v3 and v4 already shipped inside the 0.x line. A wire flag day stays a `POSEI_VERSION` bump plus a changelog sentence. The string stays 0.8.1 until that release.
+**Cardputer version string.** SemVer, separate from the wire integer. The build flag is `-DPOSEIDON_VERSION=\"0.9.0\"` in `platformio.ini`. `src/version.h` falls back to `"0.9.0"` when the flag is missing. Splash, About, and the serial line print `poseidon_version()`. Checklist rule: patch for a fix, minor for a backward-compatible feature, major when the Cardputer-facing contract breaks (saved files, menu keys). The TRIDENT C5-node release took the minor bump, **0.8.1 → 0.9.0**, once for the release, not once per command. Protocol v3 and v4 already shipped inside the 0.x line. A wire flag day stays a `POSEI_VERSION` bump plus a changelog sentence.
 
 **C5 image label.** The C5 tree has no second version macro. `c5_node/CMakeLists.txt` only names the project `poseidon_c5_node`. The published string is `version` in `docs/flash/manifest-trident-c5.json`: `proto-v4-2026-07-17`, pattern `proto-vN-YYYY-MM-DD`. The date changes when I cut a new C5 binary, even if N stays 4. N changes when `POSEI_VERSION` changes. Checklist §1 is the touch list: `platformio.ini` when the Cardputer string changes, `proto.h` when the wire changes, the manifest when a new C5 image is cut, `c5_node/README.md` when the protocol table is wrong.
 

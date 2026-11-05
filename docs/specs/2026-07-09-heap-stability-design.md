@@ -12,7 +12,7 @@ Launching the WiFi Evil-Portal clone crashes with a `+0x2c` null deref inside
 code:
 
 | State at portal entry | Free internal heap |
-|---|---|
+| --- | --- |
 | Fresh boot | ~48 KB |
 | After cycling features (Triton, BLE scan, ARGUS, spectrum) | ~7.8 KB |
 
@@ -75,6 +75,7 @@ bool   rf_preflight(const char *tag, size_t need_bytes);
 ```
 
 Design notes:
+
 - The registry is a fixed-size static array of function pointers (no dynamic
   allocation in the heap-management code itself). Cap ~16 entries.
 - `heap_min_ever_internal()` is updated on every `heap_report` and every
@@ -104,6 +105,7 @@ Features are dispatched from exactly two seams, both already bracketed with
 `src/menu.cpp:1358` and `src/menu.cpp:1395`.
 
 At each seam:
+
 1. Before `action()`: call `heap_reclaim_all()`, then capture
    `size_t base = heap_free_internal();`
 2. After `action()`: log `sel->label`, `base`, current free, and the net delta.
@@ -119,7 +121,7 @@ alloc-on-feature-entry / free-on-exit. Candidates ranked by size (from ELF
 symbol census, `0x3fc…` region):
 
 | Symbol | Size | Owner | Action |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `g_wdr_aps` | 20 KB | wardrive | lazy alloc on wardrive entry, free on exit |
 | `s_capq` | 8 KB | WiFi capture | lazy alloc on capture entry, free on exit |
 | `feat_wifi_ciwv active` | 6.9 KB | wifi feature | lazy alloc / free |
@@ -153,7 +155,7 @@ free on every exit path. USB/TinyUSB buffers are excluded.
 
 ## Data flow
 
-```
+```text
 boot ─> heap_census()                       (baseline logged)
 menu dispatch ─> heap_reclaim_all()          (ARGUS yields 18 KB, etc.)
               ─> base = heap_free_internal()

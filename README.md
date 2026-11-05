@@ -8,27 +8,27 @@
   [![target](https://img.shields.io/badge/target-Cardputer--Adv-blue)](https://m5stack.com)
   [![framework](https://img.shields.io/badge/framework-Arduino%2FPlatformIO-green)](https://platformio.org/)
   [![license](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
-  [![modules](https://img.shields.io/badge/research%20modules-170%2B-orange)]()
-  [![release](https://img.shields.io/badge/release-v0.8.1-blueviolet)](https://github.com/wilcox101-maker/poseidon_adv)
-  [![version](https://img.shields.io/badge/version-Deepwater-success)]()
-  [![use](https://img.shields.io/badge/use-authorized%20%2F%20owned%20hardware-important)]()
+  [![modules](https://img.shields.io/badge/research%20modules-170%2B-orange)](FEATURES.md)
+  [![release](https://img.shields.io/badge/release-v0.9.0-blueviolet)](https://github.com/wilcox101-maker/poseidon_adv)
+  [![version](https://img.shields.io/badge/version-Deepwater-success)](CHANGELOG.md)
+  [![use](https://img.shields.io/badge/use-authorized%20%2F%20owned%20hardware-important)](#safety--authorized-use)
 
 </div>
 
 ---
 
-## This fork (0.8.1)
+## This fork (0.9.0)
 
-[wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv) is my checkout of [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). Upstream remains the base. Fork-specific work stays in a short stack of focused commits and is kept when upstream moves. Source revision **0.8.1**. Binaries under `release_binaries/` are still the 0.8.0 Deepwater images until the next package build.
+[wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv) is my checkout of [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). Upstream remains the base. Fork-specific work stays in a short stack of focused commits and is kept when upstream moves. Source revision **0.9.0** (the TRIDENT C5-node release: deauth stop path, scan/zigbee hardening, reproducible libnet80211 patch). Binaries under `release_binaries/` are still the 0.8.0 Deepwater images until the next package build.
 
-I keep a counted inventory of this tree in [features.md](features.md).
+I keep a counted inventory of this tree in [FEATURES.md](FEATURES.md).
 
 ### What this fork keeps
 
 **Hydra RF Cap.** The official PINGEQUA map for Cardputer ADV, the same wiring Bruce uses for that hat. Poseidon and Bruce are separate firmwares. Poseidon does not read `brucePins.conf`.
 
 | Signal | GPIO | Role |
-|---|---|---|
+| --- | --- | --- |
 | SPI SCK / MISO / MOSI | 40 / 39 / 14 | Shared with the microSD |
 | CC1101 CS / GDO0 | 13 / 5 | CS is also LoRa-GNSS GPS UART TX |
 | nRF24 CS / CE | 6 / 4 | CE is high-Z when the radio is released |
@@ -49,6 +49,8 @@ Keep new fork work as one clear commit in one of these units:
 3. Docs (this note, the SaltyJack how-to, changelog)
 
 When pulling Evil0ctopus/poseidon_adv, replay those units whole so the Hydra fixes, the warning cleanup, and the docs each stay identifiable. History already on `master` stays as published. Rewrite it only when a sync cannot proceed any other way.
+
+The live divergence ledger — last-synced upstream ref, ahead/behind, and per-unit status — is in [docs/fork-status.md](docs/fork-status.md).
 
 ---
 
@@ -71,21 +73,21 @@ If you are unsure whether a use is allowed, treat it as **not allowed**. See the
 
 Upstream POSEIDON is [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). I track that tree. The stability work, performance tweaks, and lab / field features in this checkout sit on top of it, and I keep the Hydra, warning-cleanup, and docs commits described above.
 
-* **170+ research modules:** Broad coverage across Wi-Fi, BLE, Sub-GHz, 2.4 GHz, LoRa, Infrared, and LAN for recon and defensive assessment in authorized environments.
-* **QWERTY-driven interface:** Letter-mnemonic menus and direct parameter typing (no thumb-stick scrolling).
-* **Argus autonomous Gotchi:** A reactive 96×96 mood sprite that can hunt handshakes on owned networks using an SD-persisted reinforcement-learning brain.
-* **Deepwater interface:** Eleven themes, crisp domain icons, compact list/card layouts, optional ambient decoration and reduced motion.
+- **170+ research modules:** Broad coverage across Wi-Fi, BLE, Sub-GHz, 2.4 GHz, LoRa, Infrared, and LAN for recon and defensive assessment in authorized environments.
+- **QWERTY-driven interface:** Letter-mnemonic menus and direct parameter typing (no thumb-stick scrolling).
+- **Argus autonomous Gotchi:** A reactive 96×96 mood sprite that can hunt handshakes on owned networks using an SD-persisted reinforcement-learning brain.
+- **Deepwater interface:** Eleven themes, crisp domain icons, compact list/card layouts, optional ambient decoration and reduced motion.
 
 ---
 
 ## What's New & Custom Changes in `poseidon_adv`
 
-* **Deepwater redesign:** Shared bounded text/chrome, a short skippable boot reveal, scrollable help, paged shortcuts and display accessibility settings.
-* **Real-time sensor awareness:** Dedicated monitoring helpers for Flock ALPR and ShotSpotter Raven fingerprints (lab / awareness tooling — not for unauthorized targeting).
-* **Triton RPG Gotchi leveling:** Persistent XP tracking and interactive leveling tied to Argus.
-* **Expanded UI palettes & screensavers:** Eleven themes and thirteen ambient screensavers; animation is optional.
-* **On-device data management:** Integrated hex and log viewers on the display.
-* **Advanced connectivity:** GATT notification streaming, richer device/OS fingerprinting, and expanded support for hardware hat expansion modules.
+- **Deepwater redesign:** Shared bounded text/chrome, a short skippable boot reveal, scrollable help, paged shortcuts and display accessibility settings.
+- **Real-time sensor awareness:** Dedicated monitoring helpers for Flock ALPR and ShotSpotter Raven fingerprints (lab / awareness tooling — not for unauthorized targeting).
+- **Triton RPG Gotchi leveling:** Persistent XP tracking and interactive leveling tied to Argus.
+- **Expanded UI palettes & screensavers:** Eleven themes and thirteen ambient screensavers; animation is optional.
+- **On-device data management:** Integrated hex and log viewers on the display.
+- **Advanced connectivity:** GATT notification streaming, richer device/OS fingerprinting, and expanded support for hardware hat expansion modules.
 
 ## Deepwater interface
 
@@ -101,7 +103,7 @@ Upstream POSEIDON is [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/p
 The default POSEIDON theme now uses navy, ice-white and cyan with restrained lavender. Existing saved theme IDs and explicit ambient preferences are preserved. New ambient preferences default off; reduced motion pauses decoration and automatic animated screensavers, not live measurements.
 
 | Theme | Aesthetic |
-|---|---|
+| --- | --- |
 | POSEIDON | Deepwater navy / ice-white / cyan — default |
 | MATRIX | Phosphor green |
 | E-INK | Paper white and dark text |
@@ -118,9 +120,9 @@ The default POSEIDON theme now uses navy, ice-white and cyan with restrained lav
 
 Authorized use only: networks and hardware you own, or explicit written permission. DHCP starvation and rogue DHCP disrupt address assignment. Responder and WPAD collect authentication material.
 
-**Comprehensive how-to** (STA meaning, SoftAP contrast, How-to A/B/C, pins, hat conflicts, C5 offsets, “Not connected” troubleshooting, 0.8.1 vs future W5500): **[docs/saltyjack-networking.md](docs/saltyjack-networking.md)** and **[docs/saltyjack-networking.html](docs/saltyjack-networking.html)**.
+**Comprehensive how-to** (STA meaning, SoftAP contrast, How-to A/B/C, pins, hat conflicts, C5 offsets, “Not connected” troubleshooting, 0.9.0 vs future W5500): **[docs/saltyjack-networking.md](docs/saltyjack-networking.md)** and **[docs/saltyjack-networking.html](docs/saltyjack-networking.html)**.
 
-The tagged image in this tree is Deepwater **v0.8.0**. There is no separate v0.8.1 file. Lab notes that say “0.8.1 fork” mean this tree. W5500 firmware is future work, not this image.
+The tagged image in this tree is Deepwater **v0.8.0**. There is no separate v0.9.0 binary file. Lab notes that say “0.9.0 fork” mean this tree. W5500 firmware is future work, not this image.
 
 ### Wi-Fi STA
 
@@ -141,7 +143,7 @@ Rogue DHCP (AP) is the other path, and it is not STA. The Cardputer brings up an
 [docs/hardware.html](docs/hardware.html) says the driver is **Not wired in this tree**. No Ethernet stack is started. Until it is integrated, use How-to A. Do not seat Hydra or LoRa at the same time; they share SPI with the microSD. A **W5500 Mini is 3.3 V only** — do not power a Mini from 5 V.
 
 | Signal | GPIO | Notes |
-|---|---|---|
+| --- | --- | --- |
 | SCLK | 40 | Shared SPI clock |
 | MOSI | 14 | Shared SPI MOSI |
 | MISO | 39 | Shared SPI MISO |
@@ -162,7 +164,7 @@ Separate board, ESP-NOW, for 5 GHz, Zigbee, and 5 GHz PMKID. SaltyJack never rou
 ### Quick map
 
 | Path | What it is | SaltyJack |
-|---|---|---|
+| --- | --- | --- |
 | STA | Cardputer joins an authorized AP | Starve, rogue STA, Responder, WPAD — works now |
 | SoftAP | Open AP `POSEIDON-SaltyJack` | Rogue DHCP (AP) only — works now |
 | W5500 | RJ45, pin table above | Not in this tree. Use STA until a driver lands |
@@ -206,7 +208,7 @@ On Windows, with development firmware running on a connected Cardputer:
 For release packaging after building all three profiles:
 
 ```powershell
-.\scripts\prepare_deepwater_release.ps1 -Version 0.8.1
+.\scripts\prepare_deepwater_release.ps1 -Version 0.9.0
 ```
 
 This refreshes the [distribution binaries](release_binaries/README.md), legacy
@@ -234,10 +236,10 @@ and safe navigation validation, not a transmit/destructive-operation audit.
 
 ## Acknowledgments & Shoutouts
 
-* **[@Evil0ctopus](https://github.com/Evil0ctopus)** — Fork of origin
-* **[@7h30th3r0n3](https://github.com/7h30th3r0n3)** — Evil-M5Project and RaspyJack (inspiration for the SaltyJack LAN toolkit).
-* **[@justcallmekoko](https://github.com/justcallmekoko)** — ESP32Marauder wireless research / promiscuous-mode frameworks.
-* **[@bmorcelli](https://github.com/bmorcelli)** — Custom M5Burner firmware browser and webflasher.
-* **[@pr3y](https://github.com/pr3y)** — Bruce hardware reference implementations.
-* **[@UberGuidoZ](https://github.com/UberGuidoZ)** — Flipper Sub-GHz signal libraries.
-* **[@M5Stack](https://github.com/M5Stack)** — Hardware design and SDKs.
+- **[@Evil0ctopus](https://github.com/Evil0ctopus)** — Fork of origin
+- **[@7h30th3r0n3](https://github.com/7h30th3r0n3)** — Evil-M5Project and RaspyJack (inspiration for the SaltyJack LAN toolkit).
+- **[@justcallmekoko](https://github.com/justcallmekoko)** — ESP32Marauder wireless research / promiscuous-mode frameworks.
+- **[@bmorcelli](https://github.com/bmorcelli)** — Custom M5Burner firmware browser and webflasher.
+- **[@pr3y](https://github.com/pr3y)** — Bruce hardware reference implementations.
+- **[@UberGuidoZ](https://github.com/UberGuidoZ)** — Flipper Sub-GHz signal libraries.
+- **[@M5Stack](https://github.com/M5Stack)** — Hardware design and SDKs.

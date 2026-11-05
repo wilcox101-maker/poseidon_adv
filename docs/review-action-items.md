@@ -1,6 +1,6 @@
 # POSEIDON — Review & Action Items
 
-**Repo:** this tree, tracking https://github.com/Evil0ctopus/poseidon_adv
+**Repo:** this tree, tracking <https://github.com/Evil0ctopus/poseidon_adv>
 **Target:** M5Stack Cardputer (ESP32-S3), PlatformIO/Arduino, C/C++
 **Reviewer:** Claude (web) — handing off to Claude Code for implementation
 
@@ -23,7 +23,7 @@ The firmware is in good shape. README is strong, attribution is exemplary, archi
 
 ## Repo structure (for reference)
 
-```
+```text
 poseidon/
 ├── assets/raw/
 ├── c5_node/              # ESP32-C5 5GHz remote radio node (planned)
@@ -68,12 +68,15 @@ poseidon/
 **Why:** 37 commits, no version. Bug reports are unusable without knowing which build.
 
 **Do:**
+
 1. Add to `platformio.ini` build flags:
+
    ```ini
    build_flags =
      -DPOSEIDON_VERSION=\"0.1.0\"
      -DPOSEIDON_BUILD_DATE=\"__DATE__\"
    ```
+
 2. Create `src/version.h` exposing `POSEIDON_VERSION` and a `const char* poseidon_version()` helper.
 3. Show version on the About screen (`src/features/stubs.cpp` or wherever About lives).
 4. Render version in the splash footer (`src/splash.cpp`) — small, bottom-right, dim magenta.
@@ -88,6 +91,7 @@ poseidon/
 **Why:** Zero automated verification across 44 features and multiple radio stacks. Regressions will slip in.
 
 **Do:**
+
 1. Create `.github/workflows/build.yml`.
 2. Install PlatformIO, cache `~/.platformio`, run `pio run`.
 3. On tag push (`v*`), upload `.pio/build/*/firmware.bin`, `bootloader.bin`, `partitions.bin` as workflow artifacts.
@@ -100,6 +104,7 @@ poseidon/
 **Why:** No precompiled binaries = users without PlatformIO locked out. M5Burner-compatible builds drive adoption.
 
 **Do:**
+
 1. After Task 1.1 and 1.2 land, `git tag v0.1.0 && git push --tags`.
 2. CI builds artifacts automatically.
 3. Create a GitHub Release with a short CHANGELOG excerpt (see Task 1.4), attach the `.bin` files.
@@ -114,6 +119,7 @@ poseidon/
 **Why:** 37 commits, no history summary.
 
 **Do:**
+
 1. Create `CHANGELOG.md` following Keep a Changelog format.
 2. Walk `git log --oneline master` and group commits into: Added / Changed / Fixed / Removed.
 3. Put everything under `## [0.1.0] - YYYY-MM-DD` for the initial release.
@@ -132,26 +138,35 @@ poseidon/
 ## Priority 3 — Documentation gaps
 
 ### Task 3.1 — SD card schema doc
+
 ### Task 3.2 — DuckyScript-lite coverage doc
+
 ### Task 3.3 — Responder target environment note
+
 ### Task 3.4 — Regional RF compliance note
+
 ### Task 3.5 — Evil Portal template gallery
 
 ## Priority 4 — Ecosystem integration
 
 ### Task 4.1 — Sub-GHz remote radio node spec
+
 ### Task 4.2 — Kismet/PCAP output mode
 
 ## Priority 5 — Robustness
 
 ### Task 5.1 — Power management
+
 ### Task 5.2 — Watchdog / crash recovery audit
+
 ### Task 5.3 — Triton brain corruption handling
 
 ## Priority 6 — Nice to have
 
 ### Task 6.1 — Issue & PR templates
+
 ### Task 6.2 — SECURITY.md
+
 ### Task 6.3 — Host-side unit tests for parsers
 
 ---

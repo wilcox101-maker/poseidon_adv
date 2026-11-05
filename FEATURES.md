@@ -2,7 +2,7 @@
 
 Running inventory of what this fork ships. I recount from the files named here when a menu, pin map, or payload table changes. Numbers are from those sources. Where an on-screen blurb disagrees with the table, I say so.
 
-Source revision is **0.8.1** (`POSEIDON_VERSION` in `platformio.ini` and `src/version.h`). The README badge and the `version` field in `docs/m5burner.json` match that. The factory binary those catalog entries still point at, and the files under `release_binaries/`, are the **0.8.0** Deepwater images. [docs/saltyjack-networking.md](docs/saltyjack-networking.md) still says the tagged version string is Deepwater v0.8.0. That sentence is behind the source tag. The image you flash is still the 0.8.0 binary, and the W5500 driver is still absent.
+Source revision is **0.9.0** (`POSEIDON_VERSION` in `platformio.ini` and `src/version.h`). The README badge and the `version` field in `docs/m5burner.json` match that. The factory binary those catalog entries still point at, and the files under `release_binaries/`, are the **0.8.0** Deepwater images. [docs/saltyjack-networking.md](docs/saltyjack-networking.md) still says the tagged version string is Deepwater v0.8.0. That sentence is behind the source tag. The image you flash is still the 0.8.0 binary, and the W5500 driver is still absent.
 
 Authorized use only: hardware and networks I own, or where I have written permission.
 
@@ -11,7 +11,7 @@ Authorized use only: hardware and networks I own, or where I have written permis
 `src/menu.cpp` holds **170 rows**: **153** launch an action, **17** open a submenu. **148** action functions are unique. Five are linked from two rows:
 
 | Function | Rows |
-|---|---|
+| --- | --- |
 | `feat_wifi_connect` | WiFi → Connect, Network → Connect |
 | `feat_ble_tracker` | Bluetooth → Tracker, Hunt → Tracker scan |
 | `feat_ble_finder` | Bluetooth → Finder, Hunt → BLE tracker |
@@ -23,7 +23,7 @@ The README badge says **170+**. That matches this tree: 170 rows in `src/menu.cp
 Root (`MENU_ROOT_CHILDREN`, 17):
 
 | Key | Name | What it opens |
-|---|---|---|
+| --- | --- | --- |
 | `w` | WiFi | 21 actions |
 | `b` | Bluetooth | 18 actions |
 | `i` | IR | 6 rows (5 actions + Pranks) |
@@ -73,7 +73,7 @@ Live Keyboard, Built-in, Pranks, Windows, macOS, Linux, Android, ChromeOS.
 Script counts from the arrays:
 
 | Set | File | Count |
-|---|---|---|
+| --- | --- | --- |
 | Built-in | `s_payloads[]` in `badusb.cpp` | 5 (Hello, Notepad, Rickroll, Lock, Terminal) |
 | Windows | `BADUSB_WIN_PAYLOADS` | 47 |
 | macOS | `BADUSB_MAC_PAYLOADS` | 24 |
@@ -139,7 +139,7 @@ MIMIR is the USB-C drop-box control row. PC Bridge is TRIDENT: framebuffer mirro
 Four paths. SaltyJack uses the first two.
 
 | Path | State in this tree | What uses it |
-|---|---|---|
+| --- | --- | --- |
 | Wi-Fi STA | Works. lwIP on `WIFI_STA_DEF` after a join. | SaltyJack DHCP Starve, Rogue DHCP (STA), Responder, WPAD. Network-menu tools that need an address. |
 | SoftAP | Works. Open AP `POSEIDON-SaltyJack` from `wifi_raw_ap_up` in `saltyjack_dhcp_rogue.cpp`. | SaltyJack Rogue DHCP (AP). Other SoftAP tools (Portal, Evil Twin, Karma, AP Clone) bring up their own AP. |
 | W5500 RJ45 | Pinout and docs only. No `Ethernet.begin`, no W5500 driver, no Ethernet netif in `src/`. | Nothing. `saltyjack.h` still describes it as future. |
@@ -152,7 +152,7 @@ W5500 pinout, from `docs/saltyjack-networking.md` and `docs/hardware.html` (the 
 Hardware-confirmed PINGEQUA map. Definitions: `src/cc1101_hw.h`, `src/nrf24_hw.h`, `src/sd_helper.h`, `src/gps.h`. Poseidon does not read `brucePins.conf`.
 
 | Signal | GPIO |
-|---|---|
+| --- | --- |
 | SPI SCK / MISO / MOSI | 40 / 39 / 14 |
 | CC1101 CS / GDO0 | 13 / 5 |
 | nRF24 CS / CE | 6 / 4 |
@@ -170,7 +170,7 @@ Seat one hat at a time. Hydra, the CAP-LoRa1262, and a W5500 module share SCK / 
 Own renderer in `src/features/saltyjack/saltyjack_menu.cpp`. Root `j`. **7** rows:
 
 | Row | Path |
-|---|---|
+| --- | --- |
 | About | credits |
 | DHCP Starve | STA |
 | Rogue DHCP (STA) | STA |
@@ -192,7 +192,7 @@ Operator notes: [docs/saltyjack-networking.md](docs/saltyjack-networking.md).
 From `platformio.ini`:
 
 | Env | Role |
-|---|---|
+| --- | --- |
 | `cardputer` | Standalone. `default_8MB.csv`. Factory image at `0x0`. |
 | `cardputer-launcher` | App-only for bmorcelli Launcher. `support_files/launcher_8Mb.csv`. App slot `0x170000`, size `0x4F0000`. |
 | `cardputer-launcher-dual` | App-only for the dual-app unit. `support_files/launcher_dual_app_8Mb.csv`. POSEIDON `0x1E0000` size `0x2D0000`, Meshtastic `0x4B0000`. |

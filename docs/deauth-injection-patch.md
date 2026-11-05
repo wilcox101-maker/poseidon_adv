@@ -1,5 +1,23 @@
 # Deauth Injection — Why Stock ESP-IDF Isn't Enough
 
+> **Current status (kept for background).** The actionable advice below —
+> "swap to the Marauder/Bruce *platform fork*" and the `espressif32@6.7.0`
+> references — is **out of date**. POSEIDON no longer swaps platforms for
+> this; it pins Bruce's prebuilt libs in `platformio.ini` and defeats the
+> same `ieee80211_raw_frame_sanity_check` filter two ways, by target:
+>
+> - **Cardputer / ESP32-S3:** link-time symbol override
+>   (`src/features/wifi_sanity_override.cpp`). See `KnownDeauthBugFixSoon.md`.
+> - **ESP32-C5 node:** the override can't work (caller + filter in one
+>   object inside `libnet80211.a`), so a direct in-place binary patch of the
+>   function is applied to the ESP-IDF toolchain via
+>   `tools/patch_libnet80211.sh`. See `c5_node/README.md` and
+>   `C5_NEXT-PHASE_PLAN.md`.
+>
+> The analysis below still explains *why* the stock blob filters raw TX and
+> why other tools behave differently; treat the "How to apply" options as
+> historical.
+
 ## The problem
 
 POSEIDON's WiFi injection uses `esp_wifi_80211_tx(WIFI_IF_STA, buf, len, false)`. The in-code fixes (sequence numbers, disassoc pairs, correct addressing, client-aware unicast rounds) make every frame we *construct* correct. But the **Espressif WiFi binary blob** is the last mile: it decides whether a given raw frame actually reaches the antenna.
@@ -56,7 +74,7 @@ Valid for legal/compliance reasons (some orgs ban "unauthorized frame injection"
 
 Run `feat_wifi_deauth_broadcast` against a known non-PMF target with a second monitor-mode device nearby. In Wireshark filter:
 
-```
+```text
 wlan.fc.type_subtype == 0x0C && wlan.bssid == <target>
 ```
 
@@ -68,6 +86,7 @@ Also: **drops counter** on the POSEIDON UI. With the patch you should see `drops
 ## What's NOT a patch problem
 
 If deauth doesn't work against:
+
 - **WPA3 / WPA2-Enterprise** — PMF (802.11w) drops cryptographically, patched or not. POSEIDON now warns on these
 - **Brand-new client drivers (iOS 17+, Android 14+)** — some ignore all unprotected mgmt frames regardless of subtype, moving to 802.11w by default. Can't be fixed in software on our end
 - **High-power corporate APs with client-isolation** — they may rebroadcast the client's deauth to drop the *POSEIDON* pseudo-STA instead. Rare but seen

@@ -13,6 +13,7 @@ Phase 2 upgrades KERBEROS from a U2F second factor into a CTAP2 authenticator, s
 ## 2. Goals and non goals
 
 Goals:
+
 - authenticatorGetInfo advertising FIDO_2_0 and U2F_V2, an AAGUID, and options rk=true, up=true, uv=false.
 - authenticatorMakeCredential producing an ES256 (P-256) credential with self attestation.
 - authenticatorGetAssertion signing challenges with per-credential counters.
@@ -20,6 +21,7 @@ Goals:
 - Native unit tests for CBOR, COSE, and command logic; on-device python-fido2 CTAP2 verification.
 
 Non goals this phase:
+
 - Client PIN and user verification (Phase 3).
 - eFuse-hardened credential storage (Phase 4); Phase 2 uses plain NVS, same as Phase 1's device key.
 - credProtect, largeBlob, hmac-secret, enterprise attestation.
@@ -28,6 +30,7 @@ Non goals this phase:
 ## 3. Reused Phase 1 foundations
 
 Unchanged and depended upon:
+
 - CTAPHID transport (`lib/kerberos_core/ctaphid*`) including the direct `tud_hid_n_report` send path that fixed the dead transport.
 - Boot key mode (`kerberos_bootmode`): FIDO is the sole USB HID device; entering KERBEROS reboots into key mode.
 - mbedtls crypto vtable (`kerberos_crypto`): random, SHA-256, P-256 keygen, ECDSA sign, AES-256-GCM.
@@ -39,7 +42,7 @@ Unchanged and depended upon:
 
 New units, mirroring the Phase 1 layout. The portable core stays hardware free and native-testable behind the injected crypto vtable.
 
-```
+```text
   ctaphid_dispatch  ── CTAPHID_CBOR (0x10) ──►  ctap2_handle()      NEW lib/kerberos_core/ctap2.*
                                                     │
                                                     ├─ cbor_util.*   NEW  TinyCBOR map build/parse helpers
@@ -49,26 +52,31 @@ New units, mirroring the Phase 1 layout. The portable core stays hardware free a
 ```
 
 New files:
+
 - `lib/kerberos_core/cbor_util.h` / `.cpp` — thin helpers over TinyCBOR for building and parsing the CTAP2 CBOR maps (keeps command code readable and keeps TinyCBOR usage in one place).
 - `lib/kerberos_core/ctap2.h` / `.cpp` — `uint16_t ctap2_handle(const ctap2_cfg_t*, const uint8_t *req, uint16_t len, uint8_t *out, uint16_t cap)`. Parses the command byte, dispatches to getInfo / makeCredential / getAssertion, assembles COSE keys, authenticatorData, and the attestation object. Returns the CTAP2 status byte followed by CBOR.
 - `lib/kerberos_core/cred_store.h` / `.cpp` — resident credential interface: add, lookup by RP ID hash, enumerate, update counter. On-device impl backs it with NVS; tests use an in-memory impl.
 
 Changes to existing files:
+
 - `ctaphid_dispatch.cpp` — route `CTAPHID_CBOR` to `ctap2_handle` (currently rejected), and set the CBOR capability flag in the INIT response.
 - `kerberos.cpp` — build a `ctap2_cfg_t` (crypto, devkey, AAGUID, presence callback, cred_store) and register both the U2F and CTAP2 handlers.
 
 ## 5. Command behaviour
 
 authenticatorGetInfo (0x04):
+
 - versions: ["U2F_V2", "FIDO_2_0"], aaguid: 16 fixed bytes, options: {rk: true, up: true}. No clientPin option advertised (Phase 3). maxMsgSize reported to match the transport buffer.
 
 authenticatorMakeCredential (0x01):
+
 - Parse clientDataHash, rp, user, pubKeyCredParams (require ES256 / -7, else CTAP2_ERR_UNSUPPORTED_ALGORITHM), options (rk, up).
 - Presence via Enter; deny returns CTAP2_ERR_OPERATION_DENIED.
 - Generate a P-256 keypair. Credential ID: if rk=false, the wrapped private key (stateless, bound to rpIdHash); if rk=true, a random 32-byte ID with the record saved to cred_store.
 - Build authenticatorData (rpIdHash, flags with AT set and UP set, signCount, attestedCredentialData with the COSE ES256 public key) and a "packed" self attestation statement signed by the attestation key.
 
 authenticatorGetAssertion (0x02):
+
 - Parse rpId hash, clientDataHash, allowList, options.
 - Resident path: if allowList empty, look up cred_store by rpIdHash; return the first match now (numberOfCredentials for a later picker).
 - Non-resident path: unwrap each allowList credential ID against rpIdHash; use the first that authenticates.
@@ -77,6 +85,7 @@ authenticatorGetAssertion (0x02):
 ## 6. Resident credential storage
 
 Records in NVS (namespace `kerberos`), one blob per credential under an indexed key, plus a small index of live slots. Each record:
+
 - version byte
 - credential ID (32 bytes)
 - RP ID hash (32 bytes)

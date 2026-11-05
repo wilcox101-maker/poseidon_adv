@@ -28,6 +28,7 @@ This plan is Phase 1 only: a U2F (CTAP1) authenticator. It intentionally exclude
 ## File structure
 
 Portable core (host testable, no hardware headers):
+
 - `lib/kerberos_core/ctaphid.h` / `ctaphid.cpp` — CTAPHID packet framing: reassemble inbound 64 byte reports into a message, fragment an outbound message into reports.
 - `lib/kerberos_core/ctaphid_dispatch.h` / `ctaphid_dispatch.cpp` — channel allocation, INIT, PING, KEEPALIVE, error, and routing MSG to the U2F handler.
 - `lib/kerberos_core/u2f.h` / `u2f.cpp` — U2F APDU parse and response build for Register, Authenticate, Version.
@@ -35,12 +36,14 @@ Portable core (host testable, no hardware headers):
 - `lib/kerberos_core/kerb_crypto.h` — the injected crypto interface (function pointer table) the core calls: random, sha256, P256 keygen, ECDSA sign.
 
 Device layer (Arduino, ESP32 only):
+
 - `src/features/kerberos.cpp` — `feat_kerberos()`, the mode UI, presence prompt, USB bring up and tear down, menu wiring glue, and the crypto vtable filled with mbedtls.
 - `src/features/kerberos_hid.h` / `kerberos_hid.cpp` — the `USBHIDFido` device (report descriptor plus report in and out), pumping bytes between TinyUSB and `ctaphid`.
 - `src/features/kerberos_crypto.cpp` — mbedtls implementations of the `kerb_crypto.h` interface.
 - `src/features/kerberos_attestation.h` — the embedded self signed P256 attestation certificate and private key bytes.
 
 Build and menu:
+
 - `platformio.ini` — add `[env:native-test]`.
 - `src/menu.cpp` — add `extern void feat_kerberos(void);` beside the other externs and a KERBEROS node in `MENU_ROOT_CHILDREN` (hotkey `k`, which is unused).
 - `test/test_kerberos_core/` — Unity tests for the core library.
@@ -50,11 +53,13 @@ Build and menu:
 ### Task 0: Native test harness and empty core library
 
 **Files:**
+
 - Modify: `platformio.ini` (add native test env)
 - Create: `lib/kerberos_core/kerb_crypto.h`
 - Create: `test/test_kerberos_core/test_main.cpp`
 
 **Interfaces:**
+
 - Produces: the `kerb_crypto_t` vtable type used by every later core task.
 
 - [ ] **Step 1: Add the native test env to `platformio.ini`**
@@ -142,10 +147,12 @@ git commit -m "test(kerberos): native unit test harness + crypto interface"
 ### Task 1: CTAPHID framing (reassembly and fragmentation)
 
 **Files:**
+
 - Create: `lib/kerberos_core/ctaphid.h`, `lib/kerberos_core/ctaphid.cpp`
 - Test: `test/test_kerberos_core/test_ctaphid.cpp`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces:
   - `int ctaphid_feed(ctaphid_assembler_t *a, const uint8_t pkt[64])` returns 1 when `a->buf`/`a->bcnt`/`a->cmd`/`a->cid` hold a complete message, 0 if more packets are needed, negative on a framing error.
@@ -337,10 +344,12 @@ git commit -m "feat(kerberos): CTAPHID packet framing with unit tests"
 ### Task 2: CTAPHID dispatch (INIT, PING, KEEPALIVE, error, route MSG)
 
 **Files:**
+
 - Create: `lib/kerberos_core/ctaphid_dispatch.h`, `lib/kerberos_core/ctaphid_dispatch.cpp`
 - Test: `test/test_kerberos_core/test_dispatch.cpp` (add `RUN_TEST` lines to the existing test main, or a separate file with its own `main`; keep one `main` per test folder by merging into `test_ctaphid.cpp`'s `main`).
 
 **Interfaces:**
+
 - Consumes: `ctaphid_send`, `ctaphid_assembler_t` from Task 1.
 - Produces:
   - `uint32_t ctaphid_dispatch(ctaphid_ctx_t *c, const uint8_t pkt[64])` feeds one inbound report, drives replies through the send sink, returns the channel id in use.
@@ -497,10 +506,12 @@ git commit -m "feat(kerberos): CTAPHID dispatch (INIT/PING/KEEPALIVE/MSG routing
 ### Task 3: Stateless key handle wrap and unwrap
 
 **Files:**
+
 - Create: `lib/kerberos_core/keywrap.h`, `lib/kerberos_core/keywrap.cpp`
 - Test: add tests to the core test main.
 
 **Interfaces:**
+
 - Consumes: `kerb_crypto_t` (rand, aes_gcm_seal, aes_gcm_open).
 - Produces:
   - `int kw_wrap(const kerb_crypto_t *cy, const uint8_t devkey[32], const uint8_t priv[32], const uint8_t appid[32], uint8_t *handle, size_t *handle_len)` writes `iv(12) || tag(16) || ciphertext(32)` = 60 byte handle.
@@ -607,10 +618,12 @@ git commit -m "feat(kerberos): stateless app-id-bound key handle wrap/unwrap"
 ### Task 4: U2F Register, Authenticate, Version
 
 **Files:**
+
 - Create: `lib/kerberos_core/u2f.h`, `lib/kerberos_core/u2f.cpp`
 - Test: add tests to the core test main.
 
 **Interfaces:**
+
 - Consumes: `kerb_crypto_t` (sha256, p256_keygen, p256_sign), `keywrap`, the embedded attestation cert and key supplied by the caller.
 - Produces:
   - `uint16_t u2f_handle(const u2f_cfg_t *cfg, const uint8_t *apdu, uint16_t len, uint8_t *out, uint16_t cap)` where `u2f_cfg_t` carries the crypto vtable, the device wrapping key, the attestation cert bytes and length, the attestation private key, a signature counter pointer, and a `bool (*user_present)(void *ui)` callback plus its ctx.
@@ -760,10 +773,12 @@ git commit -m "feat(kerberos): U2F register/authenticate/version core"
 ### Task 5: mbedtls crypto binding and on device crypto self test
 
 **Files:**
+
 - Create: `src/features/kerberos_crypto.cpp`
 - Create: `src/features/kerberos_crypto.h` (declares `const kerb_crypto_t *kerb_mbedtls_crypto(void);`)
 
 **Interfaces:**
+
 - Produces: a `kerb_crypto_t` backed by mbedtls (`mbedtls_ctr_drbg`/`entropy` for rand, `mbedtls_sha256`, `mbedtls_ecdsa`/`ecp` for P256, `mbedtls_gcm` for AES-256-GCM).
 - Consumes: nothing from other tasks; it is the device implementation of `kerb_crypto.h`.
 
@@ -792,9 +807,11 @@ git commit -m "feat(kerberos): mbedtls crypto binding + on-device self test"
 ### Task 6: Embedded self signed attestation certificate
 
 **Files:**
+
 - Create: `src/features/kerberos_attestation.h`
 
 **Interfaces:**
+
 - Produces: `extern const uint8_t KERB_ATT_CERT[]; extern const uint16_t KERB_ATT_CERT_LEN; extern const uint8_t KERB_ATT_PRIV[32];`
 
 - [ ] **Step 1: Generate the attestation key and cert off device**
@@ -825,9 +842,11 @@ git commit -m "feat(kerberos): embed self-signed U2F attestation cert"
 ### Task 7: TinyUSB FIDO HID interface
 
 **Files:**
+
 - Create: `src/features/kerberos_hid.h`, `src/features/kerberos_hid.cpp`
 
 **Interfaces:**
+
 - Consumes: `ctaphid_dispatch` from Task 2.
 - Produces:
   - `class USBHIDFido : public USBHIDDevice` exposing `begin()`, and an inbound path that calls `ctaphid_dispatch` per 64 byte OUT report, with the send sink calling `hid.SendReport`.
@@ -862,7 +881,7 @@ static const uint8_t FIDO_REPORT_DESC[] = {
 - [ ] **Step 3: Flash and verify enumeration on Windows**
 
 Run: `pio run -e cardputer -t upload` (with a temporary `setup()` that calls the HID `begin()` and loops `kerberos_hid_poll()`).
-On Windows: open Device Manager, expect a HID device with a FIDO usage; open `chrome://device-log` or go to https://webauthn.io and confirm the browser offers "Security Key". A PING from the browser must round trip (visible as no error).
+On Windows: open Device Manager, expect a HID device with a FIDO usage; open `chrome://device-log` or go to <https://webauthn.io> and confirm the browser offers "Security Key". A PING from the browser must round trip (visible as no error).
 Expected: the OS enumerates a FIDO HID device with no driver prompt.
 
 - [ ] **Step 4: Commit**
@@ -877,10 +896,12 @@ git commit -m "feat(kerberos): TinyUSB FIDO HID interface + CTAPHID pump"
 ### Task 8: The KERBEROS feature, presence UI, menu wiring, end to end U2F
 
 **Files:**
+
 - Create: `src/features/kerberos.cpp`
 - Modify: `src/menu.cpp` (add extern near line 115 and a node in `MENU_ROOT_CHILDREN` near line 1012)
 
 **Interfaces:**
+
 - Consumes: `USBHIDFido`, `u2f_handle`, `kerb_mbedtls_crypto()`, the attestation symbols, and the CDC guard globals `g_mimir_cdc_active`, `g_trident_cdc_active`.
 - Produces: `void feat_kerberos(void)`; a `bool kerberos_user_present(void *ui)` callback that renders the relying party prompt and blocks on `input_poll` for `PK_ENTER` (approve) or `PK_ESC` (deny), while pumping KEEPALIVE.
 
@@ -915,8 +936,9 @@ and add this node to `MENU_ROOT_CHILDREN` (before the terminating `{ 0, ... }`):
 
 Run: `pio run -e cardputer -t upload`
 On Windows in Edge and Chrome:
-1. Go to https://webauthn.io, register with the security key, approve on device with ENTER, then authenticate. Expected: both succeed.
-2. On https://github.com/settings/security register a new security key. Expected: registration succeeds and a later login prompts for the key and works.
+
+1. Go to <https://webauthn.io>, register with the security key, approve on device with ENTER, then authenticate. Expected: both succeed.
+2. On <https://github.com/settings/security> register a new security key. Expected: registration succeeds and a later login prompts for the key and works.
 Verify the on device KEEPALIVE by waiting about 10 seconds before pressing ENTER during a ceremony. Expected: the browser does not time out and the ceremony still completes.
 
 - [ ] **Step 5: Commit**
@@ -931,6 +953,7 @@ git commit -m "feat(kerberos): KERBEROS U2F feature, presence UI, menu entry"
 ## Self-Review
 
 **Spec coverage (Phase 1 rows of the design):**
+
 - CTAPHID transport with INIT and KEEPALIVE: Tasks 1, 2, 8 (KEEPALIVE during presence).
 - U2F register and authenticate: Task 4, verified end to end in Task 8.
 - FIDO HID profile (usage page 0xF1D0, 64 byte reports) for OS recognition: Task 7.

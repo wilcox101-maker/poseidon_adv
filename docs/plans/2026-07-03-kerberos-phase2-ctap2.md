@@ -28,6 +28,7 @@ CTAP2 getInfo, makeCredential, getAssertion, with non-resident and resident cred
 ## File structure
 
 Portable core (host-testable):
+
 - `lib/tinycbor/` — vendored TinyCBOR source (`cbor.h`, `cborencoder.c`, `cborparser.c`, and their private headers). Compiles on host and device.
 - `lib/kerberos_core/cbor_util.h` / `.cpp` — small helpers wrapping TinyCBOR for the map/array/bytestring patterns CTAP2 uses, so command code stays readable.
 - `lib/kerberos_core/cose.h` / `.cpp` — COSE ES256 public-key CBOR encoding (used inside attestedCredentialData).
@@ -36,11 +37,13 @@ Portable core (host-testable):
 - `lib/kerberos_core/ctap2.h` / `.cpp` — `ctap2_handle()`: parse command, dispatch to getInfo / makeCredential / getAssertion.
 
 Device layer:
+
 - `src/features/kerberos_cred_store_nvs.cpp` — NVS-backed `cred_store` implementation (Preferences).
 - `src/features/kerberos.cpp` — build `ctap2_cfg_t`, register the CTAP2 handler.
 - `lib/kerberos_core/ctaphid_dispatch.cpp` — route `CTAPHID_CBOR` (0x10) to `ctap2_handle`; set CBOR capability in INIT.
 
 Tests:
+
 - `test/test_kerberos_ctap2/` — Unity suite for cbor_util, cose, authdata, ctap2 commands, cred_store (in-memory).
 
 ---
@@ -48,11 +51,13 @@ Tests:
 ### Task 0: Vendor TinyCBOR and prove it builds host + device
 
 **Files:**
+
 - Create: `lib/tinycbor/` (vendored: `cbor.h`, `cborencoder.c`, `cborparser.c`, `cborinternal_p.h`, `compilersupport_p.h`, `tinycbor-version.h`)
 - Create: `lib/tinycbor/library.json` (so PlatformIO treats it as a lib)
 - Create: `test/test_kerberos_ctap2/test_main.cpp`
 
 **Interfaces:**
+
 - Produces: TinyCBOR available to both `native-test` and `cardputer` builds via `#include "cbor.h"`.
 
 - [ ] **Step 1: Vendor the source**
@@ -130,10 +135,12 @@ git commit -m "build(kerberos): vendor TinyCBOR for host + device CBOR"
 ### Task 1: cbor_util helpers
 
 **Files:**
+
 - Create: `lib/kerberos_core/cbor_util.h` / `.cpp`
 - Test: add to `test/test_kerberos_ctap2/` (new file `test_cbor_util.cpp`, its own `main`)
 
 **Interfaces:**
+
 - Consumes: TinyCBOR.
 - Produces:
   - `struct cbor_writer { CborEncoder enc; CborEncoder map; uint8_t *buf; size_t cap; };`
@@ -176,12 +183,14 @@ static void test_write_and_parse(void) {
 ### Task 2: authenticatorGetInfo + CTAPHID_CBOR routing
 
 **Files:**
+
 - Create: `lib/kerberos_core/ctap2.h` / `.cpp`
 - Modify: `lib/kerberos_core/ctaphid_dispatch.cpp` (route CBOR, set capability)
 - Modify: `src/features/kerberos.cpp` (register CTAP2 handler)
 - Test: `test/test_kerberos_ctap2/test_ctap2.cpp`
 
 **Interfaces:**
+
 - Consumes: `cbor_util`, the `kerb_crypto_t` vtable.
 - Produces:
   - `typedef struct { const kerb_crypto_t *cy; const uint8_t *devkey; const uint8_t aaguid[16]; const uint8_t *att_cert; uint16_t att_cert_len; const uint8_t *att_priv; bool (*user_present)(void*); void *ui; struct cred_store *store; } ctap2_cfg_t;`
@@ -202,10 +211,12 @@ static void test_write_and_parse(void) {
 ### Task 3: COSE ES256 key + authenticatorData
 
 **Files:**
+
 - Create: `lib/kerberos_core/cose.h` / `.cpp`, `lib/kerberos_core/authdata.h` / `.cpp`
 - Test: extend `test_ctap2.cpp`
 
 **Interfaces:**
+
 - Produces:
   - `size_t cose_es256_from_pubkey(const uint8_t pub[65], uint8_t *out, size_t cap);` — encodes the COSE_Key map `{1:2, 3:-7, -1:1, -2:X(32), -3:Y(32)}` in canonical order, from an uncompressed P-256 point (`pub[1..32]`=X, `pub[33..64]`=Y). Returns length.
   - `size_t authdata_build(const uint8_t rpIdHash[32], uint8_t flags, uint32_t signCount, const uint8_t *attCredData, size_t attLen, uint8_t *out, size_t cap);` — concatenates rpIdHash(32) || flags(1) || signCount(4 big-endian) || optional attestedCredentialData. Flags: bit0 UP=0x01, bit6 AT=0x40.
@@ -220,10 +231,12 @@ static void test_write_and_parse(void) {
 ### Task 4: authenticatorMakeCredential (non-resident)
 
 **Files:**
+
 - Modify: `lib/kerberos_core/ctap2.cpp`
 - Test: extend `test_ctap2.cpp`
 
 **Interfaces:**
+
 - Consumes: cose, authdata, keywrap, crypto vtable, cfg.
 - Produces: makeCredential handling inside `ctap2_handle`. Response map `{1: fmt "packed", 2: authData(bytes), 3: attStmt}` where attStmt = `{"alg": -7, "sig": bytes}` (self attestation: sig over authData || clientDataHash with the credential private key), canonical key order (fmt/authData/attStmt map keys are 1,2,3).
 
@@ -236,10 +249,12 @@ static void test_write_and_parse(void) {
 ### Task 5: authenticatorGetAssertion (non-resident)
 
 **Files:**
+
 - Modify: `lib/kerberos_core/ctap2.cpp`
 - Test: extend `test_ctap2.cpp`
 
 **Interfaces:**
+
 - Produces: getAssertion handling. Response map `{1: credential {id,type}, 2: authData(bytes, no AT flag, UP set), 3: signature}`. Non-resident: unwrap each allowList credId against rpIdHash; first that authenticates is used.
 
 - [ ] **Step 1: Test** — make a credential (Task 4 path), then build a getAssertion request `{1: rpId "example.com", 2: clientDataHash, 3: [{id: credId, type:"public-key"}]}`, call handle, assert status 0x00, authData UP flag set (byte32 bit0), signCount incremented, and the signature verifies against the credential public key from make (use python-fido2-style verify in a helper, or check the signed message layout deterministically with the mock).
@@ -251,11 +266,13 @@ static void test_write_and_parse(void) {
 ### Task 6: cred_store (in-memory + NVS)
 
 **Files:**
+
 - Create: `lib/kerberos_core/cred_store.h` / `.cpp` (interface + in-memory impl for tests)
 - Create: `src/features/kerberos_cred_store_nvs.cpp` (device NVS impl)
 - Test: `test/test_kerberos_ctap2/test_cred_store.cpp`
 
 **Interfaces:**
+
 - Produces:
   - `struct cred_record { uint8_t id[32]; uint8_t rpIdHash[32]; uint8_t userId[64]; uint8_t userIdLen; char name[32]; uint8_t wrappedKey[60]; uint32_t signCount; };`
   - `struct cred_store { int (*add)(cred_store*, const cred_record*); int (*find_by_rp)(cred_store*, const uint8_t rpIdHash[32], cred_record *out, int index, int *total); int (*update_counter)(cred_store*, const uint8_t id[32], uint32_t newCount); };`
@@ -269,11 +286,13 @@ static void test_write_and_parse(void) {
 ### Task 7: Resident credentials (rk=true)
 
 **Files:**
+
 - Modify: `lib/kerberos_core/ctap2.cpp` (rk path in make + discoverable get)
 - Modify: `src/features/kerberos.cpp` (wire `cred_store_nvs`)
 - Test: extend `test_ctap2.cpp` with the in-memory store
 
 **Interfaces:**
+
 - Consumes: cred_store.
 - Produces: makeCredential with options.rk=true stores a `cred_record` (random 32-byte credId, wrapped key, rpIdHash, user); getAssertion with an empty allowList looks up by rpIdHash and returns the first match with `numberOfCredentials`.
 
@@ -285,6 +304,7 @@ static void test_write_and_parse(void) {
 ### Task 8: AAGUID, capability polish, real site
 
 **Files:**
+
 - Modify: `src/features/kerberos.cpp` (fixed AAGUID), `lib/kerberos_core/ctaphid_dispatch.cpp` (capabilities), `docs/`
 
 - [ ] **Step 1:** Set a stable 16-byte AAGUID constant for KERBEROS (random once, hard-coded). **Step 2:** Confirm INIT advertises CBOR capability and getInfo reports rk. **Step 3:** Register a passkey on a real relying party that allows presence-only keys; sign in. Document the result. **Step 4: Commit.**

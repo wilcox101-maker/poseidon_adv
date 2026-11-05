@@ -41,3 +41,15 @@ CONFIG_MBEDTLS_SSL_MAX_CONTENT_LEN=2048
 # expects defaults (10/30) to be available; smaller pools deadlock the
 # init handshake. Bad-KB / BlueDucky stay broken without these, but the
 # rest of BLE works again with defaults.
+
+# Loop task stack: raised from the Arduino default (8192) to 16384.
+# POS-AUDIT-125: PMKID 5G (feat_c5_pmkid_5g -> c5_collect_5g -> c5_aps)
+# carried two ~2.7KB c5_ap_t[64] stack buffers at once on top of the
+# menu call chain (loopTask -> loop -> menu_run -> run_submenu x2 ->
+# menu_execute_action -> feat_c5_pmkid_5g -> c5_collect_5g), which
+# overran the 8KB default and tripped a stack-canary panic/reboot on
+# real hardware. c5_collect_5g's own buffer was also moved to static
+# storage (src/features/c5_scan.cpp) to shrink the per-call footprint;
+# this stack bump covers the remaining c5_ap_t[64] sites (feat_c5_*
+# functions still keep their own aps[64]/snap[64] on the stack).
+CONFIG_ARDUINO_LOOP_STACK_SIZE=16384
