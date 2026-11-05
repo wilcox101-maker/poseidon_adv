@@ -74,6 +74,7 @@ void feat_c5_probe_sniff(void)
                            memcpy(s, e.ssid, sl); s[sl] = 0; d.print(s); }
                 }
             }
+            ui_dashboard_radar();
         }
         delay(20);
     }
@@ -127,6 +128,7 @@ void feat_c5_deauth_detect(void)
                     d.setCursor(170, y); d.printf("ch%u r%u", e.channel, e.reason);
                 }
             }
+            ui_dashboard_radar();
         }
         delay(20);
     }
@@ -177,6 +179,7 @@ void feat_c5_clients(void)
                     d.setCursor(186, y); d.printf("ch%u", e.channel);
                 }
             }
+            ui_dashboard_radar();
         }
         delay(20);
     }
@@ -234,10 +237,95 @@ void feat_c5_spectrum(void)
                 d.setTextColor(T_DIM, T_BG);
                 d.setCursor(x0, BODY_Y + 2); d.printf("ch%u", b.ch[0].ch);
                 char tail[8]; sprintf(tail, "ch%u", b.ch[nb - 1].ch);
-                d.setCursor(SCR_W - 34, BODY_Y + 2); d.print(tail);
+                /* keep clear of the upper-right corner radar (x ~SCR_W-11) */
+                d.setCursor(SCR_W - 58, BODY_Y + 2); d.print(tail);
             }
+            ui_dashboard_radar();
         }
         delay(20);
     }
     c5_cmd_stop();
+}
+
+/* --- C5 diagnostics screen (Phase A, zero protocol change) ------------ */
+void feat_c5_diag(void)
+{
+    radio_switch(RADIO_WIFI);
+    c5_begin();
+    /* Don't hard-gate on online: the screen itself is how you diagnose an
+     * offline/failing node. Just fall through to the empty state. */
+    auto &d = M5Cardputer.Display;
+    ui_clear_body();
+    ui_draw_footer("`=back  p=ping");
+    int last_sig = -1;
+    uint32_t last = 0;
+    while (true) {
+        uint16_t k = input_poll();
+        if (k == PK_ESC) break;
+        if (k == 'p' || k == 'P') { c5_cmd_ping(); ui_toast("ping sent", T_ACCENT, 400); last_sig = -1; }
+
+        if (millis() - last > 300) {
+            last = millis();
+            c5_diag_t nodes[6];
+            int n = c5_diag(nodes, 6);
+            /* cheap change signal so the chrome only flashes on real change */
+            int sig = n;
+            for (int i = 0; i < n; ++i) sig += nodes[i].online * 7 + (nodes[i].rssi & 0x3F);
+            ui_dashboard_chrome("C5 DIAGNOSTICS", sig != last_sig);
+            last_sig = sig;
+            d.fillRect(0, BODY_Y + 14, SCR_W, BODY_H - 28, T_BG);
+
+            if (n == 0) {
+                d.setTextColor(T_DIM, T_BG);
+                d.setCursor(4, BODY_Y + 26); d.print("no C5 nodes known");
+                d.setCursor(4, BODY_Y + 40); d.print("press p to ping / discover");
+            } else {
+                int rows_per = 3, block = 34;
+                int shown = (n > 2) ? 2 : n;   /* up to 2 nodes at 3 lines each */
+                for (int i = 0; i < shown; ++i) {
+                    const c5_diag_t &e = nodes[i];
+                    int y = BODY_Y + 16 + i * block;
+                    /* line 1: name  caps  online */
+                    d.setTextColor(T_ACCENT, T_BG);
+                    d.setCursor(2, y); d.print(e.name[0] ? e.name : "C5-?");
+                    d.setTextColor(T_DIM, T_BG);
+                    d.setCursor(96, y);
+                    d.print(e.has_5g ? "5G " : "   ");
+                    d.print(e.has_ieee802154 ? "15.4" : "    ");
+                    d.setTextColor(e.online ? T_GOOD : T_BAD, T_BG);
+                    d.setCursor(190, y); d.print(e.online ? "online" : "OFFLN");
+                    /* line 2: rssi  heap  seen */
+                    int y2 = y + 11;
+                    uint16_t rc = e.rssi == 0 ? T_DIM : (e.rssi > -60 ? T_GOOD : (e.rssi > -80 ? T_WARN : T_BAD));
+                    d.setTextColor(rc, T_BG);
+                    d.setCursor(4, y2);
+                    if (e.rssi) d.printf("%ddBm", e.rssi); else d.print("--dBm");
+                    d.setTextColor(T_FG, T_BG);
+                    d.setCursor(78, y2);
+                    if (e.heap_kb) d.printf("heap %uKB", e.heap_kb); else d.print("heap --");
+                    d.setTextColor(T_DIM, T_BG);
+                    d.setCursor(170, y2);
+                    d.printf("seen %lus", (unsigned long)(e.last_seen_age_ms / 1000));
+                    /* line 3: ping  ch  frames */
+                    int y3 = y + 22;
+                    d.setTextColor(T_FG, T_BG);
+                    d.setCursor(4, y3);
+                    if (e.rtt_ms) d.printf("ping %lums", (unsigned long)e.rtt_ms); else d.print("ping --");
+                    d.setTextColor(T_DIM, T_BG);
+                    d.setCursor(78, y3);
+                    if (e.channel) d.printf("ch %u", e.channel); else d.print("ch --");
+                    d.setCursor(140, y3);
+                    if (e.frames) d.printf("fr %lu", (unsigned long)e.frames); else d.print("fr --");
+                    d.drawFastHLine(2, y + block - 4, SCR_W - 4, T_DIM);
+                }
+                if (n > shown) {
+                    d.setTextColor(T_DIM, T_BG);
+                    d.setCursor(4, BODY_Y + BODY_H - 10);
+                    d.printf("+%d more node%s", n - shown, (n - shown) > 1 ? "s" : "");
+                }
+            }
+            ui_dashboard_radar();
+        }
+        delay(20);
+    }
 }

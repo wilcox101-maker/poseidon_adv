@@ -109,6 +109,7 @@ extern void feat_c5_probe_sniff(void);
 extern void feat_c5_deauth_detect(void);
 extern void feat_c5_clients(void);
 extern void feat_c5_spectrum(void);
+extern void feat_c5_diag(void);
 extern void feat_tool_sd_format(void);
 extern void feat_tool_flashlight(void);
 extern void feat_tool_screen_test(void);
@@ -386,6 +387,11 @@ static const menu_node_t MENU_C5[] = {
       "reports the peak RSSI of received frames per channel as a bar chart. "
       "This is a frame-activity heatmap, not a true RF spectrum analyzer "
       "(the driver has no energy-detect API). Runs until ESC." },
+    { 'g', "Diagnostics", "Per-node link + health", nullptr, feat_c5_diag,
+      "Read-only health view for each C5/TRIDENT node: link RSSI, free heap, "
+      "last-seen, capability badges (5G / 15.4), ping round-trip, and the "
+      "latest channel/frame count. All from data already received over "
+      "ESP-NOW — no node reflash, no protocol change. Press p to ping." },
     { 0, nullptr, nullptr, nullptr, nullptr, nullptr },
 };
 
