@@ -6,9 +6,9 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [0.9.0] - 2026-11-04
+## [0.9.0] - 2026-11-05
 
-TRIDENT C5-node release. The Cardputer source revision bumps `0.8.1 → 0.9.0` (per `C5_NEXT-PHASE_PLAN.md`) once for the whole C5 hardening pass. The shipped Cardputer factory image is still the Deepwater **0.8.0** binary; this tag covers source + the C5 companion firmware under `c5_node/`. No Cardputer-facing contract (saved files, menu keys) or wire protocol (`POSEI_VERSION`) changed, so this is a minor bump.
+TRIDENT C5-node release. The Cardputer source revision bumps `0.8.1 → 0.9.0` (per `C5_NEXT-PHASE_PLAN.md`) once for the whole C5 hardening pass. Cardputer factory, Launcher app-only, and dual-app images are now **built at 0.9.0** and published under `release_binaries/` and on the [v0.9.0 GitHub release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.0), alongside the C5 companion firmware under `c5_node/`. No Cardputer-facing contract (saved files, menu keys) or wire protocol (`POSEI_VERSION`) changed, so this is a minor bump.
 
 ### Added
 
@@ -28,7 +28,7 @@ TRIDENT C5-node release. The Cardputer source revision bumps `0.8.1 → 0.9.0` (
 
 - **C5 sanity-check bypass is now a documented toolchain patch.** `c5_node/main/CMakeLists.txt` and `c5_node/README.md` record that the bypass is the `tools/patch_libnet80211.sh` binary patch applied to the ESP-IDF install, not an in-tree source override. The dead `wifi_sanity_override.c` source and its `--wrap` / `--allow-multiple-definition` link flags (neither of which worked on the C5) are gone.
 - **Fork tracking note.** README records the Hydra pin, shared-SPI, and GPS fixes, the SaltyJack networking how-to, and the warning cleanup that I keep while tracking Evil0ctopus/poseidon_adv. Later upstream syncs should land those as separate commits and leave published `master` history in place. Ownership notes in the Markdown are in the first person.
-- **Upstream credit.** Present-facing docs name Evil0ctopus/poseidon_adv as the tree I track. I removed the previous upstream host from links and from the burner catalog. Older factory images that were never republished are no longer listed in `docs/m5burner.json`. The About screen names that same upstream. Shipped binaries still carry the previous About string until the next package build.
+- **Upstream credit.** Present-facing docs name Evil0ctopus/poseidon_adv as the tree I track. I removed the previous upstream host from links and from the burner catalog. Older factory images that were never republished are no longer listed in `docs/m5burner.json`. The About screen names that same upstream. The 0.9.0 package build refreshes the shipped binaries, so they now carry the current About string.
 
 ## [0.8.1] - 2026-10-29
 

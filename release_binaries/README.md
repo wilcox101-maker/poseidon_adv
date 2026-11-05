@@ -1,7 +1,7 @@
-# POSEIDON Advanced — source 0.8.1
+# POSEIDON Advanced — 0.9.0
 
-Firmware source in this fork is revision 0.8.1 (Hydra RF Cap pin and SPI fixes on top of upstream Deepwater). The binaries in this directory were built as **0.8.0** and were not rebuilt for 0.8.1.
-`SHA256SUMS.txt` covers every binary in this directory.
+Firmware source in this fork is revision **0.9.0** (the TRIDENT C5-node release on top of upstream Deepwater). The binaries in this directory were **built as 0.9.0** from the matching source and carry the `0.9.0` version string.
+`SHA256SUMS.txt` covers every binary in this directory and matches the assets attached to the [v0.9.0 GitHub release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.0).
 
 | File | Purpose |
 | --- | --- |
@@ -26,7 +26,7 @@ pio run -e cardputer -e cardputer-launcher -e cardputer-launcher-dual
 Then refresh these tracked release artifacts:
 
 ```powershell
-.\scripts\prepare_deepwater_release.ps1 -Version 0.8.1
+.\scripts\prepare_deepwater_release.ps1 -Version 0.9.0
 ```
 
 The personal website's Flash hub serves a checksum-verified copy of the
@@ -44,18 +44,18 @@ standalone factory image separately. Launcher catalog availability must be
 checked independently after that upload. Direct GitHub app downloads work
 without waiting for a catalog entry.
 
-## Catalog status (2026-10-03)
+## Release status (2026-11-05)
 
-Both **POSEIDON Advanced - Deepwater** (standalone factory) and
-**POSEIDON Advanced - Deepwater (Launcher)** (app only), version 0.8.0, were
-uploaded through the authenticated WebBurner author page and are **pending
-M5Stack public review**. Their saved Project Link is
-`https://github.com/Evil0ctopus/poseidon_adv`, with a digit zero in `Evil0ctopus`.
-That URL returns HTTP 200.
+The **0.9.0** binaries above are published as assets on the
+[v0.9.0 GitHub release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.0)
+and can be downloaded and flashed directly without waiting for any catalog.
+`docs/m5burner.json` points its firmware `url` at the standalone factory asset
+of that release.
 
-The separate legacy `poseidon_adv` 0.7.0 record's broken `EvilOctopus` (letter O)
-project link was repaired through the authenticated desktop author editor.
-The saved record and canonical public M5Burner feed now both contain the
-correct `Evil0ctopus` (digit zero) URL. Launcher's cached mirror may take time
-to refresh. That record still contains 0.7.0 firmware; do not mistake it for
-this new release. Use the app-only GitHub download in the meantime.
+M5Burner **public catalog** publication is a separate, manual step: it requires
+an upload through M5Stack's authenticated [WebBurner](https://burner.m5stack.com/)
+author page and then M5Stack public review. Committing `docs/m5burner.json` does
+not publish a catalog entry. Until that upload happens, use the GitHub release
+assets (standalone factory, Launcher app-only, or the dual-app image). The older
+`poseidon_adv` 0.7.0 catalog record still contains 0.7.0 firmware; do not mistake
+it for this release.
