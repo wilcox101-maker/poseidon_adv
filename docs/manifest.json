@@ -1,6 +1,6 @@
 {
   "name": "POSEIDON",
-  "version": "0.7.0",
+  "version": "0.9.1",
   "new_install_prompt_erase": true,
   "builds": [
     {

@@ -1,6 +1,6 @@
 {
   "name": "TRIDENT",
-  "version": "0.6.3",
+  "version": "0.9.1",
   "new_install_prompt_erase": true,
   "builds": [
     {
