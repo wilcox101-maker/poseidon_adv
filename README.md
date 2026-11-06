@@ -3,7 +3,7 @@
   <img src="docs/assets/logo.png" alt="POSEIDON ADV" width="680">
 
   <h1>POSEIDON: ADVANCED</h1>
-  <p><b>Sharks swim but Poseidon rules the water!</b></p>
+  <p><b>Sharks swim but Poseidon rules the (RF)waves!</b></p>
   <p><i>Educational RF / embedded security lab for the M5Stack Cardputer-Advance — authorized use on owned hardware only</i></p>
 
   [![build](https://github.com/wilcox101-maker/poseidon_adv/actions/workflows/build.yml/badge.svg)](https://github.com/wilcox101-maker/poseidon_adv/actions/workflows/build.yml)
