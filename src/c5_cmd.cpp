@@ -31,6 +31,8 @@ struct c5_peer_t {
     uint8_t  mac[6];
     char     name[12];
     uint32_t last_seen;
+    uint8_t  role;            /* from HELLO; 1 = C5. Informational — peers are
+                                 admitted and routed by capability, not role. */
     uint8_t  has_5g;
     uint8_t  has_ieee802154;
     /* Phase A diagnostics (no protocol change): heap_kb comes from HELLO,
@@ -110,7 +112,13 @@ static void handle_hello(const uint8_t *mac, const c5_msg_t *m)
 {
     if (m->payload_len < (int)sizeof(c5_hello_t)) return;
     const c5_hello_t *h = (const c5_hello_t *)m->payload;
-    if (h->role != 1) return;
+    /* phase1-infra: admit by capability, not by role. The old `role != 1`
+     * gate hard-coded "must be a C5" and rejected every other board type. A
+     * valid v5 HELLO already means a POSEIDON node offering to participate
+     * (on_recv gated magic/version/type); we track whatever it advertises and
+     * store its radios, so a C6 (2.4+15.4), C3 (2.4-only) or S3+PSRAM node can
+     * join the same bus. A peer that lacks a radio simply drops any command it
+     * can't run (main.c's default case), so admission needs no role check. */
 
     portENTER_CRITICAL(&s_mux);
     int idx = find_peer(mac);
@@ -129,6 +137,7 @@ static void handle_hello(const uint8_t *mac, const c5_msg_t *m)
     if (idx >= 0) {
         strncpy(s_peers[idx].name, h->name, sizeof(s_peers[idx].name) - 1);
         s_peers[idx].name[sizeof(s_peers[idx].name) - 1] = '\0';
+        s_peers[idx].role           = h->role;
         s_peers[idx].has_5g          = h->has_5g;
         s_peers[idx].has_ieee802154  = h->has_ieee802154;
         s_peers[idx].heap_kb         = (uint16_t)h->heap_kb;
@@ -605,11 +614,16 @@ static uint16_t send_simple_cmd(uint8_t type, const uint8_t *extra, int extra_le
                   (int)mode_now, (unsigned)prim_ch);
 #endif
 
-    /* TODO(phase1-infra): gate 5 GHz / 15.4 cmds on peer capability
-     * (s_peers[].has_5g / has_ieee802154, stored by handle_hello but not
-     * yet consulted) before sending — a 2.4-only peer should not receive a
-     * 5 GHz command. Separate from the role->capability routing work; not
-     * Tier 2. */
+    /* phase1-infra: role->capability ADMISSION is done — handle_hello no
+     * longer requires role==1, so any advertised board joins and its radios
+     * are stored in s_peers[].has_5g / has_ieee802154. What remains, as an
+     * airtime OPTIMIZATION (not correctness — an incapable peer already drops
+     * a command it can't run), is to unicast a band-specific command only to
+     * peers that can do it instead of blasting all peers + broadcast. Left for
+     * when a second board type is actually on the bus: the command->capability
+     * map is channel-dependent (BEACON_SPAM/CIW/APCLONE/KARMA run on 2.4 OR
+     * 5 GHz by their channel arg), so it's safest finalized against real
+     * multi-board hardware rather than guessed here. */
     for (int i = 0; i < count; ++i) {
         esp_err_t r = esp_now_send(macs[i], (const uint8_t *)&m, c5_wire_len(&m));
 #ifdef POSEIDON_DEBUG_C5
