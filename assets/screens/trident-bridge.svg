@@ -1,0 +1,14 @@
+<svg viewBox="0 0 332 192" xmlns="http://www.w3.org/2000/svg" font-family="ui-monospace, Menlo, Consolas, monospace" role="img" aria-label="POSEIDON TRIDENT PC bridge screen (rendered mockup)">
+<rect width="332" height="192" rx="10" fill="#161a1f"/>
+<g transform="translate(6,6)">
+<rect width="320" height="180" fill="#0a141e"/>
+<rect x="6" y="3" width="2" height="9" fill="#3bc9db"/><rect x="3" y="5" width="2" height="4" fill="#3bc9db"/><rect x="9" y="5" width="2" height="4" fill="#3bc9db"/>
+<text x="20" y="11" fill="#cdeefc" font-size="10">trident</text><text x="150" y="11" fill="#5f8a9e" font-size="10">bridge</text>
+<rect x="286" y="3" width="16" height="9" fill="none" stroke="#5f8a9e"/><rect x="287" y="4" width="11" height="7" fill="#37d67a"/><text x="304" y="11" fill="#37d67a" font-size="9">87%</text>
+<line x1="0" y1="15" x2="320" y2="15" stroke="#2a6675"/>
+<text x="4" y="48" fill="#3bc9db" font-size="11">TRIDENT PC Bridge active</text>
+<text x="4" y="66" fill="#5f8a9e" font-size="11">run: trident_host.py</text>
+<text x="4" y="82" fill="#37d67a" font-size="11">host: streaming</text>
+<line x1="0" y1="164" x2="320" y2="164" stroke="#214050"/><text x="8" y="176" fill="#5f8a9e" font-size="10">ESC=exit  stream controlled by PC</text>
+</g>
+</svg>

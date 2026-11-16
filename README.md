@@ -103,6 +103,7 @@ Upstream POSEIDON is [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/p
 ## What's New & Custom Changes in `poseidon_adv`
 
 - **Deepwater redesign:** Shared bounded text/chrome, a short skippable boot reveal, scrollable help, paged shortcuts and display accessibility settings.
+- **Transmit-arm safety switch:** A global master switch keeps every offensive transmitter inert until it is deliberately armed, so a mis-keyed menu shortcut can't start a deauth, jammer or beacon flood. The status bar shows a red cue whenever armed. Covers WiFi/BLE/sub-GHz/nRF24/C5 transmit features and IR pranks; passive scanning is never gated.
 - **Real-time sensor awareness:** Dedicated monitoring helpers for Flock ALPR and ShotSpotter Raven fingerprints (lab / awareness tooling — not for unauthorized targeting).
 - **Triton RPG Gotchi leveling:** Persistent XP tracking and interactive leveling tied to Argus.
 - **Expanded UI palettes & screensavers:** Eleven themes and thirteen ambient screensavers; animation is optional.
@@ -117,6 +118,7 @@ Upstream POSEIDON is [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/p
 - **Shortcut hints:** `Ctrl+/` advances long footers (`^/ more`). TAB remains available to features that use it.
 - **Display settings:** `System → Display` controls motion (`M`), large text (`B`) and ambient decoration (`A`). Large text enlarges menu labels, WiFi/BLE results, help and notices; status and secondary metadata stay compact.
 - **Feedback:** notices wrap and can be dismissed early. Destructive device settings and file deletion require confirmation; Back cancels.
+- **Transmit safety:** the master TX-arm switch (`System → Settings → T`, default SAFE) gates every offensive transmitter. The status-bar separator turns red and shows `TX ON` while armed; a disarmed transmit action shows `TX disabled — arm it in Settings` and does nothing. Reads and scans are never blocked.
 - **SaltyJack:** theme-aware 16px icons, a paged grid with every tool reachable, shared footer paging and scrollable help. No second entry splash.
 - **Memory:** no full-screen animation buffers for menu transitions or event panels. No PSRAM requirement. Heap diagnostics remain in `System → Heap`.
 
@@ -135,6 +137,26 @@ The default POSEIDON theme now uses navy, ice-white and cyan with restrained lav
 | SOLARIS | Solar gold on charcoal |
 | NORDIC FROST | Glacial cyan and silver |
 | GHOST PURPLE | Electric violet on obsidian |
+
+## C5 node and TRIDENT screens
+
+The Cardputer drives external ESP32-C5 and TRIDENT nodes over an ESP-NOW bus (`5 C5 nodes` in the menu), reaching 5 GHz WiFi and 802.15.4 the host radio can't. The screens below are rendered mockups of the Deepwater UI, not hardware captures.
+
+**Node list** — auto-discovered C5/TRIDENT peers; `P` pings every peer, `S` broadcasts stop.
+
+![C5 node list (rendered mockup)](assets/screens/c5-nodes.svg)
+
+**Dual-band scan** — remote 5 GHz + 2.4 GHz WiFi via the C5; 5G rows in magenta, 2G in cyan, PMF/WPA3 auth flagged red (deauth won't land there).
+
+![C5 dual-band scan (rendered mockup)](assets/screens/c5-dualband-scan.svg)
+
+**Diagnostics** — per-node link RSSI, free heap, ping round-trip, channel and frame counts. TRIDENT nodes ride the same bus and appear alongside C5 nodes.
+
+![C5 diagnostics, with a TRIDENT node (rendered mockup)](assets/screens/c5-diagnostics.svg)
+
+**TRIDENT PC bridge** — mirrors the Cardputer screen to the desktop `trident_host.py` over USB-C and relays keystrokes back.
+
+![TRIDENT PC bridge (rendered mockup)](assets/screens/trident-bridge.svg)
 
 ## SaltyJack and networking
 
