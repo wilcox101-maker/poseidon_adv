@@ -27,19 +27,25 @@ WiFi: deauth, deauth-all, AP clone, evil-twin, beacon spam, karma, CIW,
 portal. BLE: spam, HID, beacon, clone, flood, karma, sourapple, findmy,
 blueducky, whisperpair. Sub-GHz: jammer, broadcast, replay, bruteforce.
 nRF24: jammer, mousejack, BLE-spam. C5: deauth-5G, nuke-5G, beacon spam,
-CIW, AP clone, karma.
+CIW, AP clone, karma. IR: TV-B-Gone + the 10 pranks.
 
 Passive features (scan, sniff, detect, spectrum, finder) are **not**
 gated.
 
-## Known gaps (follow-ups)
+## Coverage
 
-1. **In-feature attack hotkeys** (e.g. Scan → `D` deauth) call the TX
-   functions directly, bypassing `menu_execute_action`. Covering them
-   means gating at each function's transmit point — best done with the
-   on-target build loop to confirm the passive paths still work.
-2. **IR pranks** are not gated yet (low-power, non-RF). Easy to add to
-   the table if wanted.
+- Menu launches (terminal + carousel) of every table action — gated via
+  `menu_execute_action`.
+- In-feature attack hotkeys that call a gated function directly — Scan →
+  `D` (deauth) / `C` (AP clone), BLE scan → `C`/`H`/`X`/`P`
+  (clone/HID/flood/spam) — additionally gated at the function entry, so
+  the hotkey path can't bypass the switch.
+- IR pranks + TV-B-Gone — gated via the menu table.
+
+Residual (audit on hardware): any screen that fires TX inline without
+calling a gated `feat_*` — e.g. a clients view that deauths through its
+own code path, or PMKID HUNT's auto-deauth — is not individually gated
+yet. Passive scan/sniff/detect/spectrum are intentionally never gated.
 
 ## Verification status
 

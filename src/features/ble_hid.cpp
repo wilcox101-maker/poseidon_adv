@@ -181,6 +181,7 @@ static int pick_disguise(void)
 
 void feat_ble_hid(void)
 {
+    if (!tx_arm_require()) return;
     radio_switch(RADIO_NONE);  /* start clean */
     /* Release WiFi heap BEFORE NimBLE+HID server init. NimBLE alone
      * eats ~60 KB, then HID GATT server needs another ~10 KB for the

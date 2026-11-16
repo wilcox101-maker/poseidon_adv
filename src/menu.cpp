@@ -1203,14 +1203,14 @@ static void draw_menu(const menu_node_t *parent, int cursor)
  * can look up its own long-form help via ui_show_current_help(). */
 const menu_node_t *g_current_feature_item = nullptr;
 
-/* Offensive RF-transmit actions gated by the master TX-arm switch
- * (tx_arm). When SAFE, menu_execute_action refuses to launch these, so a
- * mis-keyed letter mnemonic can't start a transmission (UI review #1).
- * Passive scan/sniff/detect/spectrum are deliberately absent. Note: this
- * gates the MENU launch path (both terminal and carousel route through
- * menu_execute_action); in-feature attack hotkeys (e.g. Scan -> D) call
- * these functions directly and are a documented follow-up. IR is not yet
- * gated here — see tx_arm.h. */
+/* Offensive transmit actions (RF + IR pranks) gated by the master TX-arm
+ * switch (tx_arm). When SAFE, menu_execute_action refuses to launch these,
+ * so a mis-keyed letter mnemonic can't start a transmission (UI review #1).
+ * Passive scan/sniff/detect/spectrum are deliberately absent. Both menu
+ * styles route through menu_execute_action. The few of these also reachable
+ * via in-feature attack hotkeys (Scan -> D/C, BLE scan -> C/H/X/P) are
+ * additionally gated at their own function entry, so the hotkey path can't
+ * bypass the switch either. */
 static const menu_action_fn TX_ACTIONS[] = {
     feat_wifi_deauth, feat_wifi_deauth_broadcast, feat_wifi_apclone,
     feat_evil_twin, feat_wifi_beacon_spam, feat_wifi_karma,
@@ -1223,6 +1223,11 @@ static const menu_action_fn TX_ACTIONS[] = {
     feat_nrf24_jammer, feat_nrf24_mousejack, feat_nrf24_ble_spam,
     feat_c5_deauth_5g, feat_c5_nuke_5g, feat_c5_beacon_spam,
     feat_c5_ciw, feat_c5_apclone, feat_c5_karma,
+    feat_ir_tvbgone, feat_ir_prank_power_bomb, feat_ir_prank_channel_scramble,
+    feat_ir_prank_volume_bomb, feat_ir_prank_source_roulette,
+    feat_ir_prank_mute_torture, feat_ir_prank_permanent_power,
+    feat_ir_prank_cable_is_out, feat_ir_prank_caption_chaos,
+    feat_ir_prank_sleep_timer, feat_ir_prank_ac_chaos,
 };
 
 static bool action_is_tx(menu_action_fn a)

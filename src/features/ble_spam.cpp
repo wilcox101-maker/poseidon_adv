@@ -174,6 +174,7 @@ static spam_kind_t pick_kind(void)
 
 void feat_ble_spam(void)
 {
+    if (!tx_arm_require()) return;
     radio_switch(RADIO_BLE);
     /* radio_switch(RADIO_BLE) does NOT init NimBLE — per radio.cpp comment,
      * BLE features manage the lifecycle themselves. If the user opens Spam

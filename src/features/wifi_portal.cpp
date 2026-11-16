@@ -772,6 +772,7 @@ void feat_wifi_portal(void)
 /* AP Clone = portal with victim AP's SSID. */
 void feat_wifi_apclone(void)
 {
+    if (!tx_arm_require()) return;
     radio_switch(RADIO_WIFI);
     if (!g_last_selected_valid) {
         ui_toast("scan + select AP first", T_WARN, 1500);

@@ -51,6 +51,7 @@ static clone_chr_cb s_chr_cb;
 
 void feat_ble_clone(void)
 {
+    if (!tx_arm_require()) return;
     if (!g_ble_target_valid) {
         ui_toast("scan + select first", T_WARN, 1200);
         return;

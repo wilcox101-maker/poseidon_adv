@@ -15,6 +15,7 @@
 #pragma once
 
 #include "app.h"
+#include "tx_arm.h"
 
 void ui_init(void);
 void ui_clear_body(void);

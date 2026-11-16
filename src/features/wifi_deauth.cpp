@@ -202,6 +202,7 @@ static inline bool pmf_warning(void) { return wifi_pmf_warning(); }
 
 void feat_wifi_deauth(void)
 {
+    if (!tx_arm_require()) return;
     radio_switch(RADIO_WIFI);
     wifi_lean_sta_init();
 
