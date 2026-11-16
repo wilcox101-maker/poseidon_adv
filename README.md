@@ -25,6 +25,23 @@
 
 I keep a counted inventory of this tree in [FEATURES.md](FEATURES.md).
 
+### Project timeline & milestones
+
+Where this fork has gone, grounded in [CHANGELOG.md](CHANGELOG.md). Tagged
+releases are the released line; `master` currently runs ahead of 0.9.1 with the
+C5 command surface finished and the wire protocol at v5 (unreleased, pending the
+hardware validation pass).
+
+| When | Milestone |
+| --- | --- |
+| 0.1.0 (Apr 2026) | Initial checkout of [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv) as a focused fork. |
+| 0.4.0 (Apr 2026) | Wi-Fi deauth actually goes on air — the ESP-IDF `ieee80211_raw_frame_sanity_check` filter identified and defeated (link-time override on the S3; reproducible `libnet80211` binary patch for the C5). |
+| 0.6.x (May–Jul 2026) | Broad module growth across Wi-Fi / BLE / Sub-GHz / LoRa / IR / LAN; Argus autonomous handshake-hunting Gotchi. |
+| 0.8.0 (Oct 2026) | Raw-AP/STA bring-up hardened — every `esp_netif` site now destroys a stale netif before creating its own (duplicate-key crash fix). |
+| 0.9.0 (Nov 2026) | **TRIDENT ESP32-C5 companion node** introduced: the only ESP chip here with 5 GHz Wi-Fi + 802.15.4, driven from the Cardputer over ESP-NOW — 5 GHz scan, 5 GHz deauth, 5 GHz PMKID, Zigbee/802.15.4 sniff. |
+| 0.9.1 (Nov 2026) | C5 **Tier 1** passive suite (probe sniff, deauth detect, client hunt, activity sweep) + a read-only C5 diagnostics screen; Zigbee frames labelled Zigbee-vs-Thread. |
+| `master` (unreleased) | C5 **Tier 2** TX/SoftAP suite (beacon spam, CIW SSID-injection, AP clone, Karma) completes the command surface — every `POSEI_TYPE_CMD_*` now has a node handler **and** a Cardputer screen (15 C5 actions). **ESP-NOW v2 flag day (wire v5):** variable-length frames with a 1024-byte payload ceiling, lifting RESP_AP from 5 to ~23 records/frame. The C5 ESP-IDF firmware is now built in CI with native protocol tests. |
+
 ### What this fork keeps
 
 **Hydra RF Cap.** The official PINGEQUA map for Cardputer ADV, the same wiring Bruce uses for that hat. Poseidon and Bruce are separate firmwares. Poseidon does not read `brucePins.conf`.
@@ -78,6 +95,7 @@ Upstream POSEIDON is [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/p
 - **170+ research modules:** Broad coverage across Wi-Fi, BLE, Sub-GHz, 2.4 GHz, LoRa, Infrared, and LAN for recon and defensive assessment in authorized environments.
 - **QWERTY-driven interface:** Letter-mnemonic menus and direct parameter typing (no thumb-stick scrolling).
 - **Argus autonomous Gotchi:** A reactive 96×96 mood sprite that can hunt handshakes on owned networks using an SD-persisted reinforcement-learning brain.
+- **TRIDENT ESP32-C5 companion node:** A second board reached over ESP-NOW that adds the radios the Cardputer's S3 can't do — 5 GHz Wi-Fi and 802.15.4. A full remote command surface (scan, deauth, PMKID, Zigbee sniff, probe/deauth/client/spectrum recon, beacon spam, CIW, AP clone, Karma) streams results back to the handheld. Wire protocol v5 (ESP-NOW v2, variable-length frames).
 - **Deepwater interface:** Eleven themes, crisp domain icons, compact list/card layouts, optional ambient decoration and reduced motion.
 
 ---
@@ -156,7 +174,7 @@ Rogue DHCP (AP) is the other path, and it is not STA. The Cardputer brings up an
 
 ### How-to C — ESP32-C5 TRIDENT (not SaltyJack)
 
-Separate board, ESP-NOW, for 5 GHz, Zigbee, and 5 GHz PMKID. SaltyJack never routes through the C5.
+Separate board, reached over ESP-NOW, for the radios the S3 can't do: 5 GHz Wi-Fi and 802.15.4. Its 15-action menu (root `5`) covers scan, 5 GHz deauth, PMKID, Nuke+handshake, Zigbee sniff, the Tier 1 passive recon (probe sniff, deauth detect, client hunt, activity sweep), diagnostics, and the Tier 2 TX/SoftAP tools (beacon spam, CIW, AP clone, Karma). Wire protocol v5 — flash the C5 and the Cardputer together, since v5 and v4 don't interoperate. SaltyJack never routes through the C5.
 
 1. Unplug the Cardputer so Web Serial attaches to the C5.
 2. Desktop Chrome or Edge: [docs/flash/](docs/flash/index.html), target **TRIDENT — C5**.
@@ -170,7 +188,7 @@ Separate board, ESP-NOW, for 5 GHz, Zigbee, and 5 GHz PMKID. SaltyJack never rou
 | STA | Cardputer joins an authorized AP | Starve, rogue STA, Responder, WPAD — works now |
 | SoftAP | Open AP `POSEIDON-SaltyJack` | Rogue DHCP (AP) only — works now |
 | W5500 | RJ45, pin table above | Not in this tree. Use STA until a driver lands |
-| C5 | ESP-NOW satellite | 5 GHz / Zigbee / PMKID only. Never SaltyJack |
+| C5 | ESP-NOW satellite (wire v5) | 5 GHz / 802.15.4 radio work — full 15-action surface. Never SaltyJack |
 
 ## Quick Start & Installation
 
@@ -208,6 +226,12 @@ build-target → use-case → install-method reference, including the C5 node.
 pio run -e cardputer -e cardputer-launcher -e cardputer-launcher-dual
 pio test -e native-test -f test_ui_layout -f test_wifi_logic -f test_ble_db -f test_heap_budget
 ```
+
+The TRIDENT C5 node is a separate ESP-IDF project — build it with
+`idf.py -C c5_node build` (ESP-IDF ≥ 5.5, target `esp32c5`). CI builds every
+Cardputer profile, runs the native unit tests (protocol layout included), **and**
+compiles `c5_node/` on each push/PR, so a C5 firmware break now surfaces in CI
+rather than only at flash time.
 
 On Windows, with development firmware running on a connected Cardputer:
 
