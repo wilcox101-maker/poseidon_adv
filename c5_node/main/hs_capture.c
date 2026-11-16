@@ -292,7 +292,8 @@ static void hs_task(void *arg)
         s_hs_q = xQueueCreate(HS_Q_DEPTH, sizeof(struct hs_hit_t));
     }
     if (!s_hs_drain && s_hs_q) {
-        xTaskCreate(hs_drain_task, "hs_drain", 4096, NULL, 4, &s_hs_drain);
+        if (xTaskCreate(hs_drain_task, "hs_drain", 4096, NULL, 4, &s_hs_drain) != pdPASS)
+            ESP_LOGE(TAG, "drain task create failed; captures may be dropped");
     }
 
     led_fx_set(LED_MODE_SCAN);
