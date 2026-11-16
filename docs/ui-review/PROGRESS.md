@@ -7,7 +7,7 @@ Roles: UI Engineer (rendering/UX/navigation) + Senior Programming Engineer (conc
 - [x] 1. Setup: branch, progress file, toolchain
 - [x] 2. Core UI framework review (ui, ui_components, theme, input, menu, menu_carousel, main loop)
 - [x] 3. Senior Programming Engineer review (tasks, display/SPI ownership, heap, blocking calls)
-- [ ] 4. Feature-screen sweep (src/features/*: patterns across ~112 screens)
+- [x] 4. Feature-screen sweep (src/features/*: patterns across ~112 screens)
 - [ ] 5. Build verification (pio run -e cardputer, pio test -e native-test)
 - [ ] 6. Consolidated findings + prioritized fix plan -> docs/ui-review/FINDINGS.md
 
@@ -88,8 +88,30 @@ NET: no concurrency/ownership defects found in the core. Remaining
 candidate findings are UX/structure (letter-jump auto-fire, recursive
 run_submenu) — not correctness bugs.
 
-Next (step 4): grep features/* for per-screen anti-patterns —
-(a) raw delay() >50ms in interactive redraw loops (input lag),
-(b) screens with no ESC/back path, (c) unbounded String use in redraw,
-(d) missing empty/overflow states. Sample-read 4-5 representative
-feature screens rather than all ~112.
+### Step 4 — feature-screen sweep (91 feature .cpp files)
+
+- (b) Back path: every interactive feature (input_poll/input_line/
+  ui_confirm/ui_show_text) has a return/ESC path. No dead ends.
+- (a) Input lag: large delay()s are in radio TASK bodies (timing) or in
+  one-shot "show result, hold, return" screens — NOT in live input
+  loops. ble_finder delay(1500..2200) are post-connect result holds,
+  not the hunt loop. No live-input lag found.
+- (c) String: 19/91 feature files use Arduino String. Heap-frag watch
+  item on a heap-tight device; not confirmed in redraw hot paths.
+  Not a defect — flag for future per-file check.
+- (d) Empty states: wifi_scan/ble_scan/subghz_scan all handle zero
+  results. Representative list screens are fine.
+
+CANDIDATE FINDINGS (step 6):
+- [polish] ~6 files hand-roll "print msg + delay(>=800) + return"
+  instead of ui_toast(): can't be dismissed early and bypass themed
+  toast styling. Low. Consider an ui_hold(msg,color,ms) helper that
+  polls input for early dismiss, mirroring ui_toast.
+
+NET across steps 2-4: core architecture is sound (clean display
+ownership, good dirty-redraw, consistent KB nav, real reduced-motion).
+No correctness/concurrency defects. All findings are UX / structure /
+polish.
+
+Next (step 5): build. `pio run -e cardputer` (and native test env if
+present). Record pass/fail + any warnings into FINDINGS.md.
