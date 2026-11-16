@@ -119,7 +119,7 @@ Upstream POSEIDON is [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/p
 - **Shortcut hints:** `Ctrl+/` advances long footers (`^/ more`). TAB remains available to features that use it.
 - **Display settings:** `System → Display` controls motion (`M`), large text (`B`) and ambient decoration (`A`). Large text enlarges menu labels, WiFi/BLE results, help and notices; status and secondary metadata stay compact.
 - **Feedback:** notices wrap and can be dismissed early. Destructive device settings and file deletion require confirmation; Back cancels.
-- **Transmit safety:** the master TX-arm switch (`System → Settings → T`, default SAFE) gates every offensive transmitter. The status-bar separator turns red and shows `TX ON` while armed; a disarmed transmit action shows `TX disabled / Arm it in Settings` and does nothing. Reads and scans are never blocked.
+- **Transmit safety:** the master TX-arm switch (`System → Settings → T`, default SAFE) gates every offensive transmitter. The status bar shows a red `ARMED` badge and a red baseline while armed; a disarmed transmit action shows `TX disabled / Arm it in Settings` and does nothing. Reads and scans are never blocked.
 - **SaltyJack:** theme-aware 16px icons, a paged grid with every tool reachable, shared footer paging and scrollable help. No second entry splash.
 - **Memory:** no full-screen animation buffers for menu transitions or event panels. No PSRAM requirement. Heap diagnostics remain in `System → Heap`.
 

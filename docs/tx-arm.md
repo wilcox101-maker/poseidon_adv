@@ -13,9 +13,9 @@ transmission can start.
   `tx_arm.h`).
 - **Arm/disarm:** Settings → `[T] TX transmit`. Arming requires a
   confirm; disarming is instant.
-- **Always-visible cue:** the status-bar separator turns red whenever
-  armed, plus a `TX ON` badge when the status slot is free. *(Badge
-  placement is provisional — verify/tune on hardware.)*
+- **Always-visible cue:** a filled red `ARMED` badge (white on red) in
+  the status bar plus a red baseline, shown on every screen whenever
+  armed — independent of radio/extra/C5 content. SAFE shows neither.
 - **The gate:** `tx_arm_require()` shows a brief notice and returns false
   when SAFE. `menu_execute_action()` calls it before launching any action
   in the offensive table, so both terminal and carousel menu styles are
