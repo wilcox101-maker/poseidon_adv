@@ -51,6 +51,10 @@ def status_bar(sc, radio="WiFi", c5=1, bat=82, armed=True):
     # signal glyph (src/ui.cpp)
     sc.vline(7, 2, 7, ACCENT); sc.vline(4, 2, 3, ACCENT); sc.vline(10, 2, 3, ACCENT); sc.hline(4, 5, 7, ACCENT)
     sc.text(18, 2, radio, FG)
+    # TX-arm "ARMED" badge (white on red) in the extra slot when armed (src/ui.cpp)
+    if armed:
+        sc.rect(106, 1, 44, 9, BAD)
+        sc.text(113, 2, "ARMED", FG)
     if c5 > 0: sc.text(150, 2, f"C5:{c5}", GOOD)
     # battery
     bx = W - 16
@@ -59,8 +63,11 @@ def status_bar(sc, radio="WiFi", c5=1, bat=82, armed=True):
     bcol = GOOD if bat > 50 else (WARN if bat > 20 else BAD)
     if fw > 0: sc.rect(bx+1, 3, fw, 5, bcol)
     sc.text(196, 2, f"{bat}%", bcol)
-    # TX-arm separator: red when armed
-    sc.hline(0, STATUS_H-1, W, BAD if armed else RULE)
+    # TX-arm baseline: 2px red when armed, else the theme rule (src/ui.cpp)
+    if armed:
+        sc.hline(0, STATUS_H-2, W, BAD); sc.hline(0, STATUS_H-1, W, BAD)
+    else:
+        sc.hline(0, STATUS_H-1, W, RULE)
 
 def footer(sc, hint):
     sc.rect(0, H-FOOTER_H, W, FOOTER_H, STATUS_BG)
