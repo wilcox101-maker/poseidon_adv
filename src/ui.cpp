@@ -5,6 +5,7 @@
 #include "theme.h"
 #include "input.h"
 #include "c5_cmd.h"
+#include "tx_arm.h"
 #include <stdarg.h>
 #include <math.h>
 #include <esp_system.h>
@@ -97,11 +98,13 @@ static int      s_st_bat_bucket = -1;
 static bool     s_st_chg = false;
 static bool     s_st_valid = false;
 static theme_id_t s_st_theme = THEME__COUNT;
+static bool       s_st_armed = false;
 
 void ui_draw_status(const char *radio, const char *extra)
 {
     auto &d = M5Cardputer.Display;
 
+    const bool armed = tx_armed();
     const char *rr = radio ? radio : "idle";
     const char *ee = (extra && *extra) ? extra : "";
     int c5_n = c5_any_online() ? c5_peer_count() : 0;
@@ -121,6 +124,7 @@ void ui_draw_status(const char *radio, const char *extra)
                 || c5_n != s_st_c5_n
                 || bat_bucket != s_st_bat_bucket
                 || chg != s_st_chg
+                || armed != s_st_armed
                 || s_st_theme != theme_current_id();
 
     if (!changed) return;
@@ -159,7 +163,13 @@ void ui_draw_status(const char *radio, const char *extra)
         ui_label(150, 2, 42, T_GOOD, theme().status_bg, badge);
     }
 
-    d.drawFastHLine(0, STATUS_H - 1, SCR_W, theme().rule);
+    /* TX-arm cue: red separator whenever armed (always visible, never
+     * overlaps text), plus a "TX ON" badge when the extra/C5 slot is
+     * free. Placement is provisional — verify on hardware. */
+    if (armed && !*extra_text && c5_n == 0)
+        ui_label(108, 2, 40, T_BAD, theme().status_bg, "TX ON");
+
+    d.drawFastHLine(0, STATUS_H - 1, SCR_W, armed ? T_BAD : theme().rule);
 
     strcpy(s_st_radio, radio_text);
     strcpy(s_st_extra, extra_text);
@@ -168,6 +178,7 @@ void ui_draw_status(const char *radio, const char *extra)
     s_st_chg         = chg;
     s_st_valid = true;
     s_st_theme = theme_current_id();
+    s_st_armed = armed;
 }
 
 /* Invalidate the ui_draw_status cache — call this when navigating to a
