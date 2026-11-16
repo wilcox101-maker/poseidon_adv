@@ -11,6 +11,7 @@
 #include "app.h"
 #include "../theme.h"
 #include "ui.h"
+#include "tx_arm.h"
 #include "input.h"
 #include "radio.h"
 #include "wifi_types.h"
@@ -264,12 +265,14 @@ static void client_detail(int idx)
         if (k == PK_NONE) { delay(20); continue; }
         if (k == PK_ESC) break;
         if (k == 'd' || k == 'D') {
-            deauth_client(s_clients[idx].mac);
-            /* deauth_client tears promisc down — re-arm. */
-            esp_wifi_set_promiscuous(true);
-            esp_wifi_set_promiscuous_rx_cb(client_cb);
-            esp_wifi_set_channel(s_target_ch, WIFI_SECOND_CHAN_NONE);
-            ui_toast("deauth sent", T_BAD, 700);
+            if (tx_arm_require()) {
+                deauth_client(s_clients[idx].mac);
+                /* deauth_client tears promisc down — re-arm. */
+                esp_wifi_set_promiscuous(true);
+                esp_wifi_set_promiscuous_rx_cb(client_cb);
+                esp_wifi_set_channel(s_target_ch, WIFI_SECOND_CHAN_NONE);
+                ui_toast("deauth sent", T_BAD, 700);
+            }
             redraw = true;
         }
     }
@@ -572,15 +575,18 @@ void feat_wifi_clients(void)
             last_count = last_cursor = last_first = -1;
         }
         if ((k == 'd' || k == 'D') && s_count > 0 && cursor < s_count) {
-            deauth_client(s_clients[cursor].mac);
-            /* wifi_silent_ap_end() inside deauth_client tears WiFi down
-             * to STA + promisc=false. Re-arm so the client sniffer
-             * keeps populating the table after the deauth returns. */
-            esp_wifi_set_promiscuous(true);
-            esp_wifi_set_promiscuous_rx_cb(client_cb);
-            esp_wifi_set_channel(s_target_ch, WIFI_SECOND_CHAN_NONE);
-            ui_toast("deauth sent", T_BAD, 600);
-            /* toast covered the body — repaint chrome + force full redraw. */
+            if (tx_arm_require()) {
+                deauth_client(s_clients[cursor].mac);
+                /* wifi_silent_ap_end() inside deauth_client tears WiFi down
+                 * to STA + promisc=false. Re-arm so the client sniffer
+                 * keeps populating the table after the deauth returns. */
+                esp_wifi_set_promiscuous(true);
+                esp_wifi_set_promiscuous_rx_cb(client_cb);
+                esp_wifi_set_channel(s_target_ch, WIFI_SECOND_CHAN_NONE);
+                ui_toast("deauth sent", T_BAD, 600);
+            }
+            /* toast (deauth or the SAFE notice) covered the body — repaint
+             * chrome + force full redraw either way. */
             draw_client_chrome();
             last_count = last_cursor = last_first = -1;
         }
