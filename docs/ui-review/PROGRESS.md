@@ -6,7 +6,7 @@ Roles: UI Engineer (rendering/UX/navigation) + Senior Programming Engineer (conc
 ## Steps
 - [x] 1. Setup: branch, progress file, toolchain
 - [x] 2. Core UI framework review (ui, ui_components, theme, input, menu, menu_carousel, main loop)
-- [ ] 3. Senior Programming Engineer review (tasks, display/SPI ownership, heap, blocking calls)
+- [x] 3. Senior Programming Engineer review (tasks, display/SPI ownership, heap, blocking calls)
 - [ ] 4. Feature-screen sweep (src/features/*: patterns across ~112 screens)
 - [ ] 5. Build verification (pio run -e cardputer, pio test -e native-test)
 - [ ] 6. Consolidated findings + prioritized fix plan -> docs/ui-review/FINDINGS.md
@@ -60,7 +60,36 @@ CANDIDATE FINDINGS (to confirm/prioritize in step 6):
   ui_layout::fit is intended, but confirm no feature needs >60 chars on
   one line.
 
-Next (step 3): read src/main.cpp setup()/loop(), c5_cmd task model,
-heap_budget, and grep features/* for raw delay() in render loops and
-any M5Cardputer.Display writes from non-loopTask contexts
-(display/SPI single-owner check).
+### Step 3 — Senior Programming Engineer (concurrency / memory)
+
+MAIN FINDING (positive, high-confidence): the display/SPI
+single-owner invariant HOLDS project-wide.
+- main.cpp loop() (line 200) only runs menu_run(); the whole UI is
+  cooperative on loopTask. No per-tick servicing lives in loop(), so a
+  blocking modal cannot starve it.
+- Of 17 files that both xTaskCreate and draw, a brace-accurate scan
+  (matched each `void fn(void*)` body) found ZERO draw calls inside any
+  task body. Tasks do radio/data work (hop_task, decay_task,
+  deauth_task, ...); drawing stays on loopTask. No two-context SPI use.
+- triton.cpp and ble_spam.cpp deliberately avoid xTaskCreate and run
+  cooperatively on loopTask (heap reasons) — matches prior analysis.
+- Background services (GPS, mesh_rx pinned core1 prio3, sfx, radio
+  tasks) are all independent FreeRTOS tasks. => a modal blocking
+  loopTask does NOT stall radio/GPS/mesh; only menu ambient/screensaver
+  pause. This DOWNGRADES the step-2 "modal starves main loop" concern
+  to cosmetic.
+
+Heap: menu_execute_action() (menu.cpp:1205) reclaims caches on feature
+entry and logs "LEAK" when exit delta < -2048B. Good instrumentation.
+Known one-way heap releases (portal/evil-twin BTDM) are documented in
+the menu hints themselves.
+
+NET: no concurrency/ownership defects found in the core. Remaining
+candidate findings are UX/structure (letter-jump auto-fire, recursive
+run_submenu) — not correctness bugs.
+
+Next (step 4): grep features/* for per-screen anti-patterns —
+(a) raw delay() >50ms in interactive redraw loops (input lag),
+(b) screens with no ESC/back path, (c) unbounded String use in redraw,
+(d) missing empty/overflow states. Sample-read 4-5 representative
+feature screens rather than all ~112.
