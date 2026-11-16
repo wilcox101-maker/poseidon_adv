@@ -8,7 +8,7 @@ Roles: UI Engineer (rendering/UX/navigation) + Senior Programming Engineer (conc
 - [x] 2. Core UI framework review (ui, ui_components, theme, input, menu, menu_carousel, main loop)
 - [x] 3. Senior Programming Engineer review (tasks, display/SPI ownership, heap, blocking calls)
 - [x] 4. Feature-screen sweep (src/features/*: patterns across ~112 screens)
-- [ ] 5. Build verification (pio run -e cardputer, pio test -e native-test)
+- [~] 5. Build verification (native-test PASS 100/100; cardputer build running)
 - [ ] 6. Consolidated findings + prioritized fix plan -> docs/ui-review/FINDINGS.md
 
 ## Notes
