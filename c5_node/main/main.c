@@ -56,6 +56,22 @@ extern void apclone_stop(void);
 extern void karma_start(const uint8_t *, const posei_karma_req_t *, uint16_t);
 extern void karma_stop(void);
 
+/* One radio, so only one active-TX / SoftAP job at a time. Each feature's
+ * *_start() already pre-empts a second instance of ITSELF; this stops the
+ * OTHER TX/SoftAP jobs before a new one takes the radio, so e.g. starting
+ * KARMA can't leave a beacon-spam loop fighting it for the air. Stops are
+ * just volatile-flag sets (non-blocking), safe to call from the recv
+ * callback. Passive sniffers are left alone — unchanged from the tested
+ * Tier 1 behavior. */
+static void c5_stop_tx_softap_jobs(void)
+{
+    beacon_spam_stop();
+    ciw_stop();
+    apclone_stop();
+    karma_stop();
+    wifi_attacker_deauth_stop();
+}
+
 static char s_node_name[12] = "C5-?";
 
 static void send_hello(void)
@@ -74,7 +90,8 @@ static void send_hello(void)
     h->has_ieee802154 = 1;
     msg.payload_len = sizeof(posei_hello_t);
 
-    esp_now_send(BROADCAST_MAC, (const uint8_t *)&msg, sizeof(msg));
+    /* v5: send header + used payload only (not the full 1 KB struct). */
+    proto_send_broadcast(&msg);
 }
 
 /* Suspended during a scan so the WiFi driver can hop channels +
@@ -121,9 +138,16 @@ static void scan_task(void *arg)
 static void on_recv(const esp_now_recv_info_t *info,
                     const uint8_t *data, int len)
 {
-    if (len < (int)sizeof(posei_msg_t)) return;
+    /* v5: variable-length frame. Validate the fixed header, then bound the
+     * declared payload against what arrived before any case reads m->payload.
+     * `m` aliases `data` directly (no 1 KB copy on the Wi-Fi task stack); each
+     * case checks m->payload_len >= its req size, all within what this proves
+     * is present. */
+    if (len < (int)POSEI_HEADER_SZ) return;
     const posei_msg_t *m = (const posei_msg_t *)data;
     if (m->magic != POSEI_MAGIC || m->version != POSEI_VERSION) return;
+    if (m->payload_len > POSEI_PAYLOAD_MAX) return;
+    if ((int)(POSEI_HEADER_SZ + m->payload_len) > len) return;
 
     /* Ensure sender is in peer table so we can reply directed. */
     if (!esp_now_is_peer_exist(info->src_addr)) {
@@ -146,7 +170,8 @@ static void on_recv(const esp_now_recv_info_t *info,
         pong.version = POSEI_VERSION;
         pong.type    = POSEI_TYPE_RESP_PONG;
         pong.seq     = m->seq;
-        esp_now_send(info->src_addr, (const uint8_t *)&pong, sizeof(pong));
+        pong.payload_len = 0;
+        proto_send_to(info->src_addr, &pong);   /* v5: 10-byte frame on air */
         break;
     }
     case POSEI_TYPE_CMD_SCAN_5G:
@@ -187,6 +212,7 @@ static void on_recv(const esp_now_recv_info_t *info,
     }
     case POSEI_TYPE_CMD_DEAUTH: {
         if (m->payload_len < (int)sizeof(posei_deauth_req_t)) break;
+        c5_stop_tx_softap_jobs();
         led_fx_set(LED_MODE_ATTACK);
         const posei_deauth_req_t *r = (const posei_deauth_req_t *)m->payload;
         wifi_attacker_deauth(info->src_addr, r, m->seq);
@@ -237,6 +263,7 @@ static void on_recv(const esp_now_recv_info_t *info,
     }
     case POSEI_TYPE_CMD_BEACON_SPAM: {
         if (m->payload_len < (int)sizeof(posei_beacon_spam_req_t)) break;
+        c5_stop_tx_softap_jobs();
         led_fx_set(LED_MODE_ATTACK);
         const posei_beacon_spam_req_t *r = (const posei_beacon_spam_req_t *)m->payload;
         beacon_spam_start(info->src_addr, r, m->seq);
@@ -244,6 +271,7 @@ static void on_recv(const esp_now_recv_info_t *info,
     }
     case POSEI_TYPE_CMD_CIW: {
         if (m->payload_len < (int)sizeof(posei_ciw_req_t)) break;
+        c5_stop_tx_softap_jobs();
         led_fx_set(LED_MODE_ATTACK);
         const posei_ciw_req_t *r = (const posei_ciw_req_t *)m->payload;
         ciw_start(info->src_addr, r, m->seq);
@@ -251,6 +279,7 @@ static void on_recv(const esp_now_recv_info_t *info,
     }
     case POSEI_TYPE_CMD_APCLONE: {
         if (m->payload_len < (int)sizeof(posei_apclone_req_t)) break;
+        c5_stop_tx_softap_jobs();
         led_fx_set(LED_MODE_ATTACK);
         const posei_apclone_req_t *r = (const posei_apclone_req_t *)m->payload;
         apclone_start(info->src_addr, r, m->seq);
@@ -258,6 +287,7 @@ static void on_recv(const esp_now_recv_info_t *info,
     }
     case POSEI_TYPE_CMD_KARMA: {
         if (m->payload_len < (int)sizeof(posei_karma_req_t)) break;
+        c5_stop_tx_softap_jobs();
         led_fx_set(LED_MODE_SCAN);
         const posei_karma_req_t *r = (const posei_karma_req_t *)m->payload;
         karma_start(info->src_addr, r, m->seq);
@@ -379,6 +409,20 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_now_init());
     ESP_ERROR_CHECK(esp_now_register_recv_cb(on_recv));
 
+    /* v5 rollout check: confirm ESP-NOW v2 negotiated on the C5. v2 is what
+     * lifts the single-frame cap past 250 bytes, which the v5 wire layout now
+     * uses. The C5's Wi-Fi 6 stack is newer than the S3's, so don't assume
+     * parity — log it and compare against the S3's boot line. 2 = OK; 1 = v1
+     * only, and any frame larger than ~240 bytes will fail to send. */
+    {
+        uint32_t enow_ver = 0;
+        if (esp_now_get_version(&enow_ver) == ESP_OK)
+            ESP_LOGI(TAG, "ESP-NOW version=%lu (need 2 for v5 large frames)",
+                     (unsigned long)enow_ver);
+        else
+            ESP_LOGW(TAG, "esp_now_get_version() unavailable");
+    }
+
     /* Add broadcast as a peer so we can send HELLOs. */
     esp_now_peer_info_t pi = { 0 };
     memcpy(pi.peer_addr, BROADCAST_MAC, 6);
@@ -388,7 +432,9 @@ void app_main(void)
     led_fx_set(LED_MODE_BOOT);   /* visible confirmation a fresh flash booted */
 
     ESP_LOGI(TAG, "POSEIDON C5 Node '%s' online", s_node_name);
-    xTaskCreate(hello_task, "hello", 3072, NULL, 4, NULL);
+    /* 4096 (was 3072): send_hello() now stack-allocates a v5 posei_msg_t
+     * (~1 KB with POSEI_PAYLOAD_MAX=1024) instead of the old ~239-byte one. */
+    xTaskCreate(hello_task, "hello", 4096, NULL, 4, NULL);
 
     while (1) vTaskDelay(portMAX_DELAY);
 }

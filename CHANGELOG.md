@@ -6,6 +6,38 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **C5 Tier 2 commands (BEACON_SPAM / CIW / APCLONE / KARMA).** The four
+  previously stubbed C5 handlers are implemented: 5 GHz/2.4 GHz beacon spam and
+  SSID-injection fuzz beacons (raw-TX via `wifi_tx_raw`, no `libnet80211` patch
+  needed for beacon subtypes), plus AP-clone and Karma SoftAP honeypots
+  (`beacon_spam.c` / `ciw.c` / `apclone.c` / `karma.c`, shared `beacon_tx.*` and
+  `softap.*`). Each has a Cardputer screen under `C5 nodes` (`b` / `c` / `o` /
+  `k`). Every `POSEI_TYPE_CMD_*` now has both a node handler and a UI — nothing
+  is stubbed. Band 1 is code-complete.
+- **C5 node CI build.** A new `idf.py build` job (ESP-IDF `release-v5.5`, target
+  `esp32c5`) compiles `c5_node/` on every push/PR and uploads the binary — the
+  ESP-IDF tree was previously never built in CI. Plus `test/test_proto`, native
+  Unity tests pinning the v5 header layout and wire-size math.
+
+### Changed
+
+- **ESP-NOW v2 (wire protocol v4 → v5) — flag day.** `POSEI_PAYLOAD_MAX` raised
+  230 → 1024 and the frame made **variable length**: `payload_len` moved into
+  the 10-byte header and widened to u16, and senders transmit only
+  `header + payload_len` bytes, so small control frames stay tiny while large
+  responses use the headroom. Requires ESP-NOW v2 (auto-negotiated on ESP-IDF
+  >= 5.4, which both chips run); both firmwares log `esp_now_get_version()` at
+  boot to confirm. Unblocks untruncated EAPOL/WPA3-SAE and lifts RESP_AP from 5
+  to ~23 records/frame (the likely fix for the "Scan 5G+2G slower" note).
+  `_Static_assert`s on both sides now pin every payload struct to the ceiling.
+  **FLAG DAY: both chips must run v5 — a v4 peer is rejected on the version
+  check.** Not yet hardware-validated.
+- **C5 single-radio safety.** Starting any TX/SoftAP command now stops the other
+  TX/SoftAP jobs first; `softap.c` adopts the destroy-stale-then-create netif
+  convention (CHANGELOG 0.8.0).
+
 ## [0.9.1] - 2026-11-05
 
 Phase 1 Tier 1 release: the passive C5 node features and their Cardputer UI,

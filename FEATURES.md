@@ -35,7 +35,7 @@ Root (`MENU_ROOT_CHILDREN`, 17):
 | `r` | Radio | 5 rows (LoRa, Sub-GHz, nRF24, GPS fix, SATCOM) |
 | `o` | Tools | 9 rows (8 actions + Hunt) |
 | `m` | Mesh | 1 action (ESP-NOW status) |
-| `5` | C5 nodes | 6 actions |
+| `5` | C5 nodes | 15 actions |
 | `x` | MIMIR | USB-C drop-box control |
 | `p` | PC Bridge | TRIDENT screen mirror (`feat_trident`) |
 | `s` | System | 12 actions |
@@ -110,11 +110,11 @@ Tools: Hunt, Flashlight, Stopwatch, Dice/8ball, Morse (send and listen), MAC ran
 
 Hunt: BLE tracker, Tracker scan, Sub-GHz finder, 2.4 GHz finder. Each one calls a finder that also has its own row under Bluetooth, Sub-GHz, or nRF24.
 
-### C5 nodes (6)
+### C5 nodes (15)
 
-Status, Scan 5G+2G, Zigbee sniff, Deauth 5G, PMKID 5G, Nuke 5G + HS.
+Status, Scan 5G+2G, Zigbee sniff, Deauth 5G, PMKID 5G, Nuke 5G + HS, Probe sniff, Deauth detect, Client hunt, Activity sweep, Diagnostics, Beacon spam, CIW inject, AP clone, Karma.
 
-Wire protocol on both sides is version **4** (`C5_VERSION` in `src/c5_cmd.h`, `POSEI_VERSION` in `c5_node/main/proto.h`), magic `POSE` (`0x504F5345`). `c5_node/README.md` still says v3. `c5_cmd.cpp` also has senders for 2.4 GHz scan, client hunt, beacon spam, probe sniff, deauth detect, karma, AP clone, spectrum, and CIW. Nothing in `MENU_C5` calls those senders.
+Wire protocol on both sides is version **5** (`C5_VERSION` in `src/c5_cmd.h`, `POSEI_VERSION` in `c5_node/main/proto.h`), magic `POSE` (`0x504F5345`). v5 is the ESP-NOW v2 flag day: the frame is variable length (`payload_len` is in the 10-byte header, payload ceiling 1024) and only `header + payload_len` bytes go on air. Every `MENU_C5` row now calls its matching sender in `c5_cmd.cpp`; every `POSEI_TYPE_CMD_*` has both a C5 handler and a Cardputer screen.
 
 ### System (12)
 

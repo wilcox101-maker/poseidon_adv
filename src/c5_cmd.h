@@ -15,7 +15,7 @@
 #include <Arduino.h>
 
 #define C5_MAGIC   0x504F5345
-#define C5_VERSION 4
+#define C5_VERSION 5
 
 enum {
     C5_TYPE_HELLO              = 1,
@@ -92,14 +92,34 @@ struct __attribute__((packed)) c5_hs_t {
 };
 static_assert(sizeof(c5_hs_t) == 174, "c5_hs_t must match posei_hs_t (174B)");
 
+/* v5 (ESP-NOW v2 flag day): must stay byte-identical to posei_msg_t in
+ * c5_node/main/proto.h. payload_len moved ahead of payload and widened to
+ * u16; payload raised 230 → 1024. The frame is VARIABLE length on the wire —
+ * only C5_HEADER_SZ + payload_len bytes are sent (see c5_wire_len), so the
+ * bigger ceiling costs nothing on small control frames. Requires ESP-NOW v2
+ * (auto-negotiated on ESP-IDF >= 5.4, which both chips run). */
+#define C5_PAYLOAD_MAX 1024
 struct __attribute__((packed)) c5_msg_t {
     uint32_t magic;
     uint8_t  version;
     uint8_t  type;
     uint16_t seq;
-    uint8_t  payload[230];
-    uint8_t  payload_len;
+    uint16_t payload_len;
+    uint8_t  payload[C5_PAYLOAD_MAX];
 };
+
+/* Header (everything before payload) = 10 bytes; mirrors POSEI_HEADER_SZ. */
+#define C5_HEADER_SZ (offsetof(c5_msg_t, payload))
+
+/* Bytes actually put on air / expected off air: header + used payload only. */
+static inline size_t c5_wire_len(const c5_msg_t *m) {
+    uint16_t pl = m->payload_len;
+    if (pl > C5_PAYLOAD_MAX) pl = C5_PAYLOAD_MAX;
+    return C5_HEADER_SZ + pl;
+}
+
+static_assert(C5_HEADER_SZ == 10, "v5 header must be 10 bytes (matches POSEI_HEADER_SZ)");
+static_assert(sizeof(c5_msg_t) <= 1490, "c5_msg_t must fit one ESP-NOW v2 frame");
 
 struct __attribute__((packed)) c5_ap_t {
     uint8_t  bssid[6];
@@ -223,6 +243,21 @@ struct __attribute__((packed)) c5_ciw_req_t {
     uint8_t  category;
     uint16_t interval_ms;
 };
+
+/* ---- wire-size guards: every payload struct must fit one frame, mirroring
+ * the _Static_asserts in c5_node/main/proto.h so drift breaks the build. ---- */
+static_assert(sizeof(c5_ap_t)              <= C5_PAYLOAD_MAX, "c5_ap_t");
+static_assert(sizeof(c5_zb_t)              <= C5_PAYLOAD_MAX, "c5_zb_t");
+static_assert(sizeof(c5_hello_t)           <= C5_PAYLOAD_MAX, "c5_hello_t");
+static_assert(sizeof(c5_pmkid_t)           <= C5_PAYLOAD_MAX, "c5_pmkid_t");
+static_assert(sizeof(c5_clients_req_t)     <= C5_PAYLOAD_MAX, "c5_clients_req_t");
+static_assert(sizeof(c5_sta_t)             <= C5_PAYLOAD_MAX, "c5_sta_t");
+static_assert(sizeof(c5_probe_t)           <= C5_PAYLOAD_MAX, "c5_probe_t");
+static_assert(sizeof(c5_deauth_hit_t)      <= C5_PAYLOAD_MAX, "c5_deauth_hit_t");
+static_assert(sizeof(c5_beacon_spam_req_t) <= C5_PAYLOAD_MAX, "c5_beacon_spam_req_t");
+static_assert(sizeof(c5_apclone_req_t)     <= C5_PAYLOAD_MAX, "c5_apclone_req_t");
+static_assert(sizeof(c5_spectrum_t)        <= C5_PAYLOAD_MAX, "c5_spectrum_t");
+static_assert(sizeof(c5_ciw_req_t)         <= C5_PAYLOAD_MAX, "c5_ciw_req_t");
 
 /* ---- API ---- */
 

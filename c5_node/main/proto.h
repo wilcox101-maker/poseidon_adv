@@ -1,24 +1,39 @@
 /*
- * proto.h — POSEIDON ESP-NOW wire protocol v3.
+ * proto.h — POSEIDON ESP-NOW wire protocol v5.
  *
- * Shared between the S3 (POSEIDON) and the C5 (this node).
+ * Shared between the S3 (POSEIDON) and the C5 (this node). This file and
+ * src/c5_cmd.h must stay byte-identical for the message header + payload
+ * structs; the native proto test (test/test_proto) pins that for the C5 side
+ * and the static_asserts in both files pin it per-build.
  *
- * v3 vs v2:
- *   - RESP_* renumbered from 20-25 → 40-45 to free 18-29 for new CMDs
- *   - +10 new CMD types: clients_hunt, clients_ap, beacon_spam,
- *     probe_sniff, deauth_detect, karma, apclone, spectrum, ciw
- *   - +4 new RESP types: sta, probe, deauth_hit, spectrum
- *   - Wardrive intentionally NOT in this cut.
+ * v5 vs v4 (ESP-NOW v2 flag day — raises the payload ceiling):
+ *   - POSEI_PAYLOAD_MAX 230 → 1024. ESP-NOW v2 (auto-negotiated on ESP-IDF
+ *     >= 5.4, which both chips run) lifts the single-frame cap from 250 to
+ *     ESP_NOW_MAX_DATA_LEN_V2 (1490) bytes, so the whole posei_msg_t now fits
+ *     one frame. Unblocks untruncated EAPOL/WPA3-SAE handshakes, raw-frame
+ *     forwarding, and many more records per RESP batch.
+ *   - posei_msg_t is now VARIABLE LENGTH on the wire: payload_len moved ahead
+ *     of payload and widened u8 → u16, and senders transmit only
+ *     POSEI_HEADER_SZ + payload_len bytes (posei_wire_len()). Raising the
+ *     ceiling therefore does NOT bloat small control frames — a PONG is still
+ *     ~10 bytes on air, only large responses use the headroom.
+ *   - POSEI_VERSION 4 → 5.
  *
- * FLAG DAY: both sides must run v3 together. Mixed v2/v3 will misroute.
+ * v3→v4 history: RESP_* renumbered 20-25 → 40-45; +10 CMD types; +4 RESP
+ * types; posei_hs_t slimmed to 174B. Wardrive intentionally still NOT in.
+ *
+ * FLAG DAY: both sides must run v5 together. A v4 peer is rejected on the
+ * version check (on_recv), not misrouted.
  */
 #pragma once
 
 #include <stdint.h>
 #include <stddef.h>
+#include <assert.h>   /* static_assert: C11 macro here, keyword in C++ — proto.h
+                       * is compiled as C (c5_node) and as C++ (test/test_proto) */
 
 #define POSEI_MAGIC   0x504F5345  /* "POSE" */
-#define POSEI_VERSION 4
+#define POSEI_VERSION 5
 
 enum {
     POSEI_TYPE_HELLO              = 1,
@@ -55,16 +70,39 @@ enum {
     POSEI_TYPE_RESP_SPECTRUM      = 49,  /* batched per-channel peak RSSI  */
 };
 
-#define POSEI_PAYLOAD_MAX 230
+/* v5: 1024 (was 230). The whole frame (POSEI_HEADER_SZ + this) must stay
+ * within ESP-NOW v2's ESP_NOW_MAX_DATA_LEN_V2 (1490); 1024 leaves comfortable
+ * margin and is plenty for untruncated EAPOL, raw mgmt frames, and large RESP
+ * batches. Can be raised toward ~1480 later if a need appears. */
+#define POSEI_PAYLOAD_MAX 1024
 
+/* v5 wire layout: payload_len moved ahead of payload and widened to u16 so the
+ * frame is variable length — senders transmit only POSEI_HEADER_SZ +
+ * payload_len bytes (posei_wire_len), not the whole struct. */
 typedef struct __attribute__((packed)) {
     uint32_t magic;
     uint8_t  version;
     uint8_t  type;
     uint16_t seq;
+    uint16_t payload_len;
     uint8_t  payload[POSEI_PAYLOAD_MAX];
-    uint8_t  payload_len;
 } posei_msg_t;
+
+/* Fixed header size (everything before payload) = 10 bytes. */
+#define POSEI_HEADER_SZ  (offsetof(posei_msg_t, payload))
+
+/* Bytes actually put on air for a message: header + used payload only. */
+static inline size_t posei_wire_len(const posei_msg_t *m)
+{
+    uint16_t pl = m->payload_len;
+    if (pl > POSEI_PAYLOAD_MAX) pl = POSEI_PAYLOAD_MAX;
+    return POSEI_HEADER_SZ + pl;
+}
+
+static_assert(POSEI_HEADER_SZ == 10, "v5 header must be 10 bytes");
+/* ESP_NOW_MAX_DATA_LEN_V2 == 1490 in ESP-IDF; assert against the literal so
+ * this header stays includable without esp_now.h (native test / S3 side). */
+static_assert(sizeof(posei_msg_t) <= 1490, "posei_msg_t must fit one ESP-NOW v2 frame");
 
 /* ---- existing payloads (unchanged) ---- */
 
@@ -137,7 +175,7 @@ typedef struct __attribute__((packed)) {
     uint16_t eapol_m2_len;
     uint8_t  eapol_m2[128];   /* full M2 802.1X frame (from the 802.1X header) */
 } posei_hs_t;                 /* 174 bytes */
-_Static_assert(sizeof(posei_hs_t) <= POSEI_PAYLOAD_MAX, "posei_hs_t must fit payload");
+static_assert(sizeof(posei_hs_t) <= POSEI_PAYLOAD_MAX, "posei_hs_t must fit payload");
 
 /* ---- NEW payloads (v3) ---- */
 
@@ -234,6 +272,28 @@ typedef struct __attribute__((packed)) {
     uint8_t  category;         /* 0=cmd-inject, 1=fmt-string, 2=log4j, 3=xss, 4=path-trav, ... */
     uint16_t interval_ms;      /* SSID rotation cadence */
 } posei_ciw_req_t;
+
+/* ---- wire-size guards (every payload struct must fit one frame) ---- */
+static_assert(sizeof(posei_ap_t)              <= POSEI_PAYLOAD_MAX, "posei_ap_t");
+static_assert(sizeof(posei_zb_t)              <= POSEI_PAYLOAD_MAX, "posei_zb_t");
+static_assert(sizeof(posei_hello_t)           <= POSEI_PAYLOAD_MAX, "posei_hello_t");
+static_assert(sizeof(posei_scan_req_t)        <= POSEI_PAYLOAD_MAX, "posei_scan_req_t");
+static_assert(sizeof(posei_deauth_req_t)      <= POSEI_PAYLOAD_MAX, "posei_deauth_req_t");
+static_assert(sizeof(posei_pmkid_req_t)       <= POSEI_PAYLOAD_MAX, "posei_pmkid_req_t");
+static_assert(sizeof(posei_pmkid_t)           <= POSEI_PAYLOAD_MAX, "posei_pmkid_t");
+static_assert(sizeof(posei_hs_req_t)          <= POSEI_PAYLOAD_MAX, "posei_hs_req_t");
+static_assert(sizeof(posei_clients_req_t)     <= POSEI_PAYLOAD_MAX, "posei_clients_req_t");
+static_assert(sizeof(posei_sta_t)             <= POSEI_PAYLOAD_MAX, "posei_sta_t");
+static_assert(sizeof(posei_probe_t)           <= POSEI_PAYLOAD_MAX, "posei_probe_t");
+static_assert(sizeof(posei_deauth_hit_t)      <= POSEI_PAYLOAD_MAX, "posei_deauth_hit_t");
+static_assert(sizeof(posei_beacon_spam_req_t) <= POSEI_PAYLOAD_MAX, "posei_beacon_spam_req_t");
+static_assert(sizeof(posei_probe_sniff_req_t) <= POSEI_PAYLOAD_MAX, "posei_probe_sniff_req_t");
+static_assert(sizeof(posei_deauth_detect_req_t)<= POSEI_PAYLOAD_MAX, "posei_deauth_detect_req_t");
+static_assert(sizeof(posei_karma_req_t)       <= POSEI_PAYLOAD_MAX, "posei_karma_req_t");
+static_assert(sizeof(posei_apclone_req_t)     <= POSEI_PAYLOAD_MAX, "posei_apclone_req_t");
+static_assert(sizeof(posei_spectrum_t)        <= POSEI_PAYLOAD_MAX, "posei_spectrum_t");
+static_assert(sizeof(posei_spectrum_req_t)    <= POSEI_PAYLOAD_MAX, "posei_spectrum_req_t");
+static_assert(sizeof(posei_ciw_req_t)         <= POSEI_PAYLOAD_MAX, "posei_ciw_req_t");
 
 /* ---- proto.c API ---- */
 void proto_init_msg(posei_msg_t *m, uint8_t type);

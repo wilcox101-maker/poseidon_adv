@@ -9,18 +9,22 @@
 
 static const char *TAG = "softap";
 
-/* Created once, kept for the session. esp_netif_create_default_wifi_ap() also
- * starts a DHCP server on the AP interface, so associating clients get an IP. */
+/* The AP netif (which also runs the DHCP server so associating clients get an
+ * IP). Recreated on each bring-up: the project standardized on
+ * destroy-stale-then-create after a duplicate-key crash from re-creating a
+ * default wifi netif that already existed (CHANGELOG 0.8.0; see
+ * src/features/evil_twin.cpp on the S3). A bare "if (!handle)" existence guard
+ * is exactly the fragile pattern that fix replaced, so match the convention
+ * here too. */
 static esp_netif_t *s_ap_netif = NULL;
 
 esp_err_t softap_up(const char *ssid, bool open, const char *pass, uint8_t channel)
 {
+    if (s_ap_netif) { esp_netif_destroy_default_wifi(s_ap_netif); s_ap_netif = NULL; }
+    s_ap_netif = esp_netif_create_default_wifi_ap();
     if (!s_ap_netif) {
-        s_ap_netif = esp_netif_create_default_wifi_ap();
-        if (!s_ap_netif) {
-            ESP_LOGE(TAG, "AP netif create failed");
-            return ESP_FAIL;
-        }
+        ESP_LOGE(TAG, "AP netif create failed");
+        return ESP_FAIL;
     }
 
     /* Keep STA alive so ESP-NOW to the S3 survives — APSTA, not AP. */

@@ -168,7 +168,7 @@ static void emit_hs(const uint8_t bssid[6], const uint8_t sta[6],
     if (eapol_m2_len > 0) memcpy(h->eapol_m2, eapol_m2, eapol_m2_len);
 
     out.payload_len = sizeof(posei_hs_t);   /* 174 — no overflow */
-    esp_now_send(ctx->requester, (const uint8_t *)&out, sizeof(out));
+    esp_now_send(ctx->requester, (const uint8_t *)&out, posei_wire_len(&out));  /* v5: header+payload */
 
     ESP_LOGI(TAG, "HS emitted bssid=%02x:%02x:%02x:%02x:%02x:%02x sta=%02x:%02x:%02x:%02x:%02x:%02x m2=%d",
              bssid[0],bssid[1],bssid[2],bssid[3],bssid[4],bssid[5],

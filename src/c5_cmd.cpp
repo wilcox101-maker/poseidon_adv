@@ -314,9 +314,15 @@ static void on_recv(const uint8_t *mac, const uint8_t *data, int len)
 {
     int8_t rssi_now = 0;
 #endif
-    if (len < (int)sizeof(c5_msg_t)) return;
+    /* v5: variable-length frame — validate the fixed header, then bound the
+     * declared payload against what actually arrived before any handler reads
+     * m->payload. `m` aliases `data` directly (no copy); every handler reads at
+     * most m->payload_len bytes, which this proves are present. */
+    if (len < (int)C5_HEADER_SZ) return;
     const c5_msg_t *m = (const c5_msg_t *)data;
     if (m->magic != C5_MAGIC || m->version != C5_VERSION) return;
+    if (m->payload_len > C5_PAYLOAD_MAX) return;
+    if ((int)(C5_HEADER_SZ + m->payload_len) > len) return;
 
     ensure_peer(mac);
     /* ANY valid frame proves the C5 is alive. Refresh last_seen here so a node
@@ -424,6 +430,20 @@ bool c5_begin(void)
         return false;
     }
     esp_now_register_recv_cb(on_recv);
+
+    /* v5 rollout check: confirm ESP-NOW v2 is active on this (S3) side. v2 is
+     * what lifts the single-frame cap past 250 bytes, which the v5 wire layout
+     * now relies on. 1 = v1-only (large frames WILL fail); 2 = v2 OK. The C5
+     * logs the same at boot — they must match for the link to carry full
+     * frames. Log-only; not a hard gate (small frames still work on v1). */
+    {
+        uint32_t enow_ver = 0;
+        if (esp_now_get_version(&enow_ver) == ESP_OK)
+            Serial.printf("[c5] ESP-NOW version=%lu (need 2 for v5 large frames)\n",
+                          (unsigned long)enow_ver);
+        else
+            Serial.println("[c5] esp_now_get_version() unavailable");
+    }
 
     /* Broadcast peer for sending HELLOs if we want. */
     if (!esp_now_is_peer_exist(BROADCAST_MAC)) {
@@ -591,14 +611,14 @@ static uint16_t send_simple_cmd(uint8_t type, const uint8_t *extra, int extra_le
      * 5 GHz command. Separate from the role->capability routing work; not
      * Tier 2. */
     for (int i = 0; i < count; ++i) {
-        esp_err_t r = esp_now_send(macs[i], (const uint8_t *)&m, sizeof(m));
+        esp_err_t r = esp_now_send(macs[i], (const uint8_t *)&m, c5_wire_len(&m));
 #ifdef POSEIDON_DEBUG_C5
         Serial.printf("[c5-tx] unicast peer%d rc=%d (%s)\n", i, (int)r, esp_err_to_name(r));
 #else
         (void)r;
 #endif
     }
-    esp_err_t r = esp_now_send(BROADCAST_MAC, (const uint8_t *)&m, sizeof(m));
+    esp_err_t r = esp_now_send(BROADCAST_MAC, (const uint8_t *)&m, c5_wire_len(&m));
 #ifdef POSEIDON_DEBUG_C5
     Serial.printf("[c5-tx] broadcast rc=%d (%s)\n", (int)r, esp_err_to_name(r));
 #else
