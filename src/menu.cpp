@@ -117,6 +117,7 @@ extern void feat_c5_apclone(void);
 extern void feat_c5_karma(void);
 extern void feat_tool_sd_format(void);
 extern void feat_tool_flashlight(void);
+extern void feat_lab_mode(void);
 extern void feat_tool_screen_test(void);
 extern void feat_tool_stopwatch(void);
 extern void feat_tool_chance(void);
@@ -823,6 +824,11 @@ static const menu_node_t MENU_TOOLS[] = {
     { 'f', "SD format", "WIPE microSD card", nullptr, feat_tool_sd_format,
       "Deep-deletes every file and directory on the SD card. Requires typing "
       "YES to confirm. Cannot be undone." },
+    { 'a', "Lab mode", "Guided educational exercises", nullptr, feat_lab_mode,
+      "Step-by-step lab walkthroughs (WPA handshake, PMKID). Shows a lesson "
+      "objective list with progress; steps auto-check as the matching "
+      "capture events happen, or toggle them by hand to explore. Learning "
+      "aid only — runs no attacks itself. (Placeholder lessons for now.)" },
     { 0, nullptr, nullptr, nullptr, nullptr, nullptr },
 };
 
