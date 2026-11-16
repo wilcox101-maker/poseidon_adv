@@ -11,7 +11,7 @@
   [![framework](https://img.shields.io/badge/framework-Arduino%2FPlatformIO-green)](https://platformio.org/)
   [![license](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
   [![modules](https://img.shields.io/badge/research%20modules-170%2B-orange)](FEATURES.md)
-  [![release](https://img.shields.io/badge/release-v0.9.1-blueviolet)](https://github.com/wilcox101-maker/poseidon_adv)
+  [![release](https://img.shields.io/badge/release-v0.9.2-blueviolet)](https://github.com/wilcox101-maker/poseidon_adv)
   [![version](https://img.shields.io/badge/version-Deepwater-success)](CHANGELOG.md)
   [![use](https://img.shields.io/badge/use-authorized%20%2F%20owned%20hardware-important)](#safety--authorized-use)
 
@@ -19,18 +19,20 @@
 
 ---
 
-## This fork (0.9.1)
+## This fork (0.9.2)
 
-[wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv) is my checkout of [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). Upstream remains the base. Fork-specific work stays in a short stack of focused commits and is kept when upstream moves. Source revision **0.9.1** (the TRIDENT C5-node release: deauth stop path, scan/zigbee hardening, reproducible libnet80211 patch). Binaries under `release_binaries/` are built at 0.9.1 and published on the [v0.9.1 release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.1).
+[wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv) is my checkout of [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). Upstream remains the base. Fork-specific work stays in a short stack of focused commits and is kept when upstream moves. Source revision **0.9.2** — the release that completes the C5 command surface and lands the ESP-NOW v2 (wire v5) flag day, the master TX-arm safety switch, and the first wave of PUIE UI work. Binaries under `release_binaries/` are built at 0.9.2 and published on the [v0.9.2 release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.2).
 
 I keep a counted inventory of this tree in [FEATURES.md](FEATURES.md).
 
 ### Project timeline & milestones
 
 Where this fork has gone, grounded in [CHANGELOG.md](CHANGELOG.md). Tagged
-releases are the released line; `master` currently runs ahead of 0.9.1 with the
-C5 command surface finished and the wire protocol at v5 (unreleased, pending the
-hardware validation pass).
+releases are the released line; **0.9.2** is the current release — the C5 command
+surface is finished, the wire protocol is at v5, the TX-arm safety system is in,
+and the first PUIE UI work has landed. The one item still owed is the on-device
+validation pass (confirm ESP-NOW v2 negotiates on both chips) — see
+[docs/hardware-validation.md](docs/hardware-validation.md).
 
 | When | Milestone |
 | --- | --- |
@@ -40,7 +42,8 @@ hardware validation pass).
 | 0.8.0 (Oct 2026) | Raw-AP/STA bring-up hardened — every `esp_netif` site now destroys a stale netif before creating its own (duplicate-key crash fix). |
 | 0.9.0 (Nov 2026) | **TRIDENT ESP32-C5 companion node** introduced: the only ESP chip here with 5 GHz Wi-Fi + 802.15.4, driven from the Cardputer over ESP-NOW — 5 GHz scan, 5 GHz deauth, 5 GHz PMKID, Zigbee/802.15.4 sniff. |
 | 0.9.1 (Nov 2026) | C5 **Tier 1** passive suite (probe sniff, deauth detect, client hunt, activity sweep) + a read-only C5 diagnostics screen; Zigbee frames labelled Zigbee-vs-Thread. |
-| `master` (unreleased) | C5 **Tier 2** TX/SoftAP suite (beacon spam, CIW SSID-injection, AP clone, Karma) completes the command surface — every `POSEI_TYPE_CMD_*` now has a node handler **and** a Cardputer screen (15 C5 actions). **ESP-NOW v2 flag day (wire v5):** variable-length frames with a 1024-byte payload ceiling, lifting RESP_AP from 5 to ~23 records/frame. Peer admission is now **capability-based** — any advertised board can join the bus, not just a C5. A **master TX-arm safety switch** gates every offensive transmit action (WiFi / BLE / Sub-GHz / nRF24 / C5) behind a deliberate arm step. Hardening: the C5 ESP-IDF firmware now builds in CI with native protocol tests, error handling is tightened, and the C5 app partition grew 1 MB → 2 MB for headroom. |
+| 0.9.2 (Nov 2026) | **Release that completes the C5 command surface and lands the v5 flag day.** C5 **Tier 2** TX/SoftAP suite (beacon spam, CIW SSID-injection, AP clone, Karma) — every `POSEI_TYPE_CMD_*` now has a node handler **and** a Cardputer screen. **ESP-NOW v2 flag day (wire v4 → v5):** variable-length frames with a 1024-byte payload ceiling, lifting RESP_AP from 5 to ~23 records/frame; boot-time `esp_now_get_version()` logging on both chips. Peer admission is now **capability-based** — any advertised board can join the bus, not just a C5. **Master TX-arm safety switch** gates every offensive transmit action (WiFi / BLE / Sub-GHz / nRF24 / C5) behind a deliberate arm step, including the residual in-feature deauth hotkeys (clients, clients-all, PMKID HUNT) and the Argus/combo auto-deauth paths. **PUIE UI:** an unmistakable ARMED status-bar indicator, a reusable C5 live-dashboard widget, and the lab-mode UI shell. **Hardening & tooling:** the C5 ESP-IDF firmware builds in CI with native protocol tests; error handling tightened (cppcheck-clean); the C5 app partition grew 1 MB → 2 MB; a release-metadata consistency CI guard and a partition-table-vs-`partitions.csv` guard; a C5 GPIO-expander design spec; a hardware-validation runbook; and a technical-risk register. Flash tooling corrected (2 MB partition image, manifest versions, C5 BOOT-pin = GPIO28). |
+| `master` (ahead of 0.9.2) | Post-release work toward the depth/integration roadmap (pcap export, educational lab-mode, Thread/Matter, cross-radio correlation). |
 
 ### What this fork keeps
 
