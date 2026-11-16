@@ -110,6 +110,10 @@ extern void feat_c5_deauth_detect(void);
 extern void feat_c5_clients(void);
 extern void feat_c5_spectrum(void);
 extern void feat_c5_diag(void);
+extern void feat_c5_beacon_spam(void);
+extern void feat_c5_ciw(void);
+extern void feat_c5_apclone(void);
+extern void feat_c5_karma(void);
 extern void feat_tool_sd_format(void);
 extern void feat_tool_flashlight(void);
 extern void feat_tool_screen_test(void);
@@ -392,6 +396,29 @@ static const menu_node_t MENU_C5[] = {
       "last-seen, capability badges (5G / 15.4), ping round-trip, and the "
       "latest channel/frame count. All from data already received over "
       "ESP-NOW — no node reflash, no protocol change. Press p to ping." },
+    { 'b', "Beacon spam", "Fake AP flood (2.4/5 GHz)", nullptr, feat_c5_beacon_spam,
+      "Sends CMD_BEACON_SPAM. The C5 floods fake OPEN beacons so nearby "
+      "scanners fill with junk SSIDs — and unlike the S3 it can do this on "
+      "5 GHz too. Pick a channel preset and a mode (built-in meme list or a "
+      "rickroll-themed set), then it runs until ESC. Live frame count streams "
+      "back over ESP-NOW." },
+    { 'c', "CIW inject", "SSID-injection fuzz beacons", nullptr, feat_c5_ciw,
+      "Sends CMD_CIW. Beacon spam whose SSIDs are robustness-fuzz canaries "
+      "(cmd-inject / fmt-string / log4j / xss / path-trav), rotated every "
+      "~500 ms, to test how YOUR OWN scanners and loggers handle hostile "
+      "SSID text. Each is truncated to 32 chars — a display/log test vector, "
+      "not a working exploit. Runs until ESC." },
+    { 'o', "AP clone", "SoftAP honeypot of a scanned AP", nullptr, feat_c5_apclone,
+      "Sends CMD_APCLONE. Scan, pick an AP, and the C5 stands up an OPEN "
+      "SoftAP with that SSID so clients associate to it. Hosts on the AP's "
+      "channel when it's 2.4 GHz, else ch 1 (5 GHz SoftAP is unreliable and "
+      "would break the ESP-NOW control link). Runs until ESC or the C5's "
+      "5-minute safety cap." },
+    { 'k', "Karma", "Auto-clone a probed SSID", nullptr, feat_c5_karma,
+      "Sends CMD_KARMA. The C5 sniffs for a directed probe request (a client "
+      "actively looking for a named network), then auto-clones that SSID as "
+      "an OPEN SoftAP on ch 1 so the client auto-joins. = probe sniff + AP "
+      "clone. Runs until ESC or the 5-minute safety cap." },
     { 0, nullptr, nullptr, nullptr, nullptr, nullptr },
 };
 
