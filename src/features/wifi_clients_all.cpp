@@ -14,6 +14,7 @@
 #include "app.h"
 #include "../theme.h"
 #include "ui.h"
+#include "tx_arm.h"
 #include "input.h"
 #include "radio.h"
 #include "wifi_deauth_frame.h"
@@ -358,11 +359,15 @@ void feat_wifi_clients_all(void)
         sel = s_all[cursor];
         portEXIT_CRITICAL(&s_all_mux);
         if (k == 'd' || k == 'D') {
-            unicast_deauth(sel.sta, sel.bssid, sel.ch, 30);
-            ui_toast("deauth → STA", T_BAD, 500);
+            if (tx_arm_require()) {
+                unicast_deauth(sel.sta, sel.bssid, sel.ch, 30);
+                ui_toast("deauth → STA", T_BAD, 500);
+            }
         } else if (k == 'x' || k == 'X') {
-            broadcast_deauth(sel.bssid, sel.ch, 30);
-            ui_toast("deauth AP all", T_BAD, 500);
+            if (tx_arm_require()) {
+                broadcast_deauth(sel.bssid, sel.ch, 30);
+                ui_toast("deauth AP all", T_BAD, 500);
+            }
         } else if (k == 'l' || k == 'L') {
             s_locked = true;
             s_all_ch = sel.ch;

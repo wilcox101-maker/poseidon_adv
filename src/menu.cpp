@@ -1223,6 +1223,10 @@ static const menu_action_fn TX_ACTIONS[] = {
     feat_nrf24_jammer, feat_nrf24_mousejack, feat_nrf24_ble_spam,
     feat_c5_deauth_5g, feat_c5_nuke_5g, feat_c5_beacon_spam,
     feat_c5_ciw, feat_c5_apclone, feat_c5_karma,
+    /* Argus/triton and the WiFi+BLE combo auto-fire broadcast deauth on
+     * loopTask without passing a gated feat_*; both are menu-only entries,
+     * so gating them here (refuse launch while SAFE) closes that TX path. */
+    feat_triton, feat_nrf52_wifi_ble_combo,
 };
 
 static bool action_is_tx(menu_action_fn a)

@@ -18,6 +18,7 @@
 #include "app.h"
 #include "../theme.h"
 #include "ui.h"
+#include "tx_arm.h"
 #include "input.h"
 #include "radio.h"
 #include "menu.h"
@@ -676,7 +677,15 @@ void feat_wifi_pmkid(void)
         if (k == PK_NONE) { delay(20); continue; }
         if (k == PK_ESC) break;
         if (k == '?') { ui_show_current_help(); }
-        if (k == 'h' || k == 'H') s_hunt = !s_hunt;
+        if (k == 'h' || k == 'H') {
+            /* HUNT deauth-TX runs in hunt_task; gate at this loopTask toggle
+             * (tx_arm_require draws a toast — must not be called off loopTask,
+             * invariant I1). Turning OFF is always allowed; turning ON needs
+             * arm. If SAFE, tx_arm_require toasts and s_hunt stays false, so
+             * hunt_task (which checks s_running && s_hunt) transmits nothing. */
+            if (s_hunt)                s_hunt = false;
+            else if (tx_arm_require()) s_hunt = true;
+        }
     }
 
     s_running = false;
