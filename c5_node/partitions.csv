@@ -1,0 +1,13 @@
+# ESP32-C5 node partition table.
+#
+# Same layout as IDF's default single-app table EXCEPT the factory app is
+# grown 1 MB -> 2 MB. The v5 + Tier 2 work pushed the image to ~93% of the old
+# 1 MB partition (981 KB); 2 MB restores comfortable headroom (~47% used) on
+# the 4 MB flash without touching any offset, so NVS data survives the reflash
+# and the documented flash offsets (bootloader 0x2000, table 0x8000, app
+# 0x10000) are all unchanged.
+#
+# Name,     Type, SubType, Offset,   Size,     Flags
+nvs,        data, nvs,     0x9000,   0x6000,
+phy_init,   data, phy,     0xf000,   0x1000,
+factory,    app,  factory, 0x10000,  0x200000,

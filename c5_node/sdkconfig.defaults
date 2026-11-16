@@ -1,3 +1,8 @@
 CONFIG_IDF_TARGET="esp32c5"
 CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
 CONFIG_ESPTOOLPY_FLASHSIZE="4MB"
+# Custom partition table: 2 MB factory app (was 1 MB) so the C5 firmware has
+# headroom — v5 + Tier 2 brought the image to ~93% of the old 1 MB. Same
+# offsets as the default single-app layout; see partitions.csv.
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
