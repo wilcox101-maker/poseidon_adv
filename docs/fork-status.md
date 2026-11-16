@@ -2,7 +2,7 @@
 
 `wilcox101-maker/poseidon_adv` vs upstream `Evil0ctopus/poseidon_adv`.
 
-**Synced to upstream:** `cc0b058` (2026-10-03) · **HEAD:** `+89 / -0` (ahead / behind) · **updated:** 2026-11-16
+**Synced to upstream:** `cc0b058` (2026-10-03) · **HEAD:** `+109 / -0` (ahead / behind) · **updated:** 2026-11-16
 
 Ledger only — the narrative lives in the README's "This fork" section, releases in `CHANGELOG.md`. Refresh the counts with `git fetch upstream && git rev-list --left-right --count upstream/master...HEAD`.
 
@@ -15,7 +15,7 @@ Fork work is kept as self-contained units, replayed whole on each upstream pull.
 | Hydra pins / shared-SPI / GPS | `src/cc1101_hw.h`, `src/nrf24_hw.h`, `src/gps.h` | kept |
 | Warning cleanup | `cardputer-launcher` sources | kept |
 | CI | `.github/workflows` (PlatformIO build + native-test, Node 24) | kept |
-| C5 node + ESP-NOW | `c5_node/`, `src/c5_cmd.*`, `src/features/c5_scan.cpp` | in progress |
+| C5 node + ESP-NOW | `c5_node/`, `src/c5_cmd.*`, `src/features/c5_scan.cpp` | kept — Tier 2 surface + wire v5 shipped in 0.9.2 (on-device validation still owed) |
 | Docs / upstream-credit retarget | README, SaltyJack how-to, `FEATURES.md`, fork notes, host scrub | kept |
 
 ## Not upstreamed — re-verify on every sync
