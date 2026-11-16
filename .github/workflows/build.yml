@@ -75,6 +75,23 @@ jobs:
           target: esp32c5
           path: c5_node
 
+      - name: Verify committed C5 partition table matches partitions.csv
+        # The web-flasher ships docs/flash/bin/trident-c5/partition-table.bin.
+        # It must byte-match the table ESP-IDF just built from partitions.csv,
+        # or the flasher writes a stale layout (regression guard for the 1M->2M
+        # drift fixed in PR #26). Regenerate with:
+        #   cp c5_node/build/partition_table/partition-table.bin \
+        #      docs/flash/bin/trident-c5/partition-table.bin
+        run: |
+          built=c5_node/build/partition_table/partition-table.bin
+          committed=docs/flash/bin/trident-c5/partition-table.bin
+          if ! cmp -s "$built" "$committed"; then
+            echo "::error file=${committed}::Committed C5 partition table is stale — it does not match the table built from c5_node/partitions.csv. Regenerate: cp ${built} ${committed}"
+            cmp "$built" "$committed" || true
+            exit 1
+          fi
+          echo "C5 partition table is in sync with partitions.csv."
+
       - name: Upload C5 firmware artifact
         if: success()
         uses: actions/upload-artifact@v7
@@ -113,3 +130,17 @@ jobs:
 
       - name: Run host-side unit tests
         run: pio test -e native-test
+
+  consistency:
+    name: release-metadata consistency
+    runs-on: ubuntu-latest
+    # Cheap text gate: catches version strings / flasher manifests drifting
+    # apart (the class of bug fixed in PRs #26/#27). See
+    # tools/check_release_consistency.py — also runnable locally before a release.
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Check version + flasher-manifest consistency
+        run: python3 tools/check_release_consistency.py
