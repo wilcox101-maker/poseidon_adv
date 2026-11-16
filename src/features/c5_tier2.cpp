@@ -26,6 +26,7 @@
 #include "input.h"
 #include "radio.h"
 #include "c5_cmd.h"
+#include "../c5_dashboard.h"
 #include <Arduino.h>
 
 /* Channel presets the operator cycles with ;/. — a 2.4 GHz spread plus two
@@ -43,40 +44,33 @@ static bool c5_tier2_begin(void)
     return true;
 }
 
-/* Shared live TX dashboard: polls RESP_STATUS until ESC, then stops. `subtitle`
- * is drawn under the frame count (e.g. the SSID set or category in play). */
-static void c5_tx_dashboard(const char *title, const char *subtitle)
+/* Metric body for the shared TX dashboard: frame count, channel, and the
+ * per-call subtitle (SSID set / category in play) passed through ctx. */
+static void c5_tx_body(void *ctx)
 {
     auto &d = M5Cardputer.Display;
-    ui_clear_body();
-    ui_draw_footer("`=stop");
-    uint32_t last = 0, last_frames = 0;
-    while (true) {
-        uint16_t k = input_poll();
-        if (k == PK_ESC) { c5_cmd_stop(); break; }
-        if (millis() - last > 200) {
-            last = millis();
-            uint32_t now_frames = c5_status_frames();
-            bool tick = (now_frames != last_frames);
-            last_frames = now_frames;
-            ui_dashboard_chrome(title, tick);
-            d.fillRect(0, BODY_Y + 14, SCR_W, BODY_H - 28, T_BG);
-            d.setTextColor(T_ACCENT, T_BG);
-            d.setCursor(4, BODY_Y + 16);
-            if (now_frames > 0) d.printf("frames: %lu", (unsigned long)now_frames);
-            else                d.print("LIVE (count lags)");
-            d.setTextColor(T_FG, T_BG);
-            d.setCursor(4, BODY_Y + 30);
-            d.printf("ch%u via C5", c5_status_channel());
-            if (subtitle && subtitle[0]) {
-                d.setTextColor(T_DIM, T_BG);
-                d.setCursor(4, BODY_Y + 44);
-                d.printf("%.30s", subtitle);
-            }
-            ui_dashboard_radar();
-        }
-        delay(20);
+    const char *subtitle = (const char *)ctx;
+    uint32_t now_frames = c5_status_frames();
+    d.setTextColor(T_ACCENT, T_BG);
+    d.setCursor(4, BODY_Y + 16);
+    if (now_frames > 0) d.printf("frames: %lu", (unsigned long)now_frames);
+    else                d.print("LIVE (count lags)");
+    d.setTextColor(T_FG, T_BG);
+    d.setCursor(4, BODY_Y + 30);
+    d.printf("ch%u via C5", c5_status_channel());
+    if (subtitle && subtitle[0]) {
+        d.setTextColor(T_DIM, T_BG);
+        d.setCursor(4, BODY_Y + 44);
+        d.printf("%.30s", subtitle);
     }
+}
+
+/* Shared live TX dashboard: polls RESP_STATUS until ESC, then stops, via
+ * the reusable c5_live_dashboard widget. `subtitle` is drawn under the
+ * frame count (e.g. the SSID set or category in play). */
+static void c5_tx_dashboard(const char *title, const char *subtitle)
+{
+    c5_live_dashboard(title, c5_tx_body, (void *)subtitle, nullptr, true);
 }
 
 /* Two-field picker (channel preset + a labelled option set). Returns the chosen
