@@ -1,6 +1,6 @@
 {
   "name": "POSEIDON TRIDENT - ESP32-C5 Satellite",
-  "version": "v0.9.1-proto-v5-2026-11-16",
+  "version": "v0.9.2-proto-v5-2026-11-16",
   "home_assistant_domain": "",
   "funding_url": "",
   "new_install_prompt_erase": true,

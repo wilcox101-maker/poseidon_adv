@@ -6,8 +6,31 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-11-16
+
+Release that completes the C5 command surface, lands the ESP-NOW v2 (wire v5)
+flag day and the master TX-arm safety system, and brings in the first wave of
+PUIE UI work. The one item still owed is the on-device validation pass
+(`docs/hardware-validation.md`): confirm `esp_now_get_version()` reports 2 on
+both chips. Wire protocol `POSEI_VERSION == C5_VERSION == 5`.
+
 ### Added
 
+- **PUIE UI — ARMED indicator, C5 live-dashboard widget, lab-mode shell.** An
+  unmistakable ARMED/SAFE state in the status bar (no longer just a thin red
+  separator); a reusable C5 live-dashboard widget so new C5 features drop into a
+  shared screen; and the lab-mode UI shell (`labmode.h`) — the first scaffolding
+  toward guided educational exercises.
+- **C5 GPIO-expander design spec** (`docs/specs/2026-11-16-c5-gpio-expander-design.md`)
+  — remote GPIO read/write over ESP-NOW v2 as a batched, additive-to-v5 command
+  (design only; UI handed to PUIE).
+- **Hardware-validation runbook** (`docs/hardware-validation.md`) — turnkey
+  POS-AUDIT-127 procedure for the v5 on-device gate.
+- **Release-metadata + partition CI guards.** `tools/check_release_consistency.py`
+  (a `consistency` CI job) asserts the firmware version, web-flasher manifests,
+  and wire `proto-v<N>` agree; the c5-node CI job byte-diffs the committed
+  partition table against the one ESP-IDF rebuilds from `partitions.csv`.
+- **Technical risk register** and an Asterisk-2 depth/integration plan (project docs).
 - **C5 Tier 2 commands (BEACON_SPAM / CIW / APCLONE / KARMA).** The four
   previously stubbed C5 handlers are implemented: 5 GHz/2.4 GHz beacon spam and
   SSID-injection fuzz beacons (raw-TX via `wifi_tx_raw`, no `libnet80211` patch
@@ -26,8 +49,12 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   SAFE, with a confirm to arm and an always-visible red status-bar cue. Gates
   WiFi / BLE / Sub-GHz / nRF24 **and the C5** TX actions (deauth, beacon spam,
   CIW, AP clone, Karma, nuke); passive scan/sniff/detect are not gated. State
-  persists in NVS. See `docs/tx-arm.md` (known follow-ups: in-feature attack
-  hotkeys and IR pranks not yet gated).
+  persists in NVS. See `docs/tx-arm.md`. **Residual inline-TX paths now gated
+  too** — the in-feature deauth hotkeys in `wifi_clients` (d/D), `wifi_clients_all`
+  (d/D unicast, x/X broadcast) and `wifi_pmkid` HUNT, plus the Argus/triton and
+  WiFi+BLE-combo auto-deauth paths (added to the gated-launch table). The gate
+  always sits on the user action on loopTask, never inside a TX task (invariant
+  I1). IR pranks remain the one known ungated path.
 
 ### Changed
 
@@ -61,8 +88,15 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 - **C5 partition headroom.** The node image had reached ~93.6% of its 1 MB
   factory partition after v5 + Tier 2; a custom partition table grows it to
   2 MB (~47% used) with every offset unchanged, so NVS survives and the
-  documented flash offsets still hold. Needs a one-time `idf.py -C c5_node
-  fullclean` locally to pick up the new table.
+  documented flash offsets still hold. Note: a local build also needs a stale
+  generated `c5_node/sdkconfig` removed (not just `fullclean`) to pick up
+  `CONFIG_PARTITION_TABLE_CUSTOM` from `sdkconfig.defaults`; a fresh checkout
+  (CI) gets 2 MB automatically.
+- **Flash tooling corrected.** Regenerated the committed C5 `partition-table.bin`
+  to the 2 MB layout, fixed the web-flasher manifest version/`proto` strings, and
+  corrected the C5 recovery BOOT-pin to **GPIO28** (was mislabelled G0 / GPIO9)
+  across `install.html` / `testers.html` / `flash/index.html`. Added an inline
+  recovery section to the standalone flasher.
 
 ## [0.9.1] - 2026-11-05
 
