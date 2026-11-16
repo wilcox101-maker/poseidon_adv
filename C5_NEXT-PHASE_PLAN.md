@@ -1,5 +1,16 @@
 # Next phase: C5 node and Poseidon ESP-NOW
 
+> **Status update (2026-11-16): Band 1 is code-complete and ESP-NOW v2 has
+> landed.** All nine once-stubbed commands now have C5 handlers AND Cardputer
+> rows — Tier 1 (probe sniff, deauth detect, client hunt, spectrum) is
+> hardware-verified; Tier 2 (beacon spam, CIW, AP clone, Karma) is implemented
+> and awaits its bench pass. The wire protocol is now **v5**: the ESP-NOW v2
+> flag day raised `POSEI_PAYLOAD_MAX` to 1024 and made the frame variable
+> length (see the CHANGELOG `[Unreleased]` and `esp-now-v2.md`). The historical
+> narrative below is kept for context; where it says a command is "unimplemented
+> on the C5" or the version is "4", read it as the starting point of this work,
+> not the current state.
+
 The next step for me(wilcox101-maker) is work on the ESP32-C5 node and the ESP-NOW link back to the Cardputer. The command IDs are already on the wire. I will finish those before I add anything new.
 
 ## Where I am

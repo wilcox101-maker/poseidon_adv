@@ -137,7 +137,7 @@ static void emit_pmkid(const uint8_t bssid[6], const uint8_t sta[6],
     p->ssid[0]  = '\0';
 
     out.payload_len = sizeof(posei_pmkid_t);
-    esp_now_send(ctx->requester, (const uint8_t *)&out, sizeof(out));
+    esp_now_send(ctx->requester, (const uint8_t *)&out, posei_wire_len(&out));  /* v5: header+payload */
 
     ESP_LOGI(TAG, "PMKID %02x%02x%02x%02x%02x%02x <- %02x:%02x:%02x:%02x:%02x:%02x",
              pmkid[0], pmkid[1], pmkid[2], pmkid[3], pmkid[4], pmkid[5],

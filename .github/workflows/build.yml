@@ -57,6 +57,36 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  c5-node:
+    name: idf.py build (c5_node / esp32c5)
+    runs-on: ubuntu-latest
+    # The C5 node is an ESP-IDF project, not PlatformIO — the pio matrix above
+    # never compiled it, so a typo or bad IDF API in c5_node/ used to surface
+    # only at flash time on the bench. This job builds it on every push/PR.
+    # The libnet80211 deauth-injection patch (tools/patch_libnet80211.sh) is a
+    # runtime TX fix and is NOT needed to compile, so CI skips it.
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build c5_node firmware
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: release-v5.5
+          target: esp32c5
+          path: c5_node
+
+      - name: Upload C5 firmware artifact
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: firmware-c5-node
+          path: |
+            c5_node/build/poseidon_c5_node.bin
+            c5_node/build/bootloader/bootloader.bin
+            c5_node/build/partition_table/partition-table.bin
+          if-no-files-found: warn
+          retention-days: 14
+
   native-tests:
     name: pio test (native-test)
     runs-on: ubuntu-latest
