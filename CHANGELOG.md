@@ -20,6 +20,14 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   `esp32c5`) compiles `c5_node/` on every push/PR and uploads the binary — the
   ESP-IDF tree was previously never built in CI. Plus `test/test_proto`, native
   Unity tests pinning the v5 header layout and wire-size math.
+- **Master transmit-arm safety switch** (`tx_arm.*`). A global SAFE/ARMED
+  switch that must be deliberately armed before any offensive RF transmission
+  can start — `menu_execute_action()` refuses to launch a gated action while
+  SAFE, with a confirm to arm and an always-visible red status-bar cue. Gates
+  WiFi / BLE / Sub-GHz / nRF24 **and the C5** TX actions (deauth, beacon spam,
+  CIW, AP clone, Karma, nuke); passive scan/sniff/detect are not gated. State
+  persists in NVS. See `docs/tx-arm.md` (known follow-ups: in-feature attack
+  hotkeys and IR pranks not yet gated).
 
 ### Changed
 
@@ -37,6 +45,24 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 - **C5 single-radio safety.** Starting any TX/SoftAP command now stops the other
   TX/SoftAP jobs first; `softap.c` adopts the destroy-stale-then-create netif
   convention (CHANGELOG 0.8.0).
+- **C5 peer admission by capability, not role** (phase1-infra). Dropped the
+  `role != 1` gate in `handle_hello` that rejected every non-C5 board from the
+  peer table; admission now tracks whatever radios a node advertises
+  (`has_5g` / `has_ieee802154`), so a C6 / C3 / S3+PSRAM node can join the same
+  ESP-NOW bus. Behavior-neutral on the current single-C5 pair.
+
+### Fixed
+
+- **C5 error-handling hardening.** NULL-checked the one unguarded allocation
+  (the WS2812 RMT encoder in `led_fx.c`, plus teardown of a half-built encoder)
+  and checked every previously-ignored `xTaskCreate()` return — most importantly
+  the scan task, whose silent spawn failure used to leave scanning wedged as
+  "busy" until reboot. Failure-path only; the success path is unchanged.
+- **C5 partition headroom.** The node image had reached ~93.6% of its 1 MB
+  factory partition after v5 + Tier 2; a custom partition table grows it to
+  2 MB (~47% used) with every offset unchanged, so NVS survives and the
+  documented flash offsets still hold. Needs a one-time `idf.py -C c5_node
+  fullclean` locally to pick up the new table.
 
 ## [0.9.1] - 2026-11-05
 
