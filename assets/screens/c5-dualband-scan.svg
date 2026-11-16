@@ -15,6 +15,6 @@
 <text x="2" y="64" fill="#3bc9db" font-size="11">2G</text><text x="22" y="64" fill="#cdeefc" font-size="11">-55</text><text x="54" y="64" fill="#ffb02e" font-size="11">WPA2</text><text x="96" y="64" fill="#cdeefc" font-size="11">HomeNet</text>
 <text x="2" y="78" fill="#ff46d9" font-size="11">5G</text><text x="22" y="78" fill="#cdeefc" font-size="11">-61</text><text x="54" y="78" fill="#ffb02e" font-size="11">OPEN</text><text x="96" y="78" fill="#cdeefc" font-size="11">Guest5G</text>
 <text x="2" y="92" fill="#3bc9db" font-size="11">2G</text><text x="22" y="92" fill="#cdeefc" font-size="11">-70</text><text x="54" y="92" fill="#ffb02e" font-size="11">WPA2</text><text x="96" y="92" fill="#cdeefc" font-size="11">NeighborAP</text>
-<line x1="0" y1="164" x2="320" y2="164" stroke="#214050"/><text x="8" y="176" fill="#5f8a9e" font-size="10">;/. move  ENTER=info  R=rescan</text>
+<line x1="0" y1="164" x2="320" y2="164" stroke="#214050"/><text x="8" y="176" fill="#5f8a9e" font-size="10">;/. move  ENTER=info  R=rescan  `=back</text>
 </g>
 </svg>
