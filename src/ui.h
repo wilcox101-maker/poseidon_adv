@@ -73,10 +73,6 @@ void ui_spinner(int cx, int cy, uint16_t color);
 void ui_notify_slide(const char *title, const char *sub,
                      uint16_t color, uint32_t hold_ms);
 
-/* Keypress ripple — brief expanding ring at screen center, runs
- * for ~120ms. Use from any screen for keystroke visual feedback. */
-void ui_ripple(int cx, int cy, uint16_t color);
-
 /* Matrix rain single-frame renderer. Call in a refresh loop — phase
  * advances internally via millis(). Draws into a given rect. Caller
  * is responsible for clearing the rect before the first call. */

@@ -336,18 +336,6 @@ void ui_notify_slide(const char *title, const char *sub,
     ui_toast(message, color, hold_ms);
 }
 
-/* Ripple: expanding ring, 6 frames at 20ms = 120ms total. */
-void ui_ripple(int cx, int cy, uint16_t color)
-{
-    if (!ui_motion_enabled()) return;
-    auto &d = M5Cardputer.Display;
-    for (int r = 3; r < 24; r += 3) {
-        d.drawCircle(cx, cy, r, color);
-        delay(20);
-        d.drawCircle(cx, cy, r, T_BG);
-    }
-}
-
 static uint16_t blend565(uint16_t a, uint16_t b, uint8_t t);
 
 void ui_waves(int cx, int cy, int max_radius, uint16_t base_color)

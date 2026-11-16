@@ -16,6 +16,11 @@
  *                       the user's phantom-* suite (launcher, rf, mobile).
  *   BLOOD tactical:     Mr Robot fsociety red-on-black. Aggressive,
  *                       urgent; reads as "device is actively attacking".
+ *   AMBER CRT:          80s phosphor amber terminal.
+ *   NIGHT CITY:         vivid cyberpunk electric yellow + cyan.
+ *   SOLARIS:            solar gold & warm plasma on charcoal.
+ *   NORDIC FROST:       glacial ice-cyan & silver on arctic navy.
+ *   GHOST PURPLE:       neon electric purple on obsidian.
  */
 #pragma once
 

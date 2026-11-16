@@ -290,9 +290,7 @@ static bool beep_tracker(const uint8_t mac[6], const char *kind)
 
     NimBLEClient *client = NimBLEDevice::createClient();
     if (!client) {
-        d.setCursor(4, BODY_Y + 44); d.setTextColor(T_BAD, T_BG);
-        d.print("client null");
-        delay(1500);
+        ui_toast("client null", T_BAD, 1500);
         return false;
     }
     client->setConnectTimeout(5000);
@@ -309,12 +307,8 @@ static bool beep_tracker(const uint8_t mac[6], const char *kind)
     Serial.printf("[beep] connect %02X:%02X:%02X:%02X:%02X:%02X -> %d\n",
                   mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], (int)connected);
     if (!connected) {
-        d.setCursor(4, BODY_Y + 44); d.setTextColor(T_BAD, T_BG);
-        d.print("connect failed");
-        d.setCursor(4, BODY_Y + 56); d.setTextColor(T_DIM, T_BG);
-        d.print("(may be paired/protected)");
         NimBLEDevice::deleteClient(client);
-        delay(1800);
+        ui_toast("connect failed\n(may be paired/protected)", T_BAD, 1800);
         return false;
     }
 
@@ -356,19 +350,10 @@ static bool beep_tracker(const uint8_t mac[6], const char *kind)
     delay(50);
     NimBLEDevice::deleteClient(client);
 
-    d.setCursor(4, BODY_Y + 44);
-    if (beeped) {
-        d.setTextColor(T_GOOD, T_BG);
-        d.print("BEEP sent");
-        d.setCursor(4, BODY_Y + 56); d.setTextColor(T_DIM, T_BG);
-        d.print("(only fires if separated 8h+)");
-    } else {
-        d.setTextColor(T_WARN, T_BG);
-        d.print("no audio chr / not separated");
-        d.setCursor(4, BODY_Y + 56); d.setTextColor(T_DIM, T_BG);
-        d.print("see serial for svc dump");
-    }
-    delay(2200);
+    if (beeped)
+        ui_toast("BEEP sent\n(only fires if separated 8h+)", T_GOOD, 2200);
+    else
+        ui_toast("no audio chr / not separated\nsee serial for svc dump", T_WARN, 2200);
     return beeped;
 }
 
