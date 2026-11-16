@@ -99,6 +99,7 @@ static esp_err_t ws2812_encoder_reset(rmt_encoder_t *encoder)
 static esp_err_t make_ws2812_encoder(rmt_encoder_handle_t *out)
 {
     ws2812_encoder_t *enc = calloc(1, sizeof(*enc));
+    if (!enc) return ESP_ERR_NO_MEM;   /* caller (led_fx_init) logs + skips LEDs */
     enc->base.encode  = ws2812_encode;
     enc->base.del     = ws2812_encoder_del;
     enc->base.reset   = ws2812_encoder_reset;
@@ -108,10 +109,17 @@ static esp_err_t make_ws2812_encoder(rmt_encoder_handle_t *out)
         .bit1 = { .level0=1, .duration0=9, .level1=0, .duration1=4 },  /* ~T1H/T1L */
         .flags.msb_first = 1,
     };
-    rmt_new_bytes_encoder(&bcfg, &enc->bytes_encoder);
-
-    rmt_copy_encoder_config_t ccfg = {};
-    rmt_new_copy_encoder(&ccfg, &enc->copy_encoder);
+    esp_err_t err = rmt_new_bytes_encoder(&bcfg, &enc->bytes_encoder);
+    if (err == ESP_OK) {
+        rmt_copy_encoder_config_t ccfg = {};
+        err = rmt_new_copy_encoder(&ccfg, &enc->copy_encoder);
+    }
+    if (err != ESP_OK) {
+        /* Don't hand back a half-built encoder: tear down what we made. */
+        if (enc->bytes_encoder) rmt_del_encoder(enc->bytes_encoder);
+        free(enc);
+        return err;
+    }
 
     enc->reset_code = (rmt_symbol_word_t){ .level0=0, .duration0=250,
                                             .level1=0, .duration1=250 };
@@ -240,7 +248,10 @@ void led_fx_init(void)
     }
     rmt_enable(s_chan);
     s_mode = LED_MODE_IDLE;
-    xTaskCreate(fx_task, "led_fx", 3072, NULL, 2, &s_task);
+    if (xTaskCreate(fx_task, "led_fx", 3072, NULL, 2, &s_task) != pdPASS) {
+        ESP_LOGW(TAG, "LED FX task create failed; running without LED feedback");
+        return;   /* non-fatal: the node works, just no status LED */
+    }
     ESP_LOGI(TAG, "LED FX online on GPIO%d", LED_GPIO);
 }
 

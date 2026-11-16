@@ -196,7 +196,15 @@ static void on_recv(const esp_now_recv_info_t *info,
             memcpy(sr->mac, info->src_addr, 6);
             sr->dur = dur;
             sr->seq = m->seq;
-            xTaskCreate(scan_task, "scan", 4096, sr, 4, NULL);
+            /* Unwind on spawn failure — otherwise s_scan_running stays true
+             * and every later scan is refused as "busy" until reboot, and sr
+             * leaks. */
+            if (xTaskCreate(scan_task, "scan", 4096, sr, 4, NULL) != pdPASS) {
+                ESP_LOGE(TAG, "scan task create failed");
+                free(sr);
+                s_scan_running = false;
+                led_fx_set(LED_MODE_ERROR);
+            }
         } else {
             s_scan_running = false;
             led_fx_set(LED_MODE_ERROR);

@@ -92,7 +92,10 @@ static void dd_task(void *arg)
     s_ctx = ctx;
 
     if (!s_q) s_q = xQueueCreate(DD_Q_DEPTH, sizeof(struct dd_hit_t));
-    if (!s_drain && s_q) xTaskCreate(drain_task, "deauthd_drain", 4096, NULL, 4, &s_drain);
+    if (!s_drain && s_q) {
+        if (xTaskCreate(drain_task, "deauthd_drain", 4096, NULL, 4, &s_drain) != pdPASS)
+            ESP_LOGE(TAG, "drain task create failed; captures may be dropped");
+    }
 
     led_fx_set(LED_MODE_SCAN);
     g_pause_hello = true;

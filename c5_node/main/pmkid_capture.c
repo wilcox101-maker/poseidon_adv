@@ -234,7 +234,8 @@ static void pmkid_task(void *arg)
         s_pmkid_q = xQueueCreate(PMKID_Q_DEPTH, sizeof(struct pmkid_hit_t));
     }
     if (!s_pmkid_drain && s_pmkid_q) {
-        xTaskCreate(pmkid_drain_task, "pmkid_drain", 4096, NULL, 4, &s_pmkid_drain);
+        if (xTaskCreate(pmkid_drain_task, "pmkid_drain", 4096, NULL, 4, &s_pmkid_drain) != pdPASS)
+            ESP_LOGE(TAG, "drain task create failed; captures may be dropped");
     }
 
     led_fx_set(LED_MODE_SCAN);

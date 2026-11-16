@@ -155,7 +155,8 @@ void zb_sniffer_start(const uint8_t requester[6], uint8_t channel, uint16_t seq)
         s_zb_q = xQueueCreate(ZB_Q_DEPTH, sizeof(posei_zb_t));
     }
     if (!s_zb_drain && s_zb_q) {
-        xTaskCreate(zb_drain_task, "zb_drain", 4096, NULL, 4, &s_zb_drain);
+        if (xTaskCreate(zb_drain_task, "zb_drain", 4096, NULL, 4, &s_zb_drain) != pdPASS)
+            ESP_LOGE(TAG, "drain task create failed; captures may be dropped");
     }
 
     /* POS-AUDIT-120: esp_ieee802154_enable()/disable() are refcounted —
