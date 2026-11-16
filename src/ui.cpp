@@ -136,7 +136,8 @@ void ui_draw_status(const char *radio, const char *extra)
     d.drawFastVLine(10, 2, 3, T_ACCENT);
     d.drawFastHLine(4, 5, 7, T_ACCENT);
     ui_label(18, 2, 84, T_FG, theme().status_bg, radio_text);
-    ui_label(108, 2, c5_n > 0 ? 36 : 84, T_DIM, theme().status_bg, extra_text);
+    if (!armed)
+        ui_label(108, 2, c5_n > 0 ? 36 : 84, T_DIM, theme().status_bg, extra_text);
 
     /* Battery Icon on far right (14px wide) */
     const int bat_x = SCR_W - 16;
@@ -163,13 +164,22 @@ void ui_draw_status(const char *radio, const char *extra)
         ui_label(150, 2, 42, T_GOOD, theme().status_bg, badge);
     }
 
-    /* TX-arm cue: red separator whenever armed (always visible, never
-     * overlaps text), plus a "TX ON" badge when the extra/C5 slot is
-     * free. Placement is provisional — verify on hardware. */
-    if (armed && !*extra_text && c5_n == 0)
-        ui_label(108, 2, 40, T_BAD, theme().status_bg, "TX ON");
-
-    d.drawFastHLine(0, STATUS_H - 1, SCR_W, armed ? T_BAD : theme().rule);
+    /* TX-arm cue: an unmistakable filled "ARMED" badge (white on red) in
+     * the extra slot, plus a 2px red baseline, whenever armed — shown on
+     * every screen regardless of radio/extra/C5 content. SAFE: neither.
+     * The badge takes the extra slot (secondary context) while armed; the
+     * C5:n badge at x150 still shows and does not overlap (badge ends x150). */
+    if (armed) {
+        d.fillRoundRect(106, 1, 44, 9, 2, T_BAD);
+        d.setTextSize(1);
+        d.setTextColor(T_FG, T_BAD);
+        d.setCursor(113, 2);
+        d.print("ARMED");
+        d.drawFastHLine(0, STATUS_H - 2, SCR_W, T_BAD);
+        d.drawFastHLine(0, STATUS_H - 1, SCR_W, T_BAD);
+    } else {
+        d.drawFastHLine(0, STATUS_H - 1, SCR_W, theme().rule);
+    }
 
     strcpy(s_st_radio, radio_text);
     strcpy(s_st_extra, extra_text);
