@@ -450,6 +450,8 @@ void feat_heap_census(void)
 
 /* ========== Settings (basic) ========== */
 
+#include "../tx_arm.h"
+
 void feat_settings(void)
 {
     auto draw = []() {
@@ -462,6 +464,11 @@ void feat_settings(void)
         };
         for (int r = 0; r < 6; ++r)
             ui_label(8, BODY_Y + 21 + r * 14, 224, T_FG, T_BG, rows[r]);
+        char txrow[36];
+        snprintf(txrow, sizeof(txrow), "[T] TX transmit  %s",
+                 tx_armed() ? "ARMED" : "SAFE");
+        ui_label(8, BODY_Y + 21 + 6 * 14, 224,
+                 tx_armed() ? T_BAD : T_GOOD, T_BG, txrow);
         ui_draw_footer("Letter select  ` back");
     };
     draw();
@@ -515,6 +522,17 @@ void feat_settings(void)
             if (p) ui_toast("unplug USB to return", T_WARN, 1500);
             else   ui_toast("no launcher slot",    T_BAD,  900);
             return;
+        }
+        if (k == 't' || k == 'T') {
+            if (tx_armed()) {
+                tx_arm_set(false);
+                ui_toast("TX SAFE", T_GOOD, 700);
+            } else if (ui_confirm("ARM TRANSMIT",
+                       "Enable transmitting? Deauth, jammers, beacon spam and other TX features will be able to send frames. Authorized use only.")) {
+                tx_arm_set(true);
+                ui_toast("TX ARMED", T_BAD, 900);
+            }
+            draw();
         }
     }
 }
