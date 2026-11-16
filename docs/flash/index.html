@@ -136,6 +136,21 @@
   <p style="font-size:11px;color:var(--dim)">Port looks like <code>COM&lt;n&gt;</code> (Windows) or <code>/dev/ttyACM0</code> (Linux/macOS).</p>
 </details>
 
+<details open>
+  <summary>Recovery — if it won't boot after flashing</summary>
+  <p style="font-size:12px;line-height:1.6">A bad or interrupted flash is <b>not</b> a brick. Every ESP32-S3 and
+  ESP32-C5 has a ROM download mode burned into silicon that software cannot erase, so you can always
+  re-flash from this page. If the board boots to a black screen, loops, or refuses to connect:</p>
+  <ol style="font-size:12px;line-height:1.7;padding-left:1.2em">
+    <li>Hold the board's <b>BOOT</b> button down.</li>
+    <li>Tap <b>RESET</b> once (or unplug and replug USB) while still holding BOOT.</li>
+    <li>Release BOOT — the board is now in download mode and shows up as a serial port.</li>
+    <li>Tick <b>Erase entire flash first</b> above, click <b>① Connect</b>, pick the port, then <b>② Flash firmware</b>.</li>
+  </ol>
+  <p style="font-size:11px;color:var(--dim)">An erase-then-flash from download mode recovers from any
+  software-level failure, including a wrong-offset write or a mismatched partition table. Worst case, you just re-flash. 🔱</p>
+</details>
+
 <footer>
   <p><b>Authorized use only.</b> POSEIDON transmits on regulated bands and simulates networks —
   operate only on hardware and networks you own or are explicitly permitted to test.</p>
