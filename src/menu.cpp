@@ -15,6 +15,7 @@
 #include "menu_carousel.h"
 #include "heap_budget.h"
 #include "screensaver.h"
+#include "tx_arm.h"
 #include <ui_layout.h>
 #include <Preferences.h>
 
@@ -1202,9 +1203,39 @@ static void draw_menu(const menu_node_t *parent, int cursor)
  * can look up its own long-form help via ui_show_current_help(). */
 const menu_node_t *g_current_feature_item = nullptr;
 
+/* Offensive RF-transmit actions gated by the master TX-arm switch
+ * (tx_arm). When SAFE, menu_execute_action refuses to launch these, so a
+ * mis-keyed letter mnemonic can't start a transmission (UI review #1).
+ * Passive scan/sniff/detect/spectrum are deliberately absent. Note: this
+ * gates the MENU launch path (both terminal and carousel route through
+ * menu_execute_action); in-feature attack hotkeys (e.g. Scan -> D) call
+ * these functions directly and are a documented follow-up. IR is not yet
+ * gated here — see tx_arm.h. */
+static const menu_action_fn TX_ACTIONS[] = {
+    feat_wifi_deauth, feat_wifi_deauth_broadcast, feat_wifi_apclone,
+    feat_evil_twin, feat_wifi_beacon_spam, feat_wifi_karma,
+    feat_wifi_ciw, feat_wifi_portal,
+    feat_ble_spam, feat_ble_hid, feat_ble_beacon, feat_ble_clone,
+    feat_ble_flood, feat_ble_karma, feat_ble_sourapple, feat_ble_findmy,
+    feat_ble_blueducky, feat_ble_whisperpair,
+    feat_subghz_jammer, feat_subghz_broadcast, feat_subghz_replay,
+    feat_subghz_bruteforce,
+    feat_nrf24_jammer, feat_nrf24_mousejack, feat_nrf24_ble_spam,
+    feat_c5_deauth_5g, feat_c5_nuke_5g, feat_c5_beacon_spam,
+    feat_c5_ciw, feat_c5_apclone, feat_c5_karma,
+};
+
+static bool action_is_tx(menu_action_fn a)
+{
+    for (menu_action_fn f : TX_ACTIONS)
+        if (f == a) return true;
+    return false;
+}
+
 void menu_execute_action(const menu_node_t *item)
 {
     if (!item || !item->action) return;
+    if (action_is_tx(item->action) && !tx_arm_require()) return;
     const size_t baseline = heap_free_internal();
     const size_t reclaimed = heap_reclaim_all();
     Serial.printf("[FEAT_ENTER] %s free=%u largest=%u reclaimed=%u\n",
