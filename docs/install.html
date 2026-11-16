@@ -138,7 +138,7 @@
 
     <div style="padding:1.1rem 1.2rem;border:1px solid rgba(52,211,153,.3);border-radius:12px;background:rgba(6,10,22,.35);max-width:540px;margin-bottom:1.2rem;">
       <div style="font-family:var(--font-mono);font-size:.7rem;letter-spacing:.18em;color:#34d399;margin-bottom:.4rem;">WEB FLASHER · CHROME / EDGE</div>
-      <div style="color:#94a3b8;font-size:.88rem;margin-bottom:.9rem;">Plug in via USB-C → click → choose the C5's serial port → ~2–4 min (it flashes over the ROM loader, which is slow but reliable on the C5), leave it plugged in. <span style="color:#64748b;">If it won't connect, hold <b>BOOT (G0)</b> while you click.</span></div>
+      <div style="color:#94a3b8;font-size:.88rem;margin-bottom:.9rem;">Plug in via USB-C → click → choose the C5's serial port → ~2–4 min (it flashes over the ROM loader, which is slow but reliable on the C5), leave it plugged in. <span style="color:#64748b;">If it won't connect, hold <b>BOOT (GPIO28)</b> while you click.</span></div>
       <div id="trident-flash-host">
         <button id="trident-flash-btn" style="font-family:var(--font-mono);background:#34d399;color:#041a11;border:none;padding:.7rem 1.2rem;border-radius:8px;font-weight:700;letter-spacing:.08em;cursor:pointer;">▸ FLASH TRIDENT C5</button>
         <span id="trident-flash-unsupported" hidden style="color:#f87171;font-size:.85rem;">This browser can't flash — open this page in Chrome or Edge.</span>
@@ -175,14 +175,14 @@
     <ul style="list-style:none;padding:0;margin:0;color:#cbd5e1;line-height:1.6;font-size:.95rem;">
       <li style="margin-bottom:.9rem;"><b style="color:var(--gold);">No port shows up?</b> Install the USB serial driver (CH340 / CP210x) for your board, then unplug and replug. Try a different USB-C cable — some are charge-only and carry no data.</li>
       <li style="margin-bottom:.9rem;"><b style="color:var(--gold);">Web flasher greyed out or missing the button?</b> Use <b>Chrome</b> or <b>Edge</b> — Firefox and Safari don't support WebSerial yet.</li>
-      <li style="margin-bottom:0;"><b style="color:var(--gold);">Won't connect / flash fails?</b> Hold the <b>BOOT</b> (G0) button while you plug in or hit Connect to force download mode, then release and flash again.</li>
+      <li style="margin-bottom:0;"><b style="color:var(--gold);">Won't connect / flash fails?</b> Hold the <b>BOOT</b> button while you plug in or hit Connect to force download mode, then release and flash again. (That's <b>GPIO0</b> on the Cardputer, <b>GPIO28</b> on the C5 — the button is labelled BOOT on both.)</li>
     </ul>
   </div>
 
   <!-- ── Recovery note ── -->
   <div class="reveal" style="padding:1.2rem 1.5rem;border:1px solid rgba(249,115,22,.3);border-radius:12px;background:rgba(249,115,22,.05);margin-bottom:2rem;">
     <div style="font-family:var(--font-mono);font-size:.7rem;letter-spacing:.18em;color:var(--coral);margin-bottom:.5rem;">⚠ CAN'T BRICK IT</div>
-    <p style="color:#cbd5e1;font-size:.92rem;line-height:1.55;margin:0;">Boots to black or locks up? Don't panic — hold <b>BOOT (G0)</b> during power-on to force download mode, then flash again. Every ESP32 has this escape hatch, so you can't permanently brick a Cardputer or a C5 from software. Worst case, you just re-flash. 🔱</p>
+    <p style="color:#cbd5e1;font-size:.92rem;line-height:1.55;margin:0;">Boots to black or locks up? Don't panic — hold the <b>BOOT</b> button during power-on to force download mode, then flash again. Every ESP32 has this escape hatch, so you can't permanently brick a Cardputer or a C5 from software. Worst case, you just re-flash. 🔱</p>
   </div>
 
 </section>
@@ -337,7 +337,7 @@ btn.addEventListener("click", async () => {
     if (/already open|in use|Failed to open|denied|busy|locked/i.test(msg)) {
       setStatus("Port is busy — another program/tab is holding it. Close the Espressif/esptool tab and any serial monitor, unplug & replug the C5, then retry.", "bad");
     } else {
-      setStatus("Flash failed — see log. Hold BOOT (G0) while you click, replug, and retry; or use the Advanced route.", "bad");
+      setStatus("Flash failed — see log. Hold BOOT (GPIO28) while you click, replug, and retry; or use the Advanced route.", "bad");
     }
   } finally {
     closeBtn.disabled = false;
