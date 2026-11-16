@@ -47,6 +47,14 @@ extern void clients_hunt_start(const uint8_t *, const posei_clients_req_t *, uin
 extern void clients_hunt_stop(void);
 extern void spectrum_start(const uint8_t *, const posei_spectrum_req_t *, uint16_t);
 extern void spectrum_stop(void);
+extern void beacon_spam_start(const uint8_t *, const posei_beacon_spam_req_t *, uint16_t);
+extern void beacon_spam_stop(void);
+extern void ciw_start(const uint8_t *, const posei_ciw_req_t *, uint16_t);
+extern void ciw_stop(void);
+extern void apclone_start(const uint8_t *, const posei_apclone_req_t *, uint16_t);
+extern void apclone_stop(void);
+extern void karma_start(const uint8_t *, const posei_karma_req_t *, uint16_t);
+extern void karma_stop(void);
 
 static char s_node_name[12] = "C5-?";
 
@@ -227,6 +235,34 @@ static void on_recv(const esp_now_recv_info_t *info,
         spectrum_start(info->src_addr, r, m->seq);
         break;
     }
+    case POSEI_TYPE_CMD_BEACON_SPAM: {
+        if (m->payload_len < (int)sizeof(posei_beacon_spam_req_t)) break;
+        led_fx_set(LED_MODE_ATTACK);
+        const posei_beacon_spam_req_t *r = (const posei_beacon_spam_req_t *)m->payload;
+        beacon_spam_start(info->src_addr, r, m->seq);
+        break;
+    }
+    case POSEI_TYPE_CMD_CIW: {
+        if (m->payload_len < (int)sizeof(posei_ciw_req_t)) break;
+        led_fx_set(LED_MODE_ATTACK);
+        const posei_ciw_req_t *r = (const posei_ciw_req_t *)m->payload;
+        ciw_start(info->src_addr, r, m->seq);
+        break;
+    }
+    case POSEI_TYPE_CMD_APCLONE: {
+        if (m->payload_len < (int)sizeof(posei_apclone_req_t)) break;
+        led_fx_set(LED_MODE_ATTACK);
+        const posei_apclone_req_t *r = (const posei_apclone_req_t *)m->payload;
+        apclone_start(info->src_addr, r, m->seq);
+        break;
+    }
+    case POSEI_TYPE_CMD_KARMA: {
+        if (m->payload_len < (int)sizeof(posei_karma_req_t)) break;
+        led_fx_set(LED_MODE_SCAN);
+        const posei_karma_req_t *r = (const posei_karma_req_t *)m->payload;
+        karma_start(info->src_addr, r, m->seq);
+        break;
+    }
     case POSEI_TYPE_CMD_STOP:
         led_fx_set(LED_MODE_DONE);   /* success blip, then auto-returns to idle */
         zb_sniffer_stop();
@@ -242,15 +278,14 @@ static void on_recv(const esp_now_recv_info_t *info,
         deauth_detect_stop();
         clients_hunt_stop();
         spectrum_stop();
-        break;
-    /* v3 CMDs that the C5 firmware hasn't implemented yet. POSEIDON-side
-     * stubs send these to keep the API surface alive; here we just log.
-     * Each will get a real handler when its feature lands. */
-    case POSEI_TYPE_CMD_BEACON_SPAM:
-    case POSEI_TYPE_CMD_KARMA:
-    case POSEI_TYPE_CMD_APCLONE:
-    case POSEI_TYPE_CMD_CIW:
-        ESP_LOGW(TAG, "v3 CMD %u not implemented yet, dropping seq=%u", m->type, m->seq);
+        /* Tier 2 TX/SoftAP features. Note: for APCLONE/KARMA on a non-1
+         * channel, a mid-run STOP only lands when the control link is
+         * reachable (AP on ch 1); otherwise the 5-min safety cap is the
+         * backstop — see softap.h's control-link caveat. */
+        beacon_spam_stop();
+        ciw_stop();
+        apclone_stop();
+        karma_stop();
         break;
     default:
         ESP_LOGW(TAG, "unknown CMD type=%u seq=%u", m->type, m->seq);
