@@ -590,7 +590,11 @@ void feat_ble_scan(void)
             for (int i = 0; i < s_count; ++i)
                 if (dev_matches_filter(s_devs[i])) idx[n++] = i;
             if (n == 0 || cursor >= n) break;
-            const ble_dev_t &x = s_devs[idx[cursor]];
+            /* Snapshot by value: the NimBLE scan task can update this slot's
+             * rssi in place while the detail view is open (UI review audit).
+             * A copy keeps the detail view and its track/whisper actions on
+             * stable data, matching wifi_scan's value-copy pattern. */
+            const ble_dev_t x = s_devs[idx[cursor]];
 
             /* Populate shared target for C/F/H hotkeys. */
             memcpy(g_ble_target.addr, x.addr, 6);
