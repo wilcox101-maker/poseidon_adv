@@ -1,4 +1,12 @@
 /*
+ * UI OWNERSHIP: these C5 menu screens are UI code and are owned by the UI
+ * Engineer (see claude/agents/ui-engineer.md). They follow the repo's existing
+ * feat_c5_*() function pattern, NOT the screen-object/widget architecture the
+ * UIE doc drives toward — keep, refactor, or rebuild as UIE sees fit. The
+ * firmware/protocol boundary and the stable command/collector API to build
+ * against are written up in claude/c5-ui-handoff.md. The ESP-NOW senders,
+ * node handlers, and wire protocol are firmware-side and change separately.
+ *
  * c5_tier2.cpp — S3 menu screens for the Phase 1 Tier 2 C5 TX/SoftAP features:
  * beacon spam, CIW (SSID-injection beacon spam), AP clone, and Karma. The
  * ESP-NOW senders already live in c5_cmd; each screen gathers the few params
