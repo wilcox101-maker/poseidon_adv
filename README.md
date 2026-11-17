@@ -19,35 +19,63 @@
 
 ---
 
-## This fork (0.9.2)
+## Screenshots
 
-[wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv) is my checkout of [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). Upstream remains the base. Fork-specific work stays in a short stack of focused commits and is kept when upstream moves. Source revision **0.9.2** — the release that completes the C5 command surface and lands the ESP-NOW v2 (wire v5) flag day, the master TX-arm safety switch, and the first wave of PUIE UI work. Binaries under `release_binaries/` are built at 0.9.2 and published on the [v0.9.2 release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.2).
+> Rendered from code at the real 240×135 resolution — [`tools/render_c5_screens.py`](tools/render_c5_screens.py) reproduces the exact draw calls in `src/features/c5_tier2.cpp` with the Deepwater RGB565 palette. Not device photos. The red `ARMED` badge is the TX-arm cue; pixel-exact captures follow the hardware pass.
 
-I keep a counted inventory of this tree in [FEATURES.md](FEATURES.md).
+| Beacon spam | CIW SSID-injection | AP clone (dual-band) |
+| :---: | :---: | :---: |
+| ![C5 beacon spam, rendered from code](docs/screens/c5-beacon-spam.png) | ![C5 CIW, rendered from code](docs/screens/c5-ciw.png) | ![C5 AP clone, rendered from code](docs/screens/c5-ap-clone.png) |
 
-### Project timeline & milestones
+Deepwater UI mockups: [node list](assets/screens/c5-nodes.svg) · [dual-band scan](assets/screens/c5-dualband-scan.svg) · [diagnostics](assets/screens/c5-diagnostics.svg) · [TRIDENT PC bridge](assets/screens/trident-bridge.svg)
 
-Where this fork has gone, grounded in [CHANGELOG.md](CHANGELOG.md). Tagged
-releases are the released line; **0.9.2** is the current release — the C5 command
-surface is finished, the wire protocol is at v5, the TX-arm safety system is in,
-and the first PUIE UI work has landed. The one item still owed is the on-device
-validation pass (confirm ESP-NOW v2 negotiates on both chips) — see
-[docs/hardware-validation.md](docs/hardware-validation.md).
+## What's new — 0.9.2
+
+- **TRIDENT ESP32-C5 command surface is complete.** Every remote action — scan, deauth, PMKID, Zigbee/802.15.4 sniff, probe/deauth/client/spectrum recon, beacon spam, CIW, AP clone, Karma — has a node handler **and** a Cardputer screen.
+- **ESP-NOW v2 flag day (wire v5).** Variable-length frames with a **1024-byte** payload (was 230), so a 5 GHz AP scan returns ~23 records per frame instead of ~5 and full EAPOL handshakes fit. See [TRIDENT](#trident-esp32-c5--esp-now-v2).
+- **Master TX-arm safety switch.** One SAFE/ARMED gate in front of every offensive transmitter (WiFi / BLE / Sub-GHz / nRF24 / C5), including the in-feature deauth hotkeys and Argus auto-deauth. Passive scan/sniff is never gated. [docs/tx-arm.md](docs/tx-arm.md).
+- **PUIE UI.** Unmistakable ARMED status-bar indicator, a reusable C5 live-dashboard widget, and the lab-mode shell.
+- **Hardening.** C5 ESP-IDF firmware + native protocol tests now build in CI; cppcheck-clean; release-metadata + partition-table CI guards; 2 MB C5 app partition.
+
+Full detail in [CHANGELOG.md](CHANGELOG.md). One item owed: the on-device v5 validation pass — [docs/hardware-validation.md](docs/hardware-validation.md).
+
+## What's coming
+
+Depth and integration, roughly in order: first-class **pcap/pcapng export** to SD (opens straight in Wireshark), the **educational lab-mode** fleshed out over the shipped shell, **Thread / Matter** observation on the C5's 802.15.4 radio, **cross-radio + GPS** correlation, and the **C5 GPIO expander** ([design spec](docs/specs/2026-11-16-c5-gpio-expander-design.md)). Plus the remaining pre-1.0 items: un-clipped EAPOL, C5 diagnostics Phase B, and multi-node wire fields.
+
+## What this fork adds that upstream lacks
+
+[wilcox101-maker/poseidon_adv](https://github.com/wilcox101-maker/poseidon_adv) tracks [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv) — upstream is the base. The fork-exclusive work, kept as focused commits that replay whole across upstream syncs:
+
+- **Deauth actually goes on air.** The ESP-IDF `ieee80211_raw_frame_sanity_check` filter is identified and defeated — a link-time override on the S3 and a reproducible `libnet80211` binary patch on the C5 — so raw management frames transmit instead of being silently dropped.
+- **TRIDENT ESP32-C5 node over ESP-NOW v2.** The entire 5 GHz Wi-Fi + 802.15.4 capability and the v5 wire protocol ([below](#trident-esp32-c5--esp-now-v2)) — nothing like it upstream.
+- **Hydra RF cap pin map** — correct PINGEQUA wiring plus shared-SPI arbitration ([below](#hydra-rf-cap-pingequa--works-with-the-bruce-wiring)).
+- **Raw AP/STA bring-up hardened** — every `esp_netif` site destroys a stale netif before creating its own, fixing a duplicate-key crash.
+- **TX-arm safety system**, the `cardputer-launcher` warning cleanup, CI for both firmwares + native tests, and the release-drift guards.
+
+Counted inventory: [FEATURES.md](FEATURES.md). Live divergence ledger (**+109 / −0** vs upstream): [docs/fork-status.md](docs/fork-status.md).
+
+### Milestone timeline (newest first)
 
 | When | Milestone |
 | --- | --- |
-| 0.1.0 (Apr 2026) | Initial checkout of [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv) as a focused fork. |
-| 0.4.0 (Apr 2026) | Wi-Fi deauth actually goes on air — the ESP-IDF `ieee80211_raw_frame_sanity_check` filter identified and defeated (link-time override on the S3; reproducible `libnet80211` binary patch for the C5). |
+| 0.9.2 (Nov 2026) | C5 **Tier 2** TX/SoftAP suite completes the command surface; **ESP-NOW v2 wire v5** flag day (variable-length, 1024-byte payload); **master TX-arm** switch + residual-hotkey gating; **PUIE UI** (ARMED indicator, C5 dashboard widget, lab-mode shell); C5 in CI + native tests; 2 MB C5 partition; release/partition CI guards; flash-tooling + BOOT-pin (GPIO28) fixes. |
+| 0.9.1 (Nov 2026) | C5 **Tier 1** passive suite (probe sniff, deauth detect, client hunt, activity sweep) + read-only diagnostics screen; Zigbee-vs-Thread labelling. |
+| 0.9.0 (Nov 2026) | **TRIDENT ESP32-C5 companion node** — the only ESP chip here with 5 GHz Wi-Fi + 802.15.4, driven from the Cardputer over ESP-NOW (5 GHz scan / deauth / PMKID, Zigbee sniff). |
+| 0.8.0 (Oct 2026) | Raw-AP/STA bring-up hardened — stale-netif destroy before create (duplicate-key crash fix). |
 | 0.6.x (May–Jul 2026) | Broad module growth across Wi-Fi / BLE / Sub-GHz / LoRa / IR / LAN; Argus autonomous handshake-hunting Gotchi. |
-| 0.8.0 (Oct 2026) | Raw-AP/STA bring-up hardened — every `esp_netif` site now destroys a stale netif before creating its own (duplicate-key crash fix). |
-| 0.9.0 (Nov 2026) | **TRIDENT ESP32-C5 companion node** introduced: the only ESP chip here with 5 GHz Wi-Fi + 802.15.4, driven from the Cardputer over ESP-NOW — 5 GHz scan, 5 GHz deauth, 5 GHz PMKID, Zigbee/802.15.4 sniff. |
-| 0.9.1 (Nov 2026) | C5 **Tier 1** passive suite (probe sniff, deauth detect, client hunt, activity sweep) + a read-only C5 diagnostics screen; Zigbee frames labelled Zigbee-vs-Thread. |
-| 0.9.2 (Nov 2026) | **Release that completes the C5 command surface and lands the v5 flag day.** C5 **Tier 2** TX/SoftAP suite (beacon spam, CIW SSID-injection, AP clone, Karma) — every `POSEI_TYPE_CMD_*` now has a node handler **and** a Cardputer screen. **ESP-NOW v2 flag day (wire v4 → v5):** variable-length frames with a 1024-byte payload ceiling, lifting RESP_AP from 5 to ~23 records/frame; boot-time `esp_now_get_version()` logging on both chips. Peer admission is now **capability-based** — any advertised board can join the bus, not just a C5. **Master TX-arm safety switch** gates every offensive transmit action (WiFi / BLE / Sub-GHz / nRF24 / C5) behind a deliberate arm step, including the residual in-feature deauth hotkeys (clients, clients-all, PMKID HUNT) and the Argus/combo auto-deauth paths. **PUIE UI:** an unmistakable ARMED status-bar indicator, a reusable C5 live-dashboard widget, and the lab-mode UI shell. **Hardening & tooling:** the C5 ESP-IDF firmware builds in CI with native protocol tests; error handling tightened (cppcheck-clean); the C5 app partition grew 1 MB → 2 MB; a release-metadata consistency CI guard and a partition-table-vs-`partitions.csv` guard; a C5 GPIO-expander design spec; a hardware-validation runbook; and a technical-risk register. Flash tooling corrected (2 MB partition image, manifest versions, C5 BOOT-pin = GPIO28). |
-| `master` (ahead of 0.9.2) | Post-release work toward the depth/integration roadmap (pcap export, educational lab-mode, Thread/Matter, cross-radio correlation). |
+| 0.4.0 (Apr 2026) | Wi-Fi deauth goes on air — the `ieee80211_raw_frame_sanity_check` filter defeated (S3 link-time override; reproducible C5 `libnet80211` patch). |
+| 0.1.0 (Apr 2026) | Initial focused checkout of [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). |
 
-### What this fork keeps
+## TRIDENT ESP32-C5 — ESP-NOW v2
 
-**Hydra RF Cap.** The official PINGEQUA map for Cardputer ADV, the same wiring Bruce uses for that hat. Poseidon and Bruce are separate firmwares. Poseidon does not read `brucePins.conf`.
+The Cardputer drives an external **ESP32-C5** over an ESP-NOW bus (root `5`) to reach the radios the host S3 can't: **5 GHz Wi-Fi and 802.15.4**. A 15-action remote surface (scan, 5 GHz deauth, PMKID, Nuke+handshake, Zigbee sniff, the Tier 1 passive recon, diagnostics, and the Tier 2 beacon spam / CIW / AP clone / Karma) streams results back to the handheld. SaltyJack never routes through the C5.
+
+**ESP-NOW v2 (wire v5) is what makes it practical.** v5 moved the project off the old 230-byte frame cap to **variable-length frames with a 1024-byte payload ceiling** — so a 5 GHz AP scan carries ~23 records per frame instead of ~5, full EAPOL handshakes stop being clipped, and new command payloads have headroom. Both chips log `esp_now_get_version()` at boot. **Flash the C5 and the Cardputer together** — v5 and v4 don't interoperate.
+
+## Hydra RF Cap (PINGEQUA) — works with the Bruce wiring
+
+The Hydra RF cap uses the official **PINGEQUA** pin map for the Cardputer ADV — the **same physical wiring Bruce uses** for that hat, so a Hydra hat set up for Bruce works here unchanged. (Poseidon and Bruce are separate firmwares; Poseidon does not read `brucePins.conf`.)
 
 | Signal | GPIO | Role |
 | --- | --- | --- |
@@ -56,258 +84,61 @@ validation pass (confirm ESP-NOW v2 negotiates on both chips) — see
 | nRF24 CS / CE | 6 / 4 | CE is high-Z when the radio is released |
 | microSD CS | 12 | Held high while a Hydra radio owns the bus |
 
-An earlier combo-hat map (CC1101 CS 15 / GDO0 13, nRF24 CS 4 / CE 3) drove the wrong pads. `cc1101_park_others()` holds microSD CS and nRF24 CS high before the CC1101 takes the bus, and calls `gps_end()` only while the GPS poller is running. GPIO 13 cannot be CC1101 CS and GPS UART TX at the same time. GDO0 (GPIO 5) stays an input and is not a GPS pin. GPS RX is GPIO 15, which Hydra does not use. After the bus is released, `gps_resume_if_enabled()` restarts the UART and the NMEA poller when the user had GPS on. Definitions live in `src/cc1101_hw.h`, `src/nrf24_hw.h`, and `src/gps.h`. The wiring table is also in [docs/proposals/cc1101-nrf24-hat.md](docs/proposals/cc1101-nrf24-hat.md).
+`cc1101_park_others()` holds microSD CS and nRF24 CS high before the CC1101 takes the shared bus, and `gps_resume_if_enabled()` restarts the UART/NMEA poller after release. Definitions: `src/cc1101_hw.h`, `src/nrf24_hw.h`, `src/gps.h`; wiring also in [docs/proposals/cc1101-nrf24-hat.md](docs/proposals/cc1101-nrf24-hat.md). Do not seat Hydra and LoRa together — they share SPI with the microSD.
 
-**SaltyJack networking notes.** STA, SoftAP, W5500, and C5 operator notes are already in [docs/saltyjack-networking.md](docs/saltyjack-networking.md) (and the HTML twin). The [SaltyJack and networking](#saltyjack-and-networking) section below is the short form of that page.
+## Hardware notes & cautions
 
-**Warning cleanup.** The `cardputer-launcher` project sources were cleared of volatile-increment, deprecated NimBLE and Network, format, misleading-indentation, comment, and unused-symbol diagnostics. The edits are mechanical and leave runtime behavior as it was, including the Hydra map. Two diagnostics remain in the pinned SmartRC-CC1101 driver (`s2` unused, `a` maybe uninitialized). That driver is a git pin, so it stays unpatched here. The same warning classes can show up again when this fork takes a newer upstream tree or toolchain. Fold the next cleanup into its own commit.
+- **The Stamp-S3A has no PSRAM.** The Cardputer-Adv's module is an **ESP32-S3FN8** — 8 MB flash, 512 KB SRAM, **no PSRAM**. If a PlatformIO board/`board_build` profile enables PSRAM, the build/boot will **flag it** (PSRAM init fails, `getPsramFound()` returns false) — that's expected on this hardware, not a fault. Poseidon requires **no PSRAM** by design: no full-screen animation buffers, fixed/pooled draw state throughout.
+- **Software-overhead caution.** The Cardputer app already sits at **~85 % of flash** (~2.83 MB of 3.34 MB) and shares the single **512 KB SRAM** pool with the WiFi/BLE stacks and the display. New features must stay lean — prefer fixed buffers over heap/`String`, keep large assets on the SD card, and watch `System → Heap`. Headroom is small; budget it.
 
-### How later upstream syncs should land
+## Deepwater interface
 
-Keep new fork work as one clear commit in one of these units:
+Keyboard-first UI for the 240×135 display: a ~900 ms skippable boot reveal, terminal and carousel layouts, letter-mnemonic menus with `;`/`.` nav and `?` help, early-dismissable notices, and confirmation on destructive actions. `System → Display` toggles motion (`M`), large text (`B`) and ambient decoration (`A`); reduced motion pauses decoration, not live measurements. **TX safety:** `System → Settings → T` (default **SAFE**) gates every offensive transmitter; the status bar shows a red `ARMED` badge while armed. No PSRAM required.
 
-1. Hydra pin, shared-SPI, and GPS fixes
-2. Warning cleanup
-3. Docs (this note, the SaltyJack how-to, changelog)
+**Eleven themes:** POSEIDON (navy/ice/cyan, default), MATRIX, E-INK, SYNTHWAVE, PHANTOM, BLOOD, AMBER CRT, NIGHT CITY, SOLARIS, NORDIC FROST, GHOST PURPLE.
 
-When pulling Evil0ctopus/poseidon_adv, replay those units whole so the Hydra fixes, the warning cleanup, and the docs each stay identifiable. History already on `master` stays as published. Rewrite it only when a sync cannot proceed any other way.
+## SaltyJack & networking
 
-The live divergence ledger — last-synced upstream ref, ahead/behind, and per-unit status — is in [docs/fork-status.md](docs/fork-status.md).
+Authorized use only — networks and hardware you own or have written permission to test. **STA path** (Cardputer joins an AP): DHCP Starve, Rogue DHCP (STA), Responder, WPAD — works now. **SoftAP path**: Rogue DHCP (AP) via the open `POSEIDON-SaltyJack` AP — works now. **W5500 RJ45**: hardware-ready, driver not wired in this tree — use STA until it lands. **C5**: radio work only, never SaltyJack. Full how-to (STA vs SoftAP, pins, hat conflicts, troubleshooting): [docs/saltyjack-networking.md](docs/saltyjack-networking.md).
+
+## Quick start & install
+
+- **Standalone (recommended):** web-flash the Deepwater factory image — [docs/flash/](docs/flash/index.html) or [M5Stack WebBurner](https://burner.m5stack.com/). `poseidon-factory.bin` goes at `0x0`; don't factory-flash a Launcher layout.
+- **Launcher:** install `poseidon-launcher.bin` via Launcher's app installer. For raw flashing, read the **real** partition table and target the actual slot — don't assume a fixed offset.
+- **TRIDENT C5:** web-flash [docs/flash/](docs/flash/index.html), target **TRIDENT — C5** (bins at `0x2000` bootloader, `0x8000` table, `0x10000` app). Flash it **with** the Cardputer so both run v5.
+- Full target → use-case → install reference: [docs/firmware-targets.md](docs/firmware-targets.md).
+
+## Building & validation
+
+```text
+pio run -e cardputer -e cardputer-ota -e cardputer-launcher -e cardputer-launcher-dual
+pio test -e native-test
+idf.py -C c5_node build          # TRIDENT C5 — ESP-IDF >= 5.5, target esp32c5
+```
+
+CI builds every Cardputer profile, compiles `c5_node/`, and runs the native unit tests (protocol layout included) on each push/PR, so a C5 break surfaces in CI, not at flash time. Release packaging (after building the profiles): `scripts/prepare_deepwater_release.ps1 -Version <x.y.z>` refreshes `release_binaries/` + SHA256 sums. On-device UI smoke test: `scripts/test_deepwater_ui.ps1 -Port COM<n>`.
+
+> **C5 build note:** if a local C5 build reports a 1 MB app partition, delete the stale generated `c5_node/sdkconfig` and rebuild — it overrides `sdkconfig.defaults` (which selects the 2 MB custom table), and `idf.py fullclean` does not remove it. A fresh checkout / CI is always correct.
+
+## Acknowledgments & Shoutouts
+
+- **[@Evil0ctopus](https://github.com/Evil0ctopus)** — upstream POSEIDON (fork origin)
+- **[@7h30th3r0n3](https://github.com/7h30th3r0n3)** — Evil-M5Project and RaspyJack (SaltyJack LAN toolkit inspiration)
+- **[@justcallmekoko](https://github.com/justcallmekoko)** — ESP32Marauder wireless research / promiscuous-mode frameworks
+- **[@bmorcelli](https://github.com/bmorcelli)** — M5Burner firmware browser and webflasher
+- **[@pr3y](https://github.com/pr3y)** — Bruce hardware reference implementations
+- **[@UberGuidoZ](https://github.com/UberGuidoZ)** — Flipper Sub-GHz signal libraries
+- **[@M5Stack](https://github.com/M5Stack)** — hardware design and SDKs
 
 ---
 
 ## Safety / Authorized Use
 
-**POSEIDON is an educational wireless auditing lab for security research on hardware and networks you own or have explicit permission to test.**
+**POSEIDON is an educational wireless-auditing lab for security research on hardware and networks you own or have explicit permission to test.**
 
 - Use only on **your own equipment** or systems where you have **written authorization**.
 - Do **not** use this firmware for unauthorized access, interference, jamming, or disruption of third-party networks or devices.
-- You are responsible for complying with local radio and computer-misuse laws (e.g. FCC / Ofcom / ETSI and equivalents).
+- You are responsible for complying with local radio and computer-misuse laws (FCC / Ofcom / ETSI and equivalents).
 - Captured data (handshakes, probes, logs) may include personal information — handle it lawfully.
 
 If you are unsure whether a use is allowed, treat it as **not allowed**. See the upstream [Legal & Responsible Use](https://github.com/Evil0ctopus/poseidon_adv/blob/master/docs/legal.html) page for fuller guidance.
-
----
-
-## About POSEIDON (Community Edition)
-
-**POSEIDON** is a pocket-sized, keyboard-first **wireless auditing and security-research lab** built for the **M5Stack Cardputer-Advance** (ESP32-S3, QWERTY keyboard, 240×135 color display). Research modules cover Wi-Fi, Bluetooth Low Energy (BLE), Sub-GHz, 2.4 GHz, LoRa, Infrared, and LAN — intended for learning RF/embedded security concepts and testing **owned** gear.
-
-Upstream POSEIDON is [Evil0ctopus/poseidon_adv](https://github.com/Evil0ctopus/poseidon_adv). I track that tree. The stability work, performance tweaks, and lab / field features in this checkout sit on top of it, and I keep the Hydra, warning-cleanup, and docs commits described above.
-
-- **170+ research modules:** Broad coverage across Wi-Fi, BLE, Sub-GHz, 2.4 GHz, LoRa, Infrared, and LAN for recon and defensive assessment in authorized environments.
-- **QWERTY-driven interface:** Letter-mnemonic menus and direct parameter typing (no thumb-stick scrolling).
-- **Argus autonomous Gotchi:** A reactive 96×96 mood sprite that can hunt handshakes on owned networks using an SD-persisted reinforcement-learning brain.
-- **TRIDENT ESP32-C5 companion node:** A second board reached over ESP-NOW that adds the radios the Cardputer's S3 can't do — 5 GHz Wi-Fi and 802.15.4. A full remote command surface (scan, deauth, PMKID, Zigbee sniff, probe/deauth/client/spectrum recon, beacon spam, CIW, AP clone, Karma) streams results back to the handheld. Wire protocol v5 (ESP-NOW v2, variable-length frames).
-- **TX-arm safety switch:** A master SAFE/ARMED gate in front of every offensive RF-transmit action across all radios (WiFi, BLE, Sub-GHz, nRF24, and the C5). Transmit features refuse to fire until the device is deliberately armed, with an always-visible status cue; passive scan/sniff/detect are never gated. See [docs/tx-arm.md](docs/tx-arm.md).
-- **Deepwater interface:** Eleven themes, crisp domain icons, compact list/card layouts, optional ambient decoration and reduced motion.
-
----
-
-## What's New & Custom Changes in `poseidon_adv`
-
-- **Deepwater redesign:** Shared bounded text/chrome, a short skippable boot reveal, scrollable help, paged shortcuts and display accessibility settings.
-- **Transmit-arm safety switch:** A global master switch keeps every offensive transmitter inert until it is deliberately armed, so a mis-keyed menu shortcut can't start a deauth, jammer or beacon flood. The status bar shows a red cue whenever armed. Covers WiFi/BLE/sub-GHz/nRF24/C5 transmit features and IR pranks; passive scanning is never gated.
-- **Real-time sensor awareness:** Dedicated monitoring helpers for Flock ALPR and ShotSpotter Raven fingerprints (lab / awareness tooling — not for unauthorized targeting).
-- **Triton RPG Gotchi leveling:** Persistent XP tracking and interactive leveling tied to Argus.
-- **Expanded UI palettes & screensavers:** Eleven themes and thirteen ambient screensavers; animation is optional.
-- **On-device data management:** Integrated hex and log viewers on the display.
-- **Advanced connectivity:** GATT notification streaming, richer device/OS fingerprinting, and expanded support for hardware hat expansion modules.
-
-## Deepwater interface
-
-- **Boot:** a pixel-aligned trident reveal automatically opens the menu after about 900 ms. Any key skips; security-key boot mode still bypasses the splash.
-- **Navigation:** Terminal shows six rows (four with large text) and the selected item's description. Carousel shows one domain card with consistent icons. Letter shortcuts, `;`/`.` navigation, ENTER, Back and `=`/`?` help remain available. Changing layouts returns immediately to the root.
-- **Text:** names fit columns with visible `...` overflow. Help scrolls with `;`/`.`; ENTER or Back closes it.
-- **Shortcut hints:** `Ctrl+/` advances long footers (`^/ more`). TAB remains available to features that use it.
-- **Display settings:** `System → Display` controls motion (`M`), large text (`B`) and ambient decoration (`A`). Large text enlarges menu labels, WiFi/BLE results, help and notices; status and secondary metadata stay compact.
-- **Feedback:** notices wrap and can be dismissed early. Destructive device settings and file deletion require confirmation; Back cancels.
-- **Transmit safety:** the master TX-arm switch (`System → Settings → T`, default SAFE) gates every offensive transmitter. The status bar shows a red `ARMED` badge and a red baseline while armed; a disarmed transmit action shows `TX disabled / Arm it in Settings` and does nothing. Reads and scans are never blocked.
-- **SaltyJack:** theme-aware 16px icons, a paged grid with every tool reachable, shared footer paging and scrollable help. No second entry splash.
-- **Memory:** no full-screen animation buffers for menu transitions or event panels. No PSRAM requirement. Heap diagnostics remain in `System → Heap`.
-
-The default POSEIDON theme now uses navy, ice-white and cyan with restrained lavender. Existing saved theme IDs and explicit ambient preferences are preserved. New ambient preferences default off; reduced motion pauses decoration and automatic animated screensavers, not live measurements.
-
-| Theme | Aesthetic |
-| --- | --- |
-| POSEIDON | Deepwater navy / ice-white / cyan — default |
-| MATRIX | Phosphor green |
-| E-INK | Paper white and dark text |
-| SYNTHWAVE | Magenta and cyan on midnight grape |
-| PHANTOM | Violet and lavender |
-| BLOOD | Red on black |
-| AMBER CRT | Warm amber terminal |
-| NIGHT CITY | Electric yellow and cyan |
-| SOLARIS | Solar gold on charcoal |
-| NORDIC FROST | Glacial cyan and silver |
-| GHOST PURPLE | Electric violet on obsidian |
-
-## C5 node and TRIDENT screens
-
-The Cardputer drives external ESP32-C5 and TRIDENT nodes over an ESP-NOW bus (`5 C5 nodes` in the menu), reaching 5 GHz WiFi and 802.15.4 the host radio can't. The screens below are rendered mockups of the Deepwater UI, not hardware captures.
-
-**Node list** — auto-discovered C5/TRIDENT peers; `P` pings every peer, `S` broadcasts stop.
-
-![C5 node list (rendered mockup)](assets/screens/c5-nodes.svg)
-
-**Dual-band scan** — remote 5 GHz + 2.4 GHz WiFi via the C5; 5G rows in magenta, 2G in cyan, PMF/WPA3 auth flagged red (deauth won't land there).
-
-![C5 dual-band scan (rendered mockup)](assets/screens/c5-dualband-scan.svg)
-
-**Diagnostics** — per-node link RSSI, free heap, ping round-trip, channel and frame counts. TRIDENT nodes ride the same bus and appear alongside C5 nodes.
-
-![C5 diagnostics, with a TRIDENT node (rendered mockup)](assets/screens/c5-diagnostics.svg)
-
-**TRIDENT PC bridge** — mirrors the Cardputer screen to the desktop `trident_host.py` over USB-C and relays keystrokes back.
-
-![TRIDENT PC bridge (rendered mockup)](assets/screens/trident-bridge.svg)
-
-## SaltyJack and networking
-
-Authorized use only: networks and hardware you own, or explicit written permission. DHCP starvation and rogue DHCP disrupt address assignment. Responder and WPAD collect authentication material.
-
-**Comprehensive how-to** (STA meaning, SoftAP contrast, How-to A/B/C, pins, hat conflicts, C5 offsets, “Not connected” troubleshooting, 0.9.1 vs future W5500): **[docs/saltyjack-networking.md](docs/saltyjack-networking.md)** and **[docs/saltyjack-networking.html](docs/saltyjack-networking.html)**.
-
-The tagged image in this tree is Deepwater **v0.9.1** — built from this source and published on the [v0.9.1 release](https://github.com/wilcox101-maker/poseidon_adv/releases/tag/v0.9.1) and under `release_binaries/`. W5500 firmware is future work, not this image.
-
-### Wi-Fi STA
-
-Station mode means the Cardputer joins an access point as a **client**. SaltyJack DHCP Starve, Rogue DHCP (STA), Responder, and WPAD use lwIP on that STA netif (`WIFI_STA_DEF`) today. They do not use the ESP32-C5. They do not use the W5500.
-
-Rogue DHCP (AP) is the other path, and it is not STA. The Cardputer brings up an open SoftAP named `POSEIDON-SaltyJack` (lwIP default 192.168.4.1) and serves DHCP itself.
-
-### How-to A — SaltyJack over Wi-Fi STA (works now)
-
-1. Flash this fork (Deepwater image). Standalone: `poseidon-factory.bin` at `0x0`. Do not factory-flash a Launcher layout. See Quick Start below.
-2. Hats one at a time, or none. STA SaltyJack does not need a hat. Do not seat Hydra and LoRa together.
-3. Join the authorized target Wi-Fi first and wait for `CONNECTED` with a non-zero IP. Root `w` → `n` Connect, or `n` → `c` Connect, or System → Settings → `w` Saved Wi-Fi.
-4. Root `j` opens SaltyJack. Tool flow on an authorized LAN: **Starve → Rogue STA → Responder / WPAD** (NTLMv2 Crack is the offline follow-up from the microSD). Backtick stops a tool.
-5. **`Not connected`** means the S3 STA is down or has no IPv4 address. It does not mean the Ethernet cable or the C5. The on-screen line “System > Connect” is not a menu name; use the Connect entries above.
-
-### How-to B — W5500 RJ45 (hardware ready, firmware not in this tree)
-
-[docs/hardware.html](docs/hardware.html) says the driver is **Not wired in this tree**. No Ethernet stack is started. Until it is integrated, use How-to A. Do not seat Hydra or LoRa at the same time; they share SPI with the microSD. A **W5500 Mini is 3.3 V only** — do not power a Mini from 5 V.
-
-| Signal | GPIO | Notes |
-| --- | --- | --- |
-| SCLK | 40 | Shared SPI clock |
-| MOSI | 14 | Shared SPI MOSI |
-| MISO | 39 | Shared SPI MISO |
-| SCS | 1 | W5500 chip-select (SD CS is GPIO 12) |
-| INT | 2 | W5500 interrupt, unused by this firmware |
-| RST | NC | Leave reset open |
-| 5V / GND | 5V and GND | Full-size modules that expect 5 V. Mini: 3.3 V and GND only |
-
-### How-to C — ESP32-C5 TRIDENT (not SaltyJack)
-
-Separate board, reached over ESP-NOW, for the radios the S3 can't do: 5 GHz Wi-Fi and 802.15.4. Its 15-action menu (root `5`) covers scan, 5 GHz deauth, PMKID, Nuke+handshake, Zigbee sniff, the Tier 1 passive recon (probe sniff, deauth detect, client hunt, activity sweep), diagnostics, and the Tier 2 TX/SoftAP tools (beacon spam, CIW, AP clone, Karma). Wire protocol v5 — flash the C5 and the Cardputer together, since v5 and v4 don't interoperate. SaltyJack never routes through the C5.
-
-#### C5 Tier 2 screens
-
-> **Rendered from code, not device captures.** These are generated by [`tools/render_c5_screens.py`](tools/render_c5_screens.py), which reproduces the exact draw calls in `src/features/c5_tier2.cpp` at the real 240×135 resolution using the Deepwater theme's RGB565 palette (`src/theme.cpp`). The red `ARMED` badge and red baseline in the status bar are the TX-arm "armed" cue. The canonical on-device UI is owned by the UI Engineer; these are documentation aids. Pixel-exact device captures will follow after the hardware pass.
-
-| Beacon spam (mode/channel picker) | CIW SSID-injection | AP clone (dual-band pick list) |
-| :---: | :---: | :---: |
-| ![C5 beacon spam screen, rendered from code](docs/screens/c5-beacon-spam.png) | ![C5 CIW screen, rendered from code](docs/screens/c5-ciw.png) | ![C5 AP clone screen, rendered from code](docs/screens/c5-ap-clone.png) |
-
-1. Unplug the Cardputer so Web Serial attaches to the C5.
-2. Desktop Chrome or Edge: [docs/flash/](docs/flash/index.html), target **TRIDENT — C5**.
-3. Offsets, bins under `docs/flash/bin/trident-c5/`: `0x2000` bootloader, `0x8000` partition table, `0x10000` `poseidon_c5_node.bin`.
-4. Power both. The C5 HELLO-broadcasts and auto-pairs. On the Cardputer: root `5` → `s` Status.
-
-### Quick map
-
-| Path | What it is | SaltyJack |
-| --- | --- | --- |
-| STA | Cardputer joins an authorized AP | Starve, rogue STA, Responder, WPAD — works now |
-| SoftAP | Open AP `POSEIDON-SaltyJack` | Rogue DHCP (AP) only — works now |
-| W5500 | RJ45, pin table above | Not in this tree. Use STA until a driver lands |
-| C5 | ESP-NOW satellite (wire v5) | 5 GHz / 802.15.4 radio work — full 15-action surface. Never SaltyJack |
-
-## Quick Start & Installation
-
-Use [M5Stack WebBurner](https://burner.m5stack.com/) with the Deepwater factory image for a
-standalone installation. The versioned [catalog metadata](docs/m5burner.json)
-describes this fork's release. An upstream POSEIDON listing is maintained
-separately: changing this repository does not automatically update an
-M5Burner account's public catalog entry.
-Launcher catalog availability is separate too; the app-only GitHub download
-can be installed directly through Launcher without waiting for a catalog update.
-
-### Launcher and custom layouts
-
-Install `poseidon-launcher.bin` through M5Stack Launcher's application installer.
-For raw flashing, determine the destination slot from the actual partition
-table; do not assume a fixed offset.
-
-The connected development unit runs the **standard single-app bmorcelli
-Launcher** — app slot at `0x170000`, built with `cardputer-launcher`. Install
-its `firmware.bin` (not `firmware.factory.bin`) via Launcher's *Install from
-SD* or WebUI.
-
-The `cardputer-launcher-dual` env and [launcher_dual_app_8Mb.csv](support_files/launcher_dual_app_8Mb.csv)
-(POSEIDON at `0x1E0000`, Meshtastic at `0x4B0000`) describe an alternative
-dual-app layout — not what this unit currently runs. For a unit on that layout,
-update only its POSEIDON slot; never flash its table, a factory image, or use
-PlatformIO's full upload target.
-
-See [docs/firmware-targets.md](docs/firmware-targets.md) for the full
-build-target → use-case → install-method reference, including the C5 node.
-
-## Building and validation
-
-```text
-pio run -e cardputer -e cardputer-launcher -e cardputer-launcher-dual
-pio test -e native-test -f test_ui_layout -f test_wifi_logic -f test_ble_db -f test_heap_budget
-```
-
-The TRIDENT C5 node is a separate ESP-IDF project — build it with
-`idf.py -C c5_node build` (ESP-IDF ≥ 5.5, target `esp32c5`). CI builds every
-Cardputer profile, runs the native unit tests (protocol layout included), **and**
-compiles `c5_node/` on each push/PR, so a C5 firmware break now surfaces in CI
-rather than only at flash time.
-
-On Windows, with development firmware running on a connected Cardputer:
-
-```powershell
-.\scripts\test_deepwater_ui.ps1 -Port COM5
-```
-
-For release packaging after building all three profiles:
-
-```powershell
-.\scripts\prepare_deepwater_release.ps1 -Version 0.9.1
-```
-
-This refreshes the [distribution binaries](release_binaries/README.md), legacy
-aliases and SHA256 sums together. Update the personal website's separate
-firmware package from those checksum-verified release artifacts.
-
-The smoke script exercises UI navigation, all eleven theme previews, display
-settings and **cancel-only** confirmation dialogs, including SaltyJack's list,
-paged grid, card and help views without running its tools. It restores the
-starting theme/layout/display preferences, checks paint timing against 100 ms
-and checks retained heap. Artifacts go under `.pio\ui-smoke`.
-
-Serial `D` reads back the LCD in one-row chunks with a checksum. Unsupported
-readback is reported, not counted as successful screenshots. `-SkipCapture`
-runs navigation checks alone. Readback pauses input while streaming; use it on
-idle menus, not time-critical operations. Paint timing is not end-to-end
-keyboard latency or a guarantee for every feature.
-
-Verified on the Cardputer-Adv during the redesign: **33/33 native tests**,
-all three firmware profiles and the final hardware sweep passed. Menu paint
-maximum was **41 ms**, boot reveal **925 ms**, and the final warmed sweep
-retained no additional heap. Application-only flashing passed hash verification;
-partition-table readback matched the backup byte-for-byte. This was shared UI
-and safe navigation validation, not a transmit/destructive-operation audit.
-
-## Acknowledgments & Shoutouts
-
-- **[@Evil0ctopus](https://github.com/Evil0ctopus)** — Fork of origin
-- **[@7h30th3r0n3](https://github.com/7h30th3r0n3)** — Evil-M5Project and RaspyJack (inspiration for the SaltyJack LAN toolkit).
-- **[@justcallmekoko](https://github.com/justcallmekoko)** — ESP32Marauder wireless research / promiscuous-mode frameworks.
-- **[@bmorcelli](https://github.com/bmorcelli)** — Custom M5Burner firmware browser and webflasher.
-- **[@pr3y](https://github.com/pr3y)** — Bruce hardware reference implementations.
-- **[@UberGuidoZ](https://github.com/UberGuidoZ)** — Flipper Sub-GHz signal libraries.
-- **[@M5Stack](https://github.com/M5Stack)** — Hardware design and SDKs.
