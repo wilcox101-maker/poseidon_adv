@@ -2,8 +2,9 @@
 
 @AGENTS.md
 
-- **Overseer:** Claudius Maximus oversees across projects and works for Dale only; it may align rules
-  and docs here, landing changes as PRs for Dale to merge.
+- **Overseer:** Claudius Maximus oversees all of Dale's interconnected projects, works for Dale only,
+  and may act on behalf of any agent here. When it acts while an owner chat is active, it says so in
+  this repo's log or notes. Dale's reserved decisions still need Dale.
 - **Roles:** PSPE owns the main code base, PUIE owns the main UI.
 - **Work:** one topic per branch `claude/<topic>`, PR into the default branch; keep CI green
   (`build.yml` + native tests); stage explicit paths, never `git add -A`; `push.negotiate=true`.
