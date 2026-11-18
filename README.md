@@ -41,7 +41,7 @@ Full detail in [CHANGELOG.md](CHANGELOG.md). One item owed: the on-device v5 val
 
 ## What's coming
 
-Depth and integration, roughly in order: first-class **pcap/pcapng export** to SD (opens straight in Wireshark), the **educational lab-mode** fleshed out over the shipped shell, **Thread / Matter** observation on the C5's 802.15.4 radio, **cross-radio + GPS** correlation, and the **C5 GPIO expander** ([design spec](docs/specs/2026-11-16-c5-gpio-expander-design.md)). Plus the remaining pre-1.0 items: un-clipped EAPOL, C5 diagnostics Phase B, and multi-node wire fields.
+Depth and integration, roughly in order: first-class **pcap/pcapng export** to SD (opens straight in Wireshark), the **educational lab-mode** fleshed out over the shipped shell, **Thread / Matter** observation on the C5's 802.15.4 radio, **cross-radio + GPS** correlation, and the **C5 GPIO expander** ([design spec](docs/specs/2026-11-16-c5-gpio-expander-design.md)). Plus the remaining pre-1.0 items: un-clipped EAPOL, C5 diagnostics Phase B, and multi-node wire fields. The multi-node work opens the door to **GODZILLA** — a second, full-UI detection node on the Waveshare ESP32-S3-Touch-LCD-1.85B that scans on its own 2.4 GHz radio and publishes to the Cardputer over ESP-NOW v2, with a radar/lab UI reimplemented from [Dragon Detector](https://github.com/wilcox101-maker/Dragon-Detector) (MIT, credited). Kickoff brief: [docs/proposals/2026-11-18-godzilla-node.md](docs/proposals/2026-11-18-godzilla-node.md).
 
 ## What this fork adds that upstream lacks
 
