@@ -69,7 +69,18 @@ not UI:
 - Keep passive scan/sniff **never gated**; any transmitter on the node stays behind Poseidon's master
   **TX-arm** SAFE/ARMED gate ([docs/tx-arm.md](../tx-arm.md)).
 
-### 4.3 In-tree layout (mirrors `c5_node/`)
+### 4.3 UI direction (PUIE, Dale 2026-11-18)
+
+The node UI is **Poseidon-themed**, not a Dragon Detector reskin — Deepwater palette, Poseidon
+iconography, and the master **TX-arm ARMED** status cue carried through on the node's own screen.
+
+First-class watch face: a **functional, old-fashioned pocket-watch clock face** on the round
+360×360 LCD — Roman or classic serif numerals, an ornate bezel/fob framing, moving hour/minute/second
+hands driven by the board's PCF85063 RTC (RTC-accurate across power cycles, USB/Wi-Fi/GPS time sync as
+available). It is a real timepiece, not a static graphic. This is the lead example of DD's "watch
+face" feature reimagined in Poseidon's house style; other faces follow the same theming.
+
+### 4.4 In-tree layout (mirrors `c5_node/`)
 
 ```
 godzilla_node/
@@ -93,7 +104,7 @@ task is to turn this first-pass map into a verified audit.
 | Classifiers: Remote ID, AirTag/Find My, iBeacon, Flock | `drone_remoteid`, `ble_findmy`, `ibeacon` | **Parity — evaluate.** |
 | **CSI** motion monitor | None found | **Port** — net-new. |
 | **Wardrive / GPS** (NMEA, WiGLE CSV) | `gps.cpp`, `gps_nmea.h` | **Parity — evaluate**; node adds J8 UART GPS. |
-| **Themes / logo watch faces** (45 themes) | None | **Port (PUIE), node-only** — cosmetic, defer-able (Dale). |
+| **Themes / logo watch faces** (45 themes) | None | **Port (PUIE), node-only**, Poseidon-themed. Lead face: functional old-fashioned **pocket-watch** clock (§4.3). Other faces defer-able (Dale). |
 | **Badge Studio** | None | **Port, node-only** — cosmetic, defer-able (Dale). |
 | **Locksport timers** | None | **Port, node-only** — cosmetic, defer-able (Dale). |
 | Clock / stopwatch, RTC (PCF85063), ES8311 audio tones | Audio exists; no clock UI | **Port, node-only.** |
