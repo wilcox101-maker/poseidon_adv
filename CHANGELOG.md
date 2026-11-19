@@ -136,6 +136,11 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   SPI slot is a later unit). On the AMOLED the panel dims after 60 s untouched
   and a touch restores it (burn-in care). The status screen names the panel
   on the new boards.
+- **GODZILLA node — Recon on the AMOLED-2.06 (microSD over SPI).** The TF bus is
+  now chosen per board by `godzilla_node/main/gz_sd.h`: SDMMC 4-bit on the
+  1.85B and ES3C28P, SPI on the 2.06 (its own SPI3 host; the display holds
+  SPI2), both bundled with the Arduino core. The Recon writer is otherwise
+  unchanged and still never formats a card. All three boards now record.
 
 ## [0.9.2] - 2026-11-16
 

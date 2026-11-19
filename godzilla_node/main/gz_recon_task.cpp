@@ -1,8 +1,8 @@
 /*
  * gz_recon_task.cpp — SD card + Recon session writer task (P3).
  *
- * Card: SD_MMC (bundled with the Arduino core, no new library) in 4-bit mode
- * on the gz_board.h pins. Mounted at boot and, if that failed, tried again
+ * Card: SD_MMC 4-bit or SD over SPI, per board, through gz_sd.h (both bundled
+ * with the Arduino core, no new library), on the gz_board.h pins. Mounted at boot and, if that failed, tried again
  * whenever a session is asked for — so a card inserted after boot works on the
  * next long-press. format_if_mount_failed is false: this code never formats.
  *
@@ -24,8 +24,7 @@
 #include "gz_board.h"
 
 #include <Arduino.h>
-#include <FS.h>
-#include <SD_MMC.h>
+#include "gz_sd.h"         /* GZ_SD_FS: SDMMC or SPI, per board */
 
 #define RECON_TASK_STACK   6144
 #define RECON_TASK_PRIO    1
@@ -55,22 +54,17 @@ static void set_state(gz_recon_state_t st)
 static bool try_mount(void)
 {
     if (s_mounted) return true;
-    if (!SD_MMC.setPins(GZ_PIN_SD_CLK, GZ_PIN_SD_CMD, GZ_PIN_SD_D0,
-                        GZ_PIN_SD_D1, GZ_PIN_SD_D2, GZ_PIN_SD_D3)) {
-        Serial.println("!! SD: setPins rejected the gz_board.h pin map");
+    /* Never formats. A failed begin() leaves the driver clean to retry. */
+    if (!gz_sd_begin() || GZ_SD_FS.cardType() == CARD_NONE) {
+        gz_sd_end();
         return false;
     }
-    /* 4-bit, never format. A failed begin() leaves the driver clean to retry. */
-    if (!SD_MMC.begin("/sdcard", false, false) || SD_MMC.cardType() == CARD_NONE) {
-        SD_MMC.end();
-        return false;
-    }
-    uint32_t mb = (uint32_t)(SD_MMC.cardSize() / (1024ULL * 1024ULL));
+    uint32_t mb = (uint32_t)(GZ_SD_FS.cardSize() / (1024ULL * 1024ULL));
     portENTER_CRITICAL(&s_mux);
     s_status.card_mb = mb;
     portEXIT_CRITICAL(&s_mux);
     s_mounted = true;
-    Serial.printf("  SD: card mounted, %lu MB (SDMMC 4-bit)\n", (unsigned long)mb);
+    Serial.printf("  SD: card mounted, %lu MB (%s)\n", (unsigned long)mb, GZ_SD_BUS_NAME);
     return true;
 }
 
@@ -98,14 +92,14 @@ static void session_start(void)
         set_state(GZ_RECON_ERROR);
         return;
     }
-    if (!SD_MMC.exists("/recon")) SD_MMC.mkdir("/recon");
-    if (!SD_MMC.exists(dir))      SD_MMC.mkdir(dir);
+    if (!GZ_SD_FS.exists("/recon")) GZ_SD_FS.mkdir("/recon");
+    if (!GZ_SD_FS.exists(dir))      GZ_SD_FS.mkdir(dir);
 
-    s_file = SD_MMC.open(path, FILE_APPEND);
+    s_file = GZ_SD_FS.open(path, FILE_APPEND);
     if (!s_file) {
         Serial.printf("!! recon: cannot open %s\n", path);
         s_mounted = false;                    /* card pulled? remount next time */
-        SD_MMC.end();
+        gz_sd_end();
         set_state(GZ_RECON_ERROR);
         return;
     }
@@ -182,7 +176,7 @@ static void recon_task(void *arg)
             Serial.println("!! recon: SD write failed - session ended");
             session_stop(GZ_RECON_ERROR);
             s_mounted = false;
-            SD_MMC.end();
+            gz_sd_end();
             recording = false;
         }
     }

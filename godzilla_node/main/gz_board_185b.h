@@ -31,6 +31,7 @@
 #define GZ_BOARD_NAME        "ESP32-S3-Touch-LCD-1.85B"
 #define GZ_BOARD_HAS_UI      1    /* ST77916 panel + CST816S touch driven  */
 #define GZ_BOARD_HAS_SD      1    /* SDMMC 4-bit TF slot driven (Recon)    */
+#define GZ_BOARD_SD_SPI      0    /* SDMMC via SD_MMC (gz_sd.h)            */
 #define GZ_BOARD_HAS_RTC     1    /* PCF85063                              */
 #define GZ_BOARD_HAS_IMU     1    /* QMI8658                               */
 #define GZ_BOARD_HAS_GAUGE   1    /* BQ27220 battery gauge                  */

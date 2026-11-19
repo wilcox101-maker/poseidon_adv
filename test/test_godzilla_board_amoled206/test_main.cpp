@@ -18,9 +18,10 @@ static void test_selects_amoled206(void)
 {
     TEST_ASSERT_EQUAL_STRING("ESP32-S3-Touch-AMOLED-2.06", GZ_BOARD_NAME);
     TEST_ASSERT_EQUAL_INT(0, GZ_LCD_ROUND);
-    /* Display + touch are driven; the SPI TF slot is not yet. */
+    /* Display + touch + the SPI TF slot are driven. */
     TEST_ASSERT_EQUAL_INT(1, GZ_BOARD_HAS_UI);
-    TEST_ASSERT_EQUAL_INT(0, GZ_BOARD_HAS_SD);
+    TEST_ASSERT_EQUAL_INT(1, GZ_BOARD_HAS_SD);
+    TEST_ASSERT_EQUAL_INT(1, GZ_BOARD_SD_SPI);
 }
 
 static void test_lcd_pins(void)
