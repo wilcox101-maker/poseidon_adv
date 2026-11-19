@@ -149,6 +149,13 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   takes a write and the PMIC is never written). The ES3C28P reads its battery
   divider on IO9 (2:1, R14 / R15 200 k from the schematic), as volts only, with
   no guessed percentage. Native-tested (`test/test_godzilla_power`).
+- **GODZILLA node — idle dim and wake on every board.** The screen dims after
+  a minute without activity and comes back on a touch or, on the boards with
+  an IMU (1.85B, 2.06), when the node is picked up. It dims lower on the
+  AMOLED (burn-in care). One build constant disables each:
+  `GZ_UI_DIM_AFTER_MS 0` never dims, `GZ_UI_WAKE_ON_MOTION 0` wakes on touch
+  only (`godzilla_node/main/gz_wake.h`, native-tested in
+  `test/test_godzilla_wake`). Auto-rotate is not included.
 
 ## [0.9.2] - 2026-11-16
 

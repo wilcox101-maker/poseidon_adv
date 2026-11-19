@@ -27,6 +27,7 @@
 #include "gz_touch.h"       /* sole ARDUINO user of the touch driver */
 #include "gz_imu.h"         /* QMI8658 status line (boards with an IMU) */
 #include "gz_power.h"       /* battery / supply line (boards with a readout) */
+#include "gz_wake.h"        /* idle dim / wake on touch or motion (#88 §3.7) */
 #include "gz_ui_radar.h"
 #include "gz_ui_hunt.h"
 #include "gz_ui_watch.h"
@@ -53,14 +54,9 @@ static lv_indev_t   *s_touch = nullptr;
 static gz_touch_point_t s_touch_pt = {};   /* last report; LVGL task only */
 static volatile bool s_first_flush_done = false;
 
-#if GZ_BOARD_DISPLAY == 2
-/* AMOLED care (design #84 §4): dim after a minute untouched, restore on touch.
- * Static high-contrast pixels (radar rings, crosshair) are what burn in. */
-#define GZ_UI_DIM_AFTER_MS  60000u
-#define GZ_UI_DIM_PCT       8u
-static uint32_t s_last_touch_ms = 0;
-static bool     s_dimmed = false;
-#endif
+/* Idle dim / wake (gz_wake.h): every board. Touched by the touch read and
+ * the motion sample, applied in the task loop; all on this (LVGL) task. */
+static gz_wake_t s_wake;
 /* Swipe ring order. GZ_UI_HOME is the screen shown at boot — one line to
  * change after the bench. */
 #if GZ_BOARD_HAS_RTC
@@ -116,9 +112,7 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 {
     (void)indev;
     gz_touch_poll(&s_touch_pt);
-#if GZ_BOARD_DISPLAY == 2
-    if (s_touch_pt.pressed) s_last_touch_ms = (uint32_t)millis();
-#endif
+    if (s_touch_pt.pressed) gz_wake_activity(&s_wake, (uint32_t)millis());
     data->point.x = (int32_t)s_touch_pt.x;
     data->point.y = (int32_t)s_touch_pt.y;
     data->state   = s_touch_pt.pressed ? LV_INDEV_STATE_PRESSED
@@ -355,6 +349,7 @@ static void ui_task(void *arg)
     refresh_current(millis());
     lv_screen_load(s_scr[s_cur]);
 
+    gz_wake_init(&s_wake, millis());
     bool     backlight_on = false;
     uint32_t last_refresh = 0;
     for (;;) {
@@ -365,17 +360,21 @@ static void ui_task(void *arg)
             backlight_on = true;
         }
         uint32_t now = millis();
-#if GZ_BOARD_DISPLAY == 2
         if (backlight_on) {
-            bool idle = (uint32_t)(now - s_last_touch_ms) >= GZ_UI_DIM_AFTER_MS;
-            if (idle != s_dimmed) {
-                gz_display_backlight(idle ? GZ_UI_DIM_PCT : GZ_LCD_BL_DEFAULT_PCT);
-                s_dimmed = idle;
-            }
+            gz_wake_action_t a = gz_wake_update(&s_wake, now, GZ_UI_DIM_AFTER_MS);
+            if (a == GZ_WAKE_TO_DIM)    gz_display_backlight(GZ_UI_DIM_PCT);
+            if (a == GZ_WAKE_TO_BRIGHT) gz_display_backlight(GZ_LCD_BL_DEFAULT_PCT);
         }
-#endif
         if ((uint32_t)(now - last_refresh) >= GZ_UI_REFRESH_MS) {
             last_refresh = now;
+#if GZ_BOARD_HAS_IMU && GZ_UI_WAKE_ON_MOTION
+            /* Wake on motion: one IMU sample per UI tick (4 Hz), only when
+             * the part answered at boot. */
+            if (gz_imu_chip_id() == GZ_IMU_WHOAMI_VALUE) {
+                gz_imu_sample_t m;
+                if (gz_imu_read(&m, 0) && m.moving) gz_wake_activity(&s_wake, now);
+            }
+#endif
             /* Only the visible screen; the others catch up when shown. */
             refresh_current(now);
         }
