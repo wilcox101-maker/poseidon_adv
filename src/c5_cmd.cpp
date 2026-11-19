@@ -522,11 +522,21 @@ static void evict_locked(void)
     }
 }
 
+/* Peers that take C5 commands: everything except passive detection nodes.
+ * Caller holds s_mux. */
+static int command_peers_locked(void)
+{
+    int n = 0;
+    for (int i = 0; i < s_peer_n; ++i)
+        if (s_peers[i].role != C5_ROLE_DETECT_NODE) n++;
+    return n;
+}
+
 bool c5_any_online(void)
 {
     portENTER_CRITICAL(&s_mux);
     evict_locked();
-    bool r = s_peer_n > 0;
+    bool r = command_peers_locked() > 0;
     portEXIT_CRITICAL(&s_mux);
     return r;
 }
@@ -535,7 +545,7 @@ int c5_peer_count(void)
 {
     portENTER_CRITICAL(&s_mux);
     evict_locked();
-    int n = s_peer_n;
+    int n = s_peer_n;   /* all peers incl. detection nodes (Status lists them by index) */
     portEXIT_CRITICAL(&s_mux);
     return n;
 }
@@ -622,8 +632,12 @@ static uint16_t send_simple_cmd(uint8_t type, const uint8_t *extra, int extra_le
     uint8_t macs[MAX_PEERS][6];
     int count;
     portENTER_CRITICAL(&s_mux);
-    count = s_peer_n;
-    for (int i = 0; i < count; ++i) memcpy(macs[i], s_peers[i].mac, 6);
+    count = 0;
+    for (int i = 0; i < s_peer_n; ++i) {
+        /* Detection nodes (GODZILLA) take no commands: skip the airtime. */
+        if (s_peers[i].role == C5_ROLE_DETECT_NODE) continue;
+        memcpy(macs[count++], s_peers[i].mac, 6);
+    }
     portEXIT_CRITICAL(&s_mux);
 
     /* POS-AUDIT-273 / net-013: production builds skip the per-tick
