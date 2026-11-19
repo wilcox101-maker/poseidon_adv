@@ -71,6 +71,9 @@ enum {
     C5_DET_FAM_IBEACON     = 6,
     C5_DET_FAM_REMOTEID    = 7,
     C5_DET_FAM_FLOCK       = 8,
+    C5_DET_FAM_RAVEN       = 9,   /* Raven / ShotSpotter (BLE)     */
+    C5_DET_FAM_TILE        = 10,  /* Tile tracker (BLE)            */
+    C5_DET_FAM_SMARTTAG    = 11,  /* Samsung SmartTag (BLE)        */
 };
 
 /* ---- existing request/response structs (unchanged shape) ---- */

@@ -22,7 +22,7 @@ c5_ble_det_t  { u8 node_id; u8 count; c5_ble_det_entry_t  det[C5_DET_MAX]; }
 c5_ble_det_entry_t  { u8 addr[6]; u8 addr_type; i8 rssi; u8 family; u8 flags; }  // 10B
 ```
 `family` = `C5_DET_FAM_*` (UNKNOWN=0, WIFI_AP=1, WIFI_STA=2, BLE_GENERIC=3, FINDMY=4, AIRTAG=5,
-IBEACON=6, REMOTEID=7, FLOCK=8). `flags` reserved, 0 in P0. `addr_type`: 0 public, 1 random.
+IBEACON=6, REMOTEID=7, FLOCK=8, RAVEN=9, TILE=10, SMARTTAG=11). `flags` reserved, 0 in P0. `addr_type`: 0 public, 1 random.
 
 ## Receiver rules (the handler Claudius is writing)
 1. Dispatch on type **60/61** in the existing `on_recv` path, after the standard magic + `version==5`

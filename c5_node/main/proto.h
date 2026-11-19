@@ -90,6 +90,9 @@ enum {
     POSEI_DET_FAM_IBEACON     = 6,
     POSEI_DET_FAM_REMOTEID    = 7,
     POSEI_DET_FAM_FLOCK       = 8,
+    POSEI_DET_FAM_RAVEN       = 9,   /* Raven / ShotSpotter (BLE)     */
+    POSEI_DET_FAM_TILE        = 10,  /* Tile tracker (BLE)            */
+    POSEI_DET_FAM_SMARTTAG    = 11,  /* Samsung SmartTag (BLE)        */
 };
 
 /* v5: 1024 (was 230). The whole frame (POSEI_HEADER_SZ + this) must stay
