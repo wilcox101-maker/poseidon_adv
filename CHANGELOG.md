@@ -8,6 +8,15 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **GODZILLA node — BLE Lab screen (#98 §2.4, part b).** A new screen in the
+  swipe ring after Hunt (`godzilla_node/main/gz_ui_lab.cpp`): recently heard BLE
+  devices, strongest first (re-sorted once a second so rows hold still), one
+  decoded line each; devices that announce HID show in teal. Tap a row for its
+  last advert decoded field by field; tap again to go back. Rows that fit are
+  sized per panel (9 on the round 1.85B, all inside the glass; 10 on the
+  ES3C28P; 12 on the AMOLED-2.06). Layout and text are the pure
+  `gz_ble_lab_view.h`, native-tested (`test/test_godzilla_ble_lab_view`).
+  Passive only: nothing connects, pairs or sends.
 - **GODZILLA node — BLE Lab decoder and store (#98 §2.4, part a).** A pure,
   bounds-checked advertisement decoder (`godzilla_node/main/gz_ble_adv.h`:
   flags, names, TX power, appearance, 16/32/128-bit UUID lists, service and

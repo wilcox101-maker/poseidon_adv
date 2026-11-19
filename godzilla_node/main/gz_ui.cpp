@@ -12,7 +12,7 @@
  * SPI "color transfer done" ISR calls lv_display_flush_ready(). The backlight
  * comes on only after that first flush completes — no white flash at boot.
  *
- * Screens: a swipe ring, radar -> hunt -> watch -> status (left = next,
+ * Screens: a swipe ring, radar -> hunt -> BLE lab -> watch -> status (left = next,
  * right = previous). The home screen is GZ_UI_HOME. Swipes come from LVGL's own
  * gesture detection on the touch pointer; a swipe or a long-press never also
  * counts as a tap. Only the visible screen refreshes.
@@ -31,6 +31,7 @@
 #include "gz_rotate.h"      /* auto-rotate from the IMU (#98 §1.3) */
 #include "gz_ui_radar.h"
 #include "gz_ui_hunt.h"
+#include "gz_ui_lab.h"       /* BLE Lab, passive (#98 §2.4) */
 #include "gz_ui_watch.h"
 #include "gz_geom.h"         /* the one geometry source (#88 §3.2) */
 
@@ -71,13 +72,14 @@ static gz_wake_t s_wake;
 /* Swipe ring order. GZ_UI_HOME is the screen shown at boot — one line to
  * change after the bench. */
 #if GZ_BOARD_HAS_RTC
-enum { GZ_SCR_RADAR = 0, GZ_SCR_HUNT = 1, GZ_SCR_WATCH = 2, GZ_SCR_STATUS = 3,
-       GZ_SCR_COUNT = 4 };
+enum { GZ_SCR_RADAR = 0, GZ_SCR_HUNT = 1, GZ_SCR_LAB = 2, GZ_SCR_WATCH = 3,
+       GZ_SCR_STATUS = 4, GZ_SCR_COUNT = 5 };
 #else
 /* No RTC (ES3C28P): the watch runs only where an RTC exists (#88 §4), so the
- * ring is radar -> hunt -> status and GZ_SCR_WATCH never matches a screen. */
-enum { GZ_SCR_RADAR = 0, GZ_SCR_HUNT = 1, GZ_SCR_STATUS = 2, GZ_SCR_COUNT = 3,
-       GZ_SCR_WATCH = -1 };
+ * ring is radar -> hunt -> BLE lab -> status and GZ_SCR_WATCH never matches
+ * a screen. */
+enum { GZ_SCR_RADAR = 0, GZ_SCR_HUNT = 1, GZ_SCR_LAB = 2, GZ_SCR_STATUS = 3,
+       GZ_SCR_COUNT = 4, GZ_SCR_WATCH = -1 };
 #endif
 #define GZ_UI_HOME GZ_SCR_RADAR
 
@@ -295,6 +297,7 @@ static void refresh_current(uint32_t now)
 {
     if (s_cur == GZ_SCR_RADAR)      gz_ui_radar_refresh(now);
     else if (s_cur == GZ_SCR_HUNT)  gz_ui_hunt_refresh(now);
+    else if (s_cur == GZ_SCR_LAB)   gz_ui_lab_refresh(now);
 #if GZ_BOARD_HAS_RTC
     else if (s_cur == GZ_SCR_WATCH) gz_ui_watch_refresh(now);
 #endif
@@ -304,6 +307,7 @@ static void refresh_current(uint32_t now)
 static void go_to(int idx)
 {
     uint32_t now = millis();
+    if (s_cur == GZ_SCR_LAB) gz_ui_lab_hide();         /* reopens on the list */
 #if GZ_BOARD_HAS_RTC
     if (s_cur == GZ_SCR_WATCH) gz_ui_watch_hide();     /* drops an unfinished set */
     s_cur = idx;
@@ -329,7 +333,7 @@ static void screen_event_cb(lv_event_t *e)
             go_to((s_cur + step) % GZ_SCR_COUNT);
         }
     } else if (code == LV_EVENT_LONG_PRESSED) {
-        if (s_cur == GZ_SCR_STATUS || s_suppress_click) return;
+        if (s_cur == GZ_SCR_STATUS || s_cur == GZ_SCR_LAB || s_suppress_click) return;
         s_suppress_click = true;       /* the release must not also count as a tap */
 #if GZ_BOARD_HAS_RTC
         if (s_cur == GZ_SCR_WATCH)     gz_ui_watch_long_press(millis());
@@ -342,6 +346,7 @@ static void screen_event_cb(lv_event_t *e)
         lv_point_t p;
         lv_indev_get_point(lv_indev_active(), &p);
         if (s_cur == GZ_SCR_RADAR)      gz_ui_radar_tap(p.x, p.y, millis());
+        else if (s_cur == GZ_SCR_LAB)   gz_ui_lab_tap(p.y, millis());
 #if GZ_BOARD_HAS_RTC
         else if (s_cur == GZ_SCR_WATCH) gz_ui_watch_tap(p.y, millis());
 #endif
@@ -367,6 +372,7 @@ static void ui_task(void *arg)
     }
     gz_ui_radar_build(s_scr[GZ_SCR_RADAR]);
     gz_ui_hunt_build(s_scr[GZ_SCR_HUNT]);
+    gz_ui_lab_build(s_scr[GZ_SCR_LAB]);
 #if GZ_BOARD_HAS_RTC
     gz_ui_watch_build(s_scr[GZ_SCR_WATCH]);     /* first RTC read, on this task */
 #endif
@@ -477,7 +483,7 @@ bool gz_ui_start(void)
         Serial.println("!! UI: task create failed — headless");
         return false;
     }
-    Serial.printf("  UI: LVGL %d.%d.%d, 2 x %u B draw buffers, radar + hunt + "
+    Serial.printf("  UI: LVGL %d.%d.%d, 2 x %u B draw buffers, radar + hunt + BLE lab + "
 #if GZ_BOARD_HAS_RTC
                   "watch + "
 #endif
