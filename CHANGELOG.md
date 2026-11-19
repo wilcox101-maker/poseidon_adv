@@ -53,6 +53,17 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   hit count. A writer task owns the card; nothing is written outside a
   session and the card is never formatted. The radar shows `REC n` while
   recording. Model native-tested (`test/test_godzilla_recon`). Passive.
+- **GODZILLA node — second board: Waveshare ESP32-S3-Touch-AMOLED-2.06 (port
+  unit 1).** `godzilla_node/main/gz_board.h` now selects the board at build
+  time: the 1.85B map moved unchanged to `gz_board_185b.h`, and the new
+  `gz_board_amoled206.h` carries the 2.06 map (CO5300 AMOLED, FT3168 touch,
+  PCF85063 RTC, QMI8658 IMU, AXP2101 PMIC, SPI TF slot, keys) with collision
+  guards. New `[env:godzilla-amoled206]` and CI row build it **headless** for
+  now — radios, ESP-NOW link, publish path and RTC run; display, touch and TF
+  arrive in units 2-5 (design: `docs/proposals/2026-11-19-godzilla-amoled206-port.md`).
+  The boot I2C scan labels each board's parts, and the 2.06 announces itself as
+  `GODZILLA206`. Board map native-tested (`test/test_godzilla_board_amoled206`).
+  Passive; 1.85B behaviour unchanged.
 
 ## [0.9.2] - 2026-11-16
 
