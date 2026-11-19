@@ -18,6 +18,12 @@
 #define C5_MAGIC   0x504F5345
 #define C5_VERSION 5
 
+/* HELLO roles. 1 = C5/TRIDENT command node. 2 = GODZILLA passive detection
+ * node: it publishes types 60/61 and takes no commands, so it is listed in
+ * Diagnostics but never counted as "a C5 online" nor sent commands. */
+#define C5_ROLE_C5            1
+#define C5_ROLE_DETECT_NODE   2
+
 enum {
     C5_TYPE_HELLO              = 1,
 
