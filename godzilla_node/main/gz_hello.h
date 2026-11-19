@@ -19,6 +19,8 @@
  * posei_hello_t.name (11 chars + NUL); checked below. */
 #if defined(GZ_BOARD_AMOLED206)
 #define GZ_HELLO_NAME "GODZILLA206"
+#elif defined(GZ_BOARD_ES3C28P)
+#define GZ_HELLO_NAME "GODZILLA28"
 #else
 #define GZ_HELLO_NAME "GODZILLA"
 #endif

@@ -29,6 +29,12 @@ static constexpr uint8_t GZ_NODE_ID = 2;
 
 void setup()
 {
+#if defined(GZ_PIN_AMP_EN) && defined(GZ_AMP_OFF_LEVEL)
+    /* First thing: hold the board's speaker amp off, so a floating enable
+     * line can't make it hiss. A local GPIO, not RF; audio is not driven. */
+    pinMode(GZ_PIN_AMP_EN, OUTPUT);
+    digitalWrite(GZ_PIN_AMP_EN, GZ_AMP_OFF_LEVEL);
+#endif
     Serial.begin(115200);
     delay(200);
 
@@ -48,10 +54,17 @@ void setup()
      * if its oscillator stopped (cold boot / no backup cell), seed it from the
      * firmware build time so the clock and the later pocket-watch face start
      * sane. Passive — I2C to a soldered peripheral, no radio. */
+#if GZ_BOARD_HAS_RTC
     gz_datetime_t gz_now;
     bool rtc_seeded = false;
     bool rtc_ok = gz_rtc_begin(&gz_now, &rtc_seeded);
     gz_stats_set_rtc(rtc_ok, rtc_seeded);   /* watch face: "hold to set" hint */
+#else
+    /* No RTC on this board: the software clock starts unset ("hold to set"),
+     * and Recon writes to its NODATE file until the time is set. */
+    gz_stats_set_rtc(false, false);
+    Serial.println("  RTC: none on this board — clock starts unset");
+#endif
 
     /* P2a: status screen. Identity first, then the panel + LVGL task. The
      * radios below start either way — headless is still a working node. */

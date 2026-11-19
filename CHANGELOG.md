@@ -74,6 +74,17 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   The boot I2C scan labels each board's parts, and the 2.06 announces itself as
   `GODZILLA206`. Board map native-tested (`test/test_godzilla_board_amoled206`).
   Passive; 1.85B behaviour unchanged.
+- **GODZILLA node — third board: 2.8" ESP32-S3 Display, ES3C28P (map + env).**
+  `gz_board_es3c28p.h` (ILI9341V SPI LCD, FT6336G touch, SDMMC TF, ES8311 +
+  amp, battery ADC, RGB LED) selected by `-DGZ_BOARD_ES3C28P`;
+  `[env:godzilla-es3c28p]` + CI row. The TF slot and Recon writer run from
+  day one (same SDMMC driver as the 1.85B, other pins); the UI is headless
+  until the display / touch units. Boards now declare each I2C part with
+  `GZ_BOARD_HAS_RTC / _IMU / _GAUGE / _MIC_ADC`; an absent part has no address
+  macro, so code can't reach it (no RTC here: the clock starts unset and the
+  RTC's I2C half is compiled out). The speaker amp is driven off first thing
+  at boot. HELLO `GODZILLA28`. Map native-tested
+  (`test/test_godzilla_board_es3c28p`). Passive.
 
 ## [0.9.2] - 2026-11-16
 

@@ -34,11 +34,19 @@
 static inline const char *gz_i2c_expected_device(uint8_t addr)
 {
     if (addr == GZ_I2C_ADDR_TOUCH) return GZ_I2C_NAME_TOUCH;
+#if GZ_BOARD_HAS_RTC
     if (addr == GZ_I2C_ADDR_RTC)   return "PCF85063 RTC";
+#endif
+#if GZ_BOARD_HAS_IMU
     if (addr == GZ_I2C_ADDR_IMU)     return "QMI8658 IMU (unused)";
+#endif
+#if GZ_BOARD_HAS_GAUGE
     if (addr == GZ_I2C_ADDR_GAUGE)   return GZ_I2C_NAME_GAUGE;
+#endif
     if (addr == GZ_I2C_ADDR_CODEC)   return "ES8311 codec? (unused)";
+#if GZ_BOARD_HAS_MIC_ADC
     if (addr == GZ_I2C_ADDR_MIC_ADC) return "ES7210 mic ADC? (unused)";
+#endif
     return "unknown";
 }
 
@@ -63,11 +71,16 @@ static inline uint8_t gz_i2c_scan_report()
         }
     }
     if (found == 0) {
-        Serial.println("    (none) — verify SDA/SCL against the 1.85B wiki pin map");
+        Serial.printf("    (none) — verify SDA/SCL against the %s pin map\n", GZ_BOARD_NAME);
     } else {
+#if GZ_BOARD_HAS_RTC
         Serial.printf("    %u device(s); expect 0x%02X touch + 0x%02X RTC\n",
                       (unsigned)found,
                       (unsigned)GZ_I2C_ADDR_TOUCH, (unsigned)GZ_I2C_ADDR_RTC);
+#else
+        Serial.printf("    %u device(s); expect 0x%02X touch\n",
+                      (unsigned)found, (unsigned)GZ_I2C_ADDR_TOUCH);
+#endif
     }
     return found;
 }
