@@ -24,6 +24,7 @@
 #include "gz_ble_scan.h"
 #include "gz_batch.h"
 #include "gz_link.h"
+#include "gz_stats.h"
 
 #include <Arduino.h>
 #include <NimBLEDevice.h>
@@ -103,6 +104,9 @@ void gz_ble_scan_tick(void)
 
     posei_msg_t msg;
     size_t n = gz_ble_batch_pack(&snap, &msg, s_seq++);
-    if (n) gz_link_send(&msg);         /* empty window → nothing on the wire */
+    if (n) {
+        gz_link_send(&msg);         /* empty window → nothing on the wire */
+        gz_stats_note_publish(GZ_RADIO_BLE, snap.count);   /* status screen (P2a) */
+    }
     s_last_pub_ms = now;
 }
