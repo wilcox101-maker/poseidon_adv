@@ -85,6 +85,17 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   RTC's I2C half is compiled out). The speaker amp is driven off first thing
   at boot. HELLO `GODZILLA28`. Map native-tested
   (`test/test_godzilla_board_es3c28p`). Passive.
+- **GODZILLA node — FocalTech touch driver (FT3168 + FT6336G).** One parser
+  and driver (`godzilla_node/main/gz_touch_ft.h`) for both new boards' touch
+  controllers: the 0x02..0x06 report in one read, the event flag mapped onto
+  the shared point type, idle / over-count / lift-up treated as released, 12-bit
+  coordinates clamped to each board's panel. `gz_touch.h` stays the entry point
+  for every board and picks the driver by `GZ_BOARD_TOUCH_FT`; the CST816S
+  path on the 1.85B is unchanged. Read-only (no controller register written);
+  a controller that does not answer is logged and skipped, never fatal. The
+  status screen uses the new board-neutral `gz_touch_found()` /
+  `gz_touch_name()`. Native-tested (`test/test_godzilla_touch_ft`, plus a 410x502
+  clamp case in `test_godzilla_board_amoled206`).
 
 ## [0.9.2] - 2026-11-16
 

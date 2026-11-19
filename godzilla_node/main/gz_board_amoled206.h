@@ -38,6 +38,9 @@
 #define GZ_BOARD_HAS_MIC_ADC 1    /* ES7210                                */
 #define GZ_LCD_ROUND         0    /* rectangular 410x502, rounded corners     */
 #define GZ_I2C_NAME_TOUCH    "FT3168 touch"
+#define GZ_BOARD_TOUCH_FT    1    /* FocalTech driver (gz_touch_ft.h)         */
+#define GZ_TOUCH_FT_ID_REG   0xA0 /* FT3x68 device ID: 0x03 = FT3168 (Waveshare driver) */
+#define GZ_TOUCH_FT_BOOT_MS  200  /* after reset; bench-tunable               */
 #define GZ_I2C_NAME_GAUGE    "AXP2101 PMIC (unused)"
 
 /* ---- LCD: CO5300 AMOLED over QSPI (no backlight: brightness is DCS 0x51) ---- */

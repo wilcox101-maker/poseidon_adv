@@ -177,11 +177,11 @@ static void refresh_status_screen(void)
     lv_label_set_text_fmt(s_lbl_hw, "I2C %u dev | panel rev %d",
                           (unsigned)st.i2c_found, gz_display_panel_rev());
     /* Touch bench aid: chip, last controller gesture, last point. */
-    if (gz_touch_chip_id() == 0) {
+    if (!gz_touch_found()) {
         lv_label_set_text(s_lbl_touch, "touch: not found");
     } else {
         lv_label_set_text_fmt(s_lbl_touch, "%s | %s %u,%u",
-                              gz_touch_chip_name(gz_touch_chip_id()),
+                              gz_touch_name(),
                               gz_touch_gesture_name(gz_touch_last_gesture()),
                               (unsigned)s_touch_pt.x, (unsigned)s_touch_pt.y);
     }

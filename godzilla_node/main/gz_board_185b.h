@@ -37,6 +37,7 @@
 #define GZ_BOARD_HAS_MIC_ADC 1    /* ES7210                                */
 #define GZ_LCD_ROUND         1    /* round 360x360 glass                   */
 #define GZ_I2C_NAME_TOUCH    "CST816S touch"
+#define GZ_BOARD_TOUCH_FT    0    /* Hynitron CST816S driver (gz_touch.h)  */
 #define GZ_I2C_NAME_GAUGE    "BQ27220 battery gauge (unused)"
 
 /* ---- LCD: ST77916 over QSPI ---- */
