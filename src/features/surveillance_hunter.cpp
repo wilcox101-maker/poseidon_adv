@@ -24,6 +24,7 @@
 #include "gps.h"
 #include "sfx.h"
 #include "../sigdb_surveillance.h"
+#include "../flock_frame.h"
 #include "../sd_helper.h"
 #include <WiFi.h>
 #include <esp_wifi.h>
@@ -209,52 +210,18 @@ static void promisc_cb(void *buf, wifi_promiscuous_pkt_type_t type)
     const wifi_promiscuous_pkt_t *pkt = (const wifi_promiscuous_pkt_t *)buf;
     const uint8_t *p = pkt->payload;
     int len = pkt->rx_ctrl.sig_len;
-    uint8_t fc = p[0];
-    uint8_t subtype = (fc >> 4) & 0xF;
-
-    /* Beacon (8) + probe response (5) + probe request (4) */
-    if (subtype != 0x8 && subtype != 0x5 && subtype != 0x4) return;
-    /* Probe requests have a 24-byte MAC header and can be much shorter than
-     * beacons. Reject only frames that cannot contain their tagged fields plus
-     * the captured FCS, otherwise wildcard probes are missed. */
-    int tag_offset = (subtype == 0x4) ? 24 : 36;
-    if (len < tag_offset + 4) return;
-
-    /* For probe request, addr2 = src STA. For beacon/probe-resp, addr2 = AP BSSID. */
-    const uint8_t *bssid = (subtype == 0x4) ? (p + 10) : (p + 16);
+    /* Parse + classify: pure, native-tested (flock_frame.h). */
+    flock_frame_t fr;
+    int rc = flock_frame_classify(p, len, &fr);
+    if (rc < 0) return;
+    const uint8_t *bssid = fr.addr;
+    const char *ssid = fr.ssid;
 
     portENTER_CRITICAL_ISR(&s_mux);
     s_total = s_total + 1;
     portEXIT_CRITICAL_ISR(&s_mux);
 
-    surv_class_t cls = SURV_UNKNOWN;
-
-    /* OUI classification first — cheapest. */
-    cls = flock_classify_oui(bssid);
-
-    /* SSID extraction + classification for beacon / probe-resp / probe-req
-     * (all carry tagged params starting at offset 36 in beacon/probe-resp,
-     * offset 24 in probe-req). */
-    char ssid[33] = {0};
-    const uint8_t *tags = (subtype == 0x4) ? (p + 24) : (p + 36);
-    int tag_len = len - (tags - p) - 4;
-    if (tag_len > 1 && tags[0] == 0 && tags[1] <= 32 && tags[1] <= (tag_len - 2)) {
-        memcpy(ssid, tags + 2, tags[1]);
-        ssid[tags[1]] = '\0';
-    }
-
-    /* DeFlockJoplin wildcard-probe fingerprint: probe-req with empty
-     * SSID + known-Flock OUI source = definitive. */
-    if (subtype == 0x4 && ssid[0] == '\0' && cls != SURV_UNKNOWN) {
-        cls = SURV_FLOCK_PROBE;
-    }
-
-    /* SSID-pattern override (catches Flock APs on contract-manuf OUIs
-     * that wouldn't trigger OUI classification alone). */
-    if (cls == SURV_UNKNOWN || cls == SURV_FLOCK_T2) {
-        surv_class_t s_cls = flock_classify_ssid(ssid);
-        if (s_cls != SURV_UNKNOWN) cls = s_cls;
-    }
+    surv_class_t cls = (surv_class_t)rc;
 
     if (cls == SURV_UNKNOWN) return;
 
@@ -283,7 +250,7 @@ static void promisc_cb(void *buf, wifi_promiscuous_pkt_type_t type)
     uint8_t next = (head + 1) % HIT_Q_N;
     if (next != s_hitq_tail) {
         memcpy((void *)s_hitq[head].bssid, bssid, 6);
-        size_t sl = strnlen(ssid, sizeof(ssid));
+        size_t sl = strnlen(ssid, sizeof(fr.ssid));
         memcpy((void *)s_hitq[head].ssid, ssid, sl);
         ((char *)s_hitq[head].ssid)[sl] = '\0';
         s_hitq[head].rssi    = pkt->rx_ctrl.rssi;
