@@ -1218,11 +1218,11 @@ const menu_node_t *g_current_feature_item = nullptr;
 /* Offensive RF-transmit actions gated by the master TX-arm switch
  * (tx_arm). When SAFE, menu_execute_action refuses to launch these, so a
  * mis-keyed letter mnemonic can't start a transmission (UI review #1).
- * Passive scan/sniff/detect/spectrum are deliberately absent. Note: this
- * gates the MENU launch path (both terminal and carousel route through
- * menu_execute_action); in-feature attack hotkeys (e.g. Scan -> D) call
- * these functions directly and are a documented follow-up. IR is not yet
- * gated here — see tx_arm.h. */
+ * Passive scan/sniff/detect/spectrum are deliberately absent. This gates the
+ * MENU launch path (both terminal and carousel route through
+ * menu_execute_action); the in-feature attack hotkeys (Scan -> D/X/C/P,
+ * BLE Scan -> G/C/H/X/P/W) now call tx_arm_require() at their own transmit
+ * point. IR TX is still not gated — see tx_arm.h. */
 static const menu_action_fn TX_ACTIONS[] = {
     feat_wifi_deauth, feat_wifi_deauth_broadcast, feat_wifi_apclone,
     feat_evil_twin, feat_wifi_beacon_spam, feat_wifi_karma,
@@ -1239,6 +1239,10 @@ static const menu_action_fn TX_ACTIONS[] = {
      * loopTask without passing a gated feat_*; both are menu-only entries,
      * so gating them here (refuse launch while SAFE) closes that TX path. */
     feat_triton, feat_nrf52_wifi_ble_combo,
+    /* Transmitters that were reachable while SAFE (audit 2026-11-19, F3):
+     * the AP Signal Test SoftAP beacon and the nRF52 jam / hijack / relay trio. */
+    feat_ap_signal_test,
+    feat_nrf52_mitm, feat_nrf52_ble_mitm_relay, feat_nrf52_scout_strike,
 };
 
 static bool action_is_tx(menu_action_fn a)

@@ -11,6 +11,7 @@
  * never block the UI, always let the keyboard drive actions.
  */
 #include "app.h"
+#include "tx_arm.h"   /* gate the in-feature TX hotkeys (D/X/C/P) */
 #include "../theme.h"
 #include "ui.h"
 #include "input.h"
@@ -257,6 +258,7 @@ void wifi_show_ap_details(const ap_t &a)
 
         switch ((char)tolower((int)k)) {
         case 'd':
+            if (!tx_arm_require()) break;   /* SAFE: refuse, stay on the list */
             if (a.is_5g) {
                 if (!c5_any_online()) { ui_toast("no C5 paired", T_BAD, 1200); break; }
                 c5_deauth_dashboard(a, false);
@@ -265,6 +267,7 @@ void wifi_show_ap_details(const ap_t &a)
             }
             return;
         case 'x':
+            if (!tx_arm_require()) break;
             if (a.is_5g) {
                 if (!c5_any_online()) { ui_toast("no C5 paired", T_BAD, 1200); break; }
                 c5_deauth_dashboard(a, true);   /* broadcast on the AP's ch */
@@ -280,9 +283,11 @@ void wifi_show_ap_details(const ap_t &a)
             feat_wifi_clients(); return;
         case 'c':
             if (a.is_5g) { ui_toast("clone: 2.4G only", T_WARN, 1000); break; }
+            if (!tx_arm_require()) break;
             feat_wifi_apclone(); return;
         case 'p':
             if (a.is_5g) { ui_toast("portal: 2.4G only", T_WARN, 1000); break; }
+            if (!tx_arm_require()) break;
             feat_wifi_portal();  return;
         }
     }

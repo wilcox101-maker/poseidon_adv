@@ -3,7 +3,8 @@
  *
  * A single global safety gate for every high-risk transmitting feature
  * (deauth, jammer, beacon spam, evil-twin, BLE spam/flood, sub-GHz TX,
- * nRF24 jam/inject, IR pranks, C5 TX commands). Default is SAFE. A
+ * nRF24 jam/inject, C5 TX commands). Default is SAFE. IR TX is NOT gated
+ * yet — see docs/tx-arm.md "Known gaps". A
  * feature that actually puts energy on the air must call
  * tx_arm_require() at its transmit entry point and bail if it returns
  * false. Passive features (scan, sniff, detect, spectrum) never call it.
