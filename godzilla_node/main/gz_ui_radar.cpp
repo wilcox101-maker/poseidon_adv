@@ -27,6 +27,7 @@
 #include "gz_recon_task.h"
 #endif
 #include "gz_geom.h"   /* the one geometry source (#88 §3.2) */
+#include "gz_fmt.h"    /* gz_plural */
 
 #include <stdio.h>
 #include <string.h>
@@ -236,7 +237,8 @@ static void refresh_card(uint32_t now)
                           r->addr[3], r->addr[4], r->addr[5]);
     char age[16];
     fmt_age(now - r->last_seen_ms, age, sizeof age);
-    lv_label_set_text_fmt(s_card_age, "seen %s ago  |  %u hits", age, (unsigned)r->hits);
+    lv_label_set_text_fmt(s_card_age, "seen %s ago  |  %u %s", age, (unsigned)r->hits,
+                          gz_plural(r->hits, "hit", "hits"));
 }
 
 void gz_ui_radar_refresh(uint32_t now)
@@ -302,7 +304,8 @@ void gz_ui_radar_refresh(uint32_t now)
     } else if (rs.state == GZ_RECON_ERROR && fresh) {
         lv_label_set_text(s_rec, "SD error");
     } else if (rs.state == GZ_RECON_IDLE && fresh && rs.rows > 0) {
-        lv_label_set_text_fmt(s_rec, "saved %lu rows", (unsigned long)rs.rows);
+        lv_label_set_text_fmt(s_rec, "saved %lu %s", (unsigned long)rs.rows,
+                              gz_plural(rs.rows, "row", "rows"));
     } else {
         lv_label_set_text(s_rec, "");
     }

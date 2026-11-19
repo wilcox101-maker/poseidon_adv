@@ -156,6 +156,10 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   `GZ_UI_DIM_AFTER_MS 0` never dims, `GZ_UI_WAKE_ON_MOTION 0` wakes on touch
   only (`godzilla_node/main/gz_wake.h`, native-tested in
   `test/test_godzilla_wake`). Auto-rotate is not included.
+- **GODZILLA node — singular / plural count labels.** The radar card, Hunt and
+  Recon labels now read "1 hit", "1 sample", "saved 1 row" instead of "1 hits"
+  and so on (`godzilla_node/main/gz_fmt.h`, native-tested in
+  `test/test_godzilla_fmt`).
 
 ## [0.9.2] - 2026-11-16
 
