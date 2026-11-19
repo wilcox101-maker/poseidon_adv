@@ -1,8 +1,9 @@
 # POSEIDON GODZILLA node
 
-Full-UI detection head for the Waveshare ESP32-S3-Touch-LCD-1.85B. It scans passively on its own
-2.4 GHz radio and publishes what it sees to the Cardputer over ESP-NOW v2, as another node on the
-POSEIDON fabric. Poseidon-dependent: no standalone release — it rides Poseidon's CI, versioning and
+Full-UI detection head on three ESP32-S3 touch boards — the Waveshare ESP32-S3-Touch-LCD-1.85B
+(reference), the Waveshare ESP32-S3-Touch-AMOLED-2.06 and the 2.8″ ESP32-S3 Display (ES3C28P). It
+scans passively on its own 2.4 GHz radio and publishes what it sees to the Cardputer over ESP-NOW
+v2, as another node on the POSEIDON fabric. Screenshots of all three: [README](../README.md#godzilla--the-new-detection-node). Poseidon-dependent: no standalone release — it rides Poseidon's CI, versioning and
 wire protocol (`c5_node/main/proto.h`).
 
 Plan and scope: [`docs/proposals/2026-11-18-godzilla-node.md`](../docs/proposals/2026-11-18-godzilla-node.md).
@@ -32,16 +33,19 @@ Wire contract: [`docs/godzilla-detection-publish-contract.md`](../docs/godzilla-
 | Display back ends (`main/gz_display_co5300.cpp`, `main/gz_display_ili9341.cpp`, `main/gz_panel_tables.h`) | CO5300 QSPI AMOLED (2.06) and ILI9341V SPI (ES3C28P) behind `gz_display.h`, selected by `GZ_BOARD_DISPLAY`; reuse the vendored ST77916 driver with vendor init tables. Tables native-tested (`test/test_godzilla_panel`) |
 | Power readout (`main/gz_power.h`) | Read-only status line: AXP2101 on the 2.06 (VBUS / battery / charging; % and V only when the PMIC already measures them), IO9 divider on the ES3C28P (volts only). Native-tested (`test/test_godzilla_power`) |
 | Idle dim / wake (`main/gz_wake.h`) | Every board: dim after 60 s idle, wake on touch or IMU motion (1.85B, 2.06); lower dim on the AMOLED. `GZ_UI_DIM_AFTER_MS 0` / `GZ_UI_WAKE_ON_MOTION 0` disable. Native-tested (`test/test_godzilla_wake`) |
+| Auto-rotate + polish | IMU orientation applied with `lv_display_set_rotation` on the two IMU boards; singular / plural count labels (`main/gz_fmt.h`); Hunt footer fitted to 240 px |
 
-## Board
+## Boards
 
-Pin map for the Waveshare ESP32-S3-Touch-LCD-1.85B lives in `main/gz_board.h`, cited from the
-Waveshare wiki ([ESP32-S3-Touch-LCD-1.85B](https://docs.waveshare.com/ESP32-S3-Touch-LCD-1.85B)).
-This is the **B** revision (LCD reset on GPIO3, not an I/O expander) — do not mix it with the plain
-1.85 map. Peripherals: ST77916 display (QSPI, 360×360), CST816S touch and PCF85063 RTC (shared I2C
-bus, SCL=10 / SDA=11).
+`main/gz_board.h` dispatches to one header per board, chosen at build time:
 
-Nothing here has run on hardware yet.
+| Board | Header / env | Source |
+|---|---|---|
+| Waveshare ESP32-S3-Touch-LCD-1.85B | `gz_board_185b.h` · `godzilla` | [Waveshare wiki](https://docs.waveshare.com/ESP32-S3-Touch-LCD-1.85B) — the **B** revision (LCD reset on GPIO3, not an I/O expander); don't mix with the plain 1.85 map |
+| Waveshare ESP32-S3-Touch-AMOLED-2.06 | `gz_board_amoled206.h` · `godzilla-amoled206` | [Waveshare wiki](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-2.06) |
+| 2.8″ ESP32-S3 Display, touch variant ES3C28P | `gz_board_es3c28p.h` · `godzilla-es3c28p` | [lcdwiki](https://www.lcdwiki.com/2.8inch_ESP32-S3_Display) — touch variant confirmed by Dale |
+
+Nothing here has run on hardware yet. The ES3C28P is in hand, so it gets the first bench pass.
 
 ## Rules
 
