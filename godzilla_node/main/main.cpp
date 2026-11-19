@@ -15,6 +15,8 @@
 #include "gz_ble_scan.h"   /* task 3b: passive BLE scan → batch → publish */
 #include "gz_wifi_scan.h"  /* task 3c: passive Wi-Fi scan → batch → publish */
 #include "gz_i2c_scan.h"   /* P2a: boot-time I2C bus probe (touch + RTC) */
+#include "gz_stats.h"      /* P2a: counters behind the status screen */
+#include "gz_ui.h"         /* P2a: ST77916 display + LVGL status screen */
 #include "gz_rtc.h"        /* P2a: PCF85063 RTC read / build-time seed */
 
 static constexpr uint32_t GZ_HELLO_PERIOD_MS = 5000;
@@ -38,7 +40,7 @@ void setup()
     } else {
         Serial.printf("  PSRAM: %u KB\n", (unsigned)(psram / 1024));
     }
-    gz_i2c_scan_report();
+    uint8_t i2c_found = gz_i2c_scan_report();
 
     /* RTC bring-up on the same bus the scan just opened: read the PCF85063 and,
      * if its oscillator stopped (cold boot / no backup cell), seed it from the
@@ -47,13 +49,19 @@ void setup()
     gz_datetime_t gz_now;
     gz_rtc_begin(&gz_now);
 
+    /* P2a: status screen. Identity first, then the panel + LVGL task. The
+     * radios below start either way — headless is still a working node. */
+    gz_stats_set_static(GZ_HELLO_NAME, GZ_LINK_CHANNEL,
+                        (uint32_t)(psram / 1024), i2c_found);
+    gz_ui_start();
+
     gz_link_init();
     gz_link_send_hello();        /* announce immediately, like c5_node */
     gz_ble_scan_init(GZ_NODE_ID);
     gz_wifi_scan_init(GZ_NODE_ID);
 
     Serial.println();
-    Serial.println("POSEIDON GODZILLA node — task 3c: passive BLE + Wi-Fi scan + publish");
+    Serial.println("POSEIDON GODZILLA node — P2a: status screen + passive BLE/Wi-Fi publish");
     Serial.printf("  link: WiFi STA ch%u, ESP-NOW, broadcast peer\n",
                   (unsigned)GZ_LINK_CHANNEL);
     Serial.printf("  HELLO '%s' role=%u every %lu ms\n",

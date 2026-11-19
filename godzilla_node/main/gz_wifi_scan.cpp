@@ -23,6 +23,7 @@
 #include "gz_ble_scan.h"   /* reuse the shared gz_publish_due() predicate */
 #include "gz_batch.h"
 #include "gz_link.h"
+#include "gz_stats.h"
 
 #include <Arduino.h>
 #include <esp_wifi.h>
@@ -87,7 +88,10 @@ static void publish_if_due(uint32_t now)
 
     posei_msg_t msg;
     size_t n = gz_wifi_batch_pack(&snap, &msg, s_seq++);
-    if (n) gz_link_send(&msg);   /* gz_link_send returns to ch1 for the TX */
+    if (n) {
+        gz_link_send(&msg);   /* gz_link_send returns to ch1 for the TX */
+        gz_stats_note_publish(GZ_RADIO_WIFI, snap.count);   /* status screen (P2a) */
+    }
     s_last_pub_ms = now;
 }
 
