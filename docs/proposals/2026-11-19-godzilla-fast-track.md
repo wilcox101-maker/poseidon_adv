@@ -18,6 +18,10 @@ Then stop and write a short report PR; P3/P4 wait for Dale.
 - **Stack, don't wait.** Start the next branch from your previous branch while the earlier PR is
   in review; base each PR on `master` but say "builds on #N" in the description. Claudius merges in
   order and you rebase-free merge `master` into the next branch if needed (no force-push).
+- **Merge method (Claudius, from #74):** stacked GODZILLA PRs are merged with a **merge commit**,
+  not squash. A squash gives `master` a new commit the next branch doesn't share, so every stacked
+  PR after it conflicts (seen with #72 -> #73). With a merge commit the next PR stays clean and
+  needs no rebase. Non-stacked one-off PRs may still be squashed.
 - **Right-size PRs:** one topic each, but a topic may be a whole screen (driver + screen + tests),
   not one header. Fewer, fuller PRs = fewer CI cycles.
 - Keep each PR's "Dale's bench" list cumulative so he can test several merged steps in one sitting.
