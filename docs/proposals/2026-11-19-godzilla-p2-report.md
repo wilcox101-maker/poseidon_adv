@@ -15,7 +15,7 @@ GODZILLA now stops; P3 and P4 wait for Dale.
 | P2a PCF85063 RTC | #72 | merged |
 | P2a CST816S touch | #73 | merged |
 | P2b radar | #75 | merged |
-| P2c pocket-watch face | #77 | open at the time of writing |
+| P2c pocket-watch face | #77 | merged |
 
 The node boots to the radar. Swipe left for the watch, again for status, again for the radar.
 
