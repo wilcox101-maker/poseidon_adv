@@ -37,6 +37,7 @@
 #define GZ_BOARD_HAS_GAUGE   1    /* AXP2101 PMIC (read-only)               */
 #define GZ_BOARD_HAS_MIC_ADC 1    /* ES7210                                */
 #define GZ_LCD_ROUND         0    /* rectangular 410x502, rounded corners     */
+#define GZ_BOARD_DISPLAY     2    /* GZ_PANEL_CO5300 (gz_display_co5300.cpp)  */
 #define GZ_I2C_NAME_TOUCH    "FT3168 touch"
 #define GZ_BOARD_TOUCH_FT    1    /* FocalTech driver (gz_touch_ft.h)         */
 #define GZ_TOUCH_FT_ID_REG   0xA0 /* FT3x68 device ID: 0x03 = FT3168 (Waveshare driver) */

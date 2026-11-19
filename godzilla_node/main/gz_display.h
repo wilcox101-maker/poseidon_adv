@@ -1,6 +1,12 @@
 /*
- * gz_display.h — ST77916 QSPI round display for the GODZILLA node (P2a).
+ * gz_display.h — the display API for the GODZILLA node, one back end per board
+ * (GZ_BOARD_DISPLAY): gz_display.cpp (1.85B ST77916, below), and for the port
+ * gz_display_co5300.cpp (AMOLED-2.06) and gz_display_ili9341.cpp (ES3C28P).
+ * gz_ui.cpp calls only this API, so it is the same on every board. On the
+ * AMOLED "backlight" is the panel's DCS brightness (0x51); the panel starts
+ * dark either way, so boot never flashes.
  *
+ * 1.85B back end:
  * Brings up the 1.85B's 360x360 ST77916 over QSPI on SPI2_HOST via the ESP-IDF
  * esp_lcd core (bundled in the Arduino core) and Espressif's esp_lcd_st77916
  * driver, vendored from Waveshare's 1.85B demo. Before the panel init it reads
@@ -20,6 +26,10 @@
 /* QSPI panel clock. Waveshare's demo runs 80 MHz; start conservative per the
  * P2a advice and raise only after a clean bench run. */
 #define GZ_LCD_QSPI_HZ        (40u * 1000u * 1000u)
+
+/* 4-wire SPI panel clock (ES3C28P ILI9341V). Conservative start, raised only
+ * after a clean bench run. */
+#define GZ_LCD_SPI_HZ         (40u * 1000u * 1000u)
 /* Slow clock for the register-0x04 revision probe (Waveshare uses 5 MHz). */
 #define GZ_LCD_PROBE_HZ       (5u * 1000u * 1000u)
 /* Default backlight once the first frame is up (0..100 %). */
@@ -37,7 +47,8 @@ typedef bool (*gz_display_done_cb_t)(void *ctx);
  * Returns false (and logs why) if any esp_lcd step fails. */
 bool gz_display_init(gz_display_done_cb_t on_done, void *ctx);
 
-/* The panel revision the probe found: GZ_ST77916_REV_1/_2/_UNKNOWN. */
+/* The panel revision the probe found: GZ_ST77916_REV_1/_2/_UNKNOWN on the
+ * 1.85B; GZ_ST77916_REV_UNKNOWN (no probe) on the other boards. */
 int gz_display_panel_rev(void);
 
 /* Queue a rectangle of RGB565 pixels (already byte-swapped for the panel).
