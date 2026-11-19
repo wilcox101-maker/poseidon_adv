@@ -6,6 +6,8 @@
  *      short side, the card and plot fit the width, the watch bow stays on
  *      screen, Hunt's last line stays above the bottom edge). */
 #include <unity.h>
+#include <stdio.h>
+#include <string.h>
 #include "../../godzilla_node/main/gz_geom.h"
 
 void setUp(void) {}
@@ -90,6 +92,47 @@ static void test_layouts_fit_every_board(void)
     }
 }
 
+/* #98 §1.2: on the 240 px ES3C28P the Hunt footer's full wording wraps into
+ * the next line. Narrow panels switch to the compact wording, and the footer
+ * (two stacked lines) must fit above the bottom edge on every board. Widths
+ * use a Montserrat-14 average advance, so they are estimates with margin. */
+static int est_w(const char *s) { return (int)strlen(s) * GZ_GEOM_CHAR_W_14; }
+
+static void test_hunt_footer(void)
+{
+    TEST_ASSERT_TRUE(gz_geom_hunt_compact(BES3.w));     /* 240 px: compact */
+    TEST_ASSERT_FALSE(gz_geom_hunt_compact(B185.w));
+    TEST_ASSERT_FALSE(gz_geom_hunt_compact(B206.w));
+
+    char full_stats[64], full_age[64], c_stats[64], c_age[64];
+    /* Worst cases: widest RSSIs, full window, longest age string. */
+    snprintf(full_stats, sizeof full_stats, "min %d  |  max %d  |  %u %s", -128, -128, 60u, "samples");
+    snprintf(full_age,   sizeof full_age,   "heard %s ago  |  hold to stop", "99m59s");
+    snprintf(c_stats,    sizeof c_stats,    "%d..%d dBm | %u", -128, -128, 60u);
+    snprintf(c_age,      sizeof c_age,      "%s ago | hold: stop", "99m59s");
+
+    int es3_col = gz_geom_col_w(260, BES3.w);           /* 224 */
+    TEST_ASSERT_TRUE_MESSAGE(est_w(full_stats) > es3_col, "full wording would wrap at 240 px");
+    TEST_ASSERT_TRUE_MESSAGE(est_w(c_stats) <= es3_col, "compact stats fits 240 px");
+    TEST_ASSERT_TRUE_MESSAGE(est_w(c_age)   <= es3_col, "compact age fits 240 px");
+    for (unsigned i = 0; i < sizeof ALL / sizeof ALL[0]; ++i) {
+        const board_t *b = &ALL[i];
+        if (!gz_geom_hunt_compact(b->w)) {
+            TEST_ASSERT_TRUE_MESSAGE(est_w(full_stats) <= gz_geom_col_w(260, b->w), b->name);
+            TEST_ASSERT_TRUE_MESSAGE(est_w(full_age)   <= gz_geom_col_w(260, b->w), b->name);
+        }
+        /* Footer sits below the plot and above the bottom edge. */
+        int plot_bottom = 192 + 76 + gz_geom_content_dy(b->h);
+        TEST_ASSERT_TRUE_MESSAGE(gz_geom_hunt_footer_y(b->h) > plot_bottom, b->name);
+        TEST_ASSERT_TRUE_MESSAGE(gz_geom_hunt_footer_bottom(b->h) <= b->h, b->name);
+    }
+    /* 240x320 exactly: 256 + 2*17 + 4 = 294. */
+    TEST_ASSERT_EQUAL_INT(256, gz_geom_hunt_footer_y(BES3.h));
+    TEST_ASSERT_EQUAL_INT(294, gz_geom_hunt_footer_bottom(BES3.h));
+    /* 1.85B: footer starts where the old first line did (192+76+8 = 276). */
+    TEST_ASSERT_EQUAL_INT(276, gz_geom_hunt_footer_y(B185.h));
+}
+
 int main(int argc, char **argv)
 {
     (void)argc; (void)argv;
@@ -97,5 +140,6 @@ int main(int argc, char **argv)
     RUN_TEST(test_185b_is_unchanged);
     RUN_TEST(test_scale_values);
     RUN_TEST(test_layouts_fit_every_board);
+    RUN_TEST(test_hunt_footer);
     return UNITY_END();
 }

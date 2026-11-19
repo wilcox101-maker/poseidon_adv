@@ -160,6 +160,11 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   Recon labels now read "1 hit", "1 sample", "saved 1 row" instead of "1 hits"
   and so on (`godzilla_node/main/gz_fmt.h`, native-tested in
   `test/test_godzilla_fmt`).
+- **GODZILLA node — Hunt footer fits the 240 px ES3C28P.** The two lines under
+  the trace no longer crowd or overlap on the narrow panel: they sit in a
+  stacking column (a wrapped line pushes the next one down), and narrow panels
+  use a compact wording (`-80..-52 dBm | 60`, `12s ago | hold: stop`). Wider
+  boards keep the full text. Layout from `gz_geom.h`, native-tested at 240x320.
 
 ## [0.9.2] - 2026-11-16
 

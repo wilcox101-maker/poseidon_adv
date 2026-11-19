@@ -45,7 +45,7 @@
 #define PLOT_PAD 4              /* keep the 2 px line off the frame */
 
 static lv_obj_t *s_fam, *s_addr, *s_radio, *s_rssi, *s_trend;
-static lv_obj_t *s_plot, *s_trace, *s_stats, *s_age, *s_empty;
+static lv_obj_t *s_plot, *s_trace, *s_foot, *s_stats, *s_age, *s_empty;
 static lv_point_precise_t s_pts[GZ_HUNT_SAMPLES];   /* plot-local */
 static gz_hunt_t s_h;           /* snapshot this refresh drew */
 
@@ -77,7 +77,7 @@ static void fmt_age(uint32_t age_ms, char *buf, size_t n)
 
 static void show_target(bool on)
 {
-    lv_obj_t *parts[] = { s_fam, s_addr, s_radio, s_rssi, s_trend, s_plot, s_stats, s_age };
+    lv_obj_t *parts[] = { s_fam, s_addr, s_radio, s_rssi, s_trend, s_plot, s_foot };
     for (lv_obj_t *o : parts) {
         if (on) lv_obj_remove_flag(o, LV_OBJ_FLAG_HIDDEN);
         else    lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
@@ -120,8 +120,27 @@ void gz_ui_hunt_build(lv_obj_t *scr)
     lv_obj_set_style_line_rounded(s_trace, true, 0);
     lv_obj_remove_flag(s_trace, LV_OBJ_FLAG_CLICKABLE);
 
-    s_stats = label(scr, &lv_font_montserrat_14, COL_DIM, 192 + PLOT_H + 8);    /* design y */
-    s_age   = label(scr, &lv_font_montserrat_14, COL_DIM, 192 + PLOT_H + 28);
+    /* Footer: two lines in a flex column (gz_geom.h), so they stack with a
+     * fixed gap and a wrapped line can never overlap the next one. */
+    s_foot = lv_obj_create(scr);
+    lv_obj_remove_style_all(s_foot);
+    lv_obj_remove_flag(s_foot, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_remove_flag(s_foot, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(s_foot, LABEL_W, LV_SIZE_CONTENT);
+    lv_obj_align(s_foot, LV_ALIGN_TOP_MID, 0, gz_geom_hunt_footer_y(GZ_UI_H));
+    lv_obj_set_flex_flow(s_foot, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(s_foot, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(s_foot, GZ_GEOM_HUNT_FOOT_GAP, 0);
+    lv_obj_t **lines[] = { &s_stats, &s_age };
+    for (lv_obj_t **l : lines) {
+        *l = lv_label_create(s_foot);
+        lv_obj_set_style_text_font(*l, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(*l, lv_color_hex(COL_DIM), 0);
+        lv_obj_set_style_text_align(*l, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_width(*l, LABEL_W);
+        lv_obj_remove_flag(*l, LV_OBJ_FLAG_CLICKABLE);
+        lv_label_set_text(*l, "");
+    }
 
     s_empty = label(scr, &lv_font_montserrat_16, COL_DIM, 0);
     lv_label_set_text(s_empty, "HUNT\n\nno contact picked\n\n"
@@ -181,12 +200,20 @@ void gz_ui_hunt_refresh(uint32_t now)
 
     int8_t lo, hi;
     if (gz_hunt_minmax(&s_h, &lo, &hi))
-        lv_label_set_text_fmt(s_stats, "min %d  |  max %d  |  %u %s",
-                              (int)lo, (int)hi, (unsigned)s_h.n,
-                              gz_plural(s_h.n, "sample", "samples"));
+    {
+        if (gz_geom_hunt_compact(GZ_UI_W))      /* narrow: fits 224 px unwrapped */
+            lv_label_set_text_fmt(s_stats, "%d..%d dBm | %u", (int)lo, (int)hi, (unsigned)s_h.n);
+        else
+            lv_label_set_text_fmt(s_stats, "min %d  |  max %d  |  %u %s",
+                                  (int)lo, (int)hi, (unsigned)s_h.n,
+                                  gz_plural(s_h.n, "sample", "samples"));
+    }
     char age[16];
     fmt_age(now - s_h.last_ms, age, sizeof age);
-    lv_label_set_text_fmt(s_age, "heard %s ago  |  hold to stop", age);
+    if (gz_geom_hunt_compact(GZ_UI_W))
+        lv_label_set_text_fmt(s_age, "%s ago | hold: stop", age);
+    else
+        lv_label_set_text_fmt(s_age, "heard %s ago  |  hold to stop", age);
 }
 
 void gz_ui_hunt_long_press(void)

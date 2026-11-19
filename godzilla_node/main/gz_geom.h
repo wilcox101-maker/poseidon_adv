@@ -77,6 +77,20 @@ static inline int gz_geom_hunt_plot_x(int w, bool round)
     return (w - gz_geom_hunt_plot_w(w, round)) / 2;
 }
 
+/* Hunt footer (#98 §1.2): two text lines stacked under the plot. On a narrow
+ * panel (the 240 px ES3C28P) the full wording would wrap and collide, so the
+ * UI switches to a compact wording there; the lines sit in a flex column, so
+ * even a wrapped line pushes the next one down instead of overlapping it. */
+#define GZ_GEOM_LINE_H_14      17    /* Montserrat 14 line height              */
+#define GZ_GEOM_CHAR_W_14       7    /* Montserrat 14 average advance (estimate) */
+#define GZ_GEOM_HUNT_FOOT_GAP   4
+static inline bool gz_geom_hunt_compact(int w) { return w < 300; }
+static inline int  gz_geom_hunt_footer_y(int h) { return 192 + 76 + 8 + gz_geom_content_dy(h); }
+static inline int  gz_geom_hunt_footer_bottom(int h)
+{
+    return gz_geom_hunt_footer_y(h) + 2 * GZ_GEOM_LINE_H_14 + GZ_GEOM_HUNT_FOOT_GAP;
+}
+
 /* ---- text columns (Hunt labels, status screen) ---------------------------- */
 static inline int gz_geom_col_w(int design_w, int w) { return gz_geom_fit_w(design_w, w, 8); }
 
