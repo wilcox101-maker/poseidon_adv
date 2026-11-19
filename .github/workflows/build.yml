@@ -22,6 +22,7 @@ jobs:
           - cardputer-ota
           - godzilla
           - godzilla-amoled206
+          - godzilla-es3c28p
 
     steps:
       - uses: actions/checkout@v7

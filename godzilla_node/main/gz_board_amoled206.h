@@ -32,6 +32,10 @@
 #define GZ_BOARD_NAME        "ESP32-S3-Touch-AMOLED-2.06"
 #define GZ_BOARD_HAS_UI      0    /* unit 2/3: CO5300 + FT3168 not driven yet */
 #define GZ_BOARD_HAS_SD      0    /* unit 5: SPI TF slot not driven yet       */
+#define GZ_BOARD_HAS_RTC     1    /* PCF85063                              */
+#define GZ_BOARD_HAS_IMU     1    /* QMI8658                               */
+#define GZ_BOARD_HAS_GAUGE   1    /* AXP2101 PMIC (read-only)               */
+#define GZ_BOARD_HAS_MIC_ADC 1    /* ES7210                                */
 #define GZ_LCD_ROUND         0    /* rectangular 410x502, rounded corners     */
 #define GZ_I2C_NAME_TOUCH    "FT3168 touch"
 #define GZ_I2C_NAME_GAUGE    "AXP2101 PMIC (unused)"

@@ -200,7 +200,7 @@ static inline bool gz_rtc_seed_if_stopped(gz_datetime_t *dt,
     return false;
 }
 
-#ifdef ARDUINO
+#if defined(ARDUINO) && GZ_BOARD_HAS_RTC   /* no Wire half on RTC-less boards */
 #include <Arduino.h>
 #include <Wire.h>
 
@@ -261,4 +261,4 @@ static inline bool gz_rtc_begin(gz_datetime_t *now, bool *seeded)
     }
     return true;
 }
-#endif /* ARDUINO */
+#endif /* ARDUINO && GZ_BOARD_HAS_RTC */
