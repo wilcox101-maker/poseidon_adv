@@ -6,9 +6,10 @@
  * and expose an API for the UI to send commands and collect streamed
  * responses.
  *
- * Wire protocol v3 — shared with c5_node/main/proto.h. FLAG DAY:
- * both sides must run v3 together. v2 nodes will desync on response
- * routing because the RESP_* enum values moved 20-25 → 40-45.
+ * Wire protocol v5 — shared with c5_node/main/proto.h, kept byte-identical.
+ * FLAG DAY: both sides must run v5 together (ESP-NOW v2 variable-length
+ * frames; a v4 peer is rejected on the version check). GODZILLA detection-
+ * publish types (60–61) are additive — the C5's on-air format is unchanged.
  */
 #pragma once
 
@@ -50,6 +51,26 @@ enum {
     C5_TYPE_RESP_PROBE         = 47,
     C5_TYPE_RESP_DEAUTH_HIT    = 48,
     C5_TYPE_RESP_SPECTRUM      = 49,
+
+    /* GODZILLA node detection publish (60–69) — mirrors POSEI_TYPE_RESP_*
+     * in c5_node/main/proto.h. The S3 aggregates these; the C5 never sends
+     * them, so its on-air format is unchanged (approach B). */
+    C5_TYPE_RESP_WIFI_DET      = 60,
+    C5_TYPE_RESP_BLE_DET       = 61,
+};
+
+/* Classifier family — must stay byte-identical to POSEI_DET_FAM_* in proto.h.
+ * Numeric values are wire state; append only, never renumber. */
+enum {
+    C5_DET_FAM_UNKNOWN     = 0,
+    C5_DET_FAM_WIFI_AP     = 1,
+    C5_DET_FAM_WIFI_STA    = 2,
+    C5_DET_FAM_BLE_GENERIC = 3,
+    C5_DET_FAM_FINDMY      = 4,
+    C5_DET_FAM_AIRTAG      = 5,
+    C5_DET_FAM_IBEACON     = 6,
+    C5_DET_FAM_REMOTEID    = 7,
+    C5_DET_FAM_FLOCK       = 8,
 };
 
 /* ---- existing request/response structs (unchanged shape) ---- */
@@ -258,6 +279,56 @@ static_assert(sizeof(c5_beacon_spam_req_t) <= C5_PAYLOAD_MAX, "c5_beacon_spam_re
 static_assert(sizeof(c5_apclone_req_t)     <= C5_PAYLOAD_MAX, "c5_apclone_req_t");
 static_assert(sizeof(c5_spectrum_t)        <= C5_PAYLOAD_MAX, "c5_spectrum_t");
 static_assert(sizeof(c5_ciw_req_t)         <= C5_PAYLOAD_MAX, "c5_ciw_req_t");
+
+/* ---- GODZILLA detection-publish payloads — byte-identical to
+ * posei_wifi_det_t / posei_ble_det_t in c5_node/main/proto.h. The literal
+ * size asserts below pin both headers to the same numbers, so drift on either
+ * side breaks a build. ---- */
+#define C5_DET_MAX 64
+
+struct __attribute__((packed)) c5_wifi_det_entry_t {
+    uint8_t  bssid[6];
+    uint8_t  channel;
+    int8_t   rssi;
+    uint8_t  family;     /* C5_DET_FAM_* */
+    uint8_t  flags;      /* reserved, 0 in P0 */
+};
+
+struct __attribute__((packed)) c5_ble_det_entry_t {
+    uint8_t  addr[6];
+    uint8_t  addr_type;  /* 0 = public, 1 = random */
+    int8_t   rssi;
+    uint8_t  family;
+    uint8_t  flags;
+};
+
+struct __attribute__((packed)) c5_wifi_det_t {
+    uint8_t  node_id;
+    uint8_t  count;
+    c5_wifi_det_entry_t det[C5_DET_MAX];
+};
+
+struct __attribute__((packed)) c5_ble_det_t {
+    uint8_t  node_id;
+    uint8_t  count;
+    c5_ble_det_entry_t det[C5_DET_MAX];
+};
+
+static inline size_t c5_wifi_det_bytes(uint8_t count) {
+    if (count > C5_DET_MAX) count = C5_DET_MAX;
+    return offsetof(c5_wifi_det_t, det) + (size_t)count * sizeof(c5_wifi_det_entry_t);
+}
+static inline size_t c5_ble_det_bytes(uint8_t count) {
+    if (count > C5_DET_MAX) count = C5_DET_MAX;
+    return offsetof(c5_ble_det_t, det) + (size_t)count * sizeof(c5_ble_det_entry_t);
+}
+
+static_assert(sizeof(c5_wifi_det_entry_t) == 10, "c5_wifi_det_entry_t == posei_wifi_det_entry_t (10B)");
+static_assert(sizeof(c5_ble_det_entry_t)  == 10, "c5_ble_det_entry_t == posei_ble_det_entry_t (10B)");
+static_assert(sizeof(c5_wifi_det_t) == 2 + C5_DET_MAX * 10, "c5_wifi_det_t == posei_wifi_det_t");
+static_assert(sizeof(c5_ble_det_t)  == 2 + C5_DET_MAX * 10, "c5_ble_det_t == posei_ble_det_t");
+static_assert(sizeof(c5_wifi_det_t) <= C5_PAYLOAD_MAX, "c5_wifi_det_t fits frame");
+static_assert(sizeof(c5_ble_det_t)  <= C5_PAYLOAD_MAX, "c5_ble_det_t fits frame");
 
 /* ---- API ---- */
 

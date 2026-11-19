@@ -68,6 +68,28 @@ enum {
     POSEI_TYPE_RESP_PROBE         = 47,  /* one probe request              */
     POSEI_TYPE_RESP_DEAUTH_HIT    = 48,  /* one observed deauth frame      */
     POSEI_TYPE_RESP_SPECTRUM      = 49,  /* batched per-channel peak RSSI  */
+
+    /* GODZILLA node detection publish (60–69). A full-UI 2.4 GHz sensor node
+     * (Waveshare 1.85B) pushes its own Wi-Fi/BLE detections to the S3 for
+     * aggregation. These are ADDITIVE: the C5 never emits them, so its on-air
+     * byte stream is unchanged (approach B — header/version frozen, no flag
+     * day). node_id travels in the payload, not the header. */
+    POSEI_TYPE_RESP_WIFI_DET      = 60,  /* GODZILLA→S3: Wi-Fi detection batch */
+    POSEI_TYPE_RESP_BLE_DET       = 61,  /* GODZILLA→S3: BLE detection batch   */
+};
+
+/* Classifier family — shared vocabulary for detection-publish entries. Numeric
+ * values are wire state; append only, never renumber. */
+enum {
+    POSEI_DET_FAM_UNKNOWN     = 0,
+    POSEI_DET_FAM_WIFI_AP     = 1,
+    POSEI_DET_FAM_WIFI_STA    = 2,
+    POSEI_DET_FAM_BLE_GENERIC = 3,
+    POSEI_DET_FAM_FINDMY      = 4,
+    POSEI_DET_FAM_AIRTAG      = 5,
+    POSEI_DET_FAM_IBEACON     = 6,
+    POSEI_DET_FAM_REMOTEID    = 7,
+    POSEI_DET_FAM_FLOCK       = 8,
 };
 
 /* v5: 1024 (was 230). The whole frame (POSEI_HEADER_SZ + this) must stay
@@ -294,6 +316,67 @@ static_assert(sizeof(posei_apclone_req_t)     <= POSEI_PAYLOAD_MAX, "posei_apclo
 static_assert(sizeof(posei_spectrum_t)        <= POSEI_PAYLOAD_MAX, "posei_spectrum_t");
 static_assert(sizeof(posei_spectrum_req_t)    <= POSEI_PAYLOAD_MAX, "posei_spectrum_req_t");
 static_assert(sizeof(posei_ciw_req_t)         <= POSEI_PAYLOAD_MAX, "posei_ciw_req_t");
+
+/* ---- GODZILLA detection-publish payloads (multi-node, approach B) ---- */
+
+/* Max detection entries per batch. 64 * 10B + 2B header = 642B, well inside
+ * POSEI_PAYLOAD_MAX; a node with more sends several batches. */
+#define POSEI_DET_MAX 64
+
+/* One observed Wi-Fi device (AP or STA). 10 bytes, fixed. */
+typedef struct __attribute__((packed)) {
+    uint8_t  bssid[6];
+    uint8_t  channel;
+    int8_t   rssi;
+    uint8_t  family;     /* POSEI_DET_FAM_* */
+    uint8_t  flags;      /* reserved, 0 in P0 */
+} posei_wifi_det_entry_t;
+
+/* One observed BLE device. 10 bytes, fixed. */
+typedef struct __attribute__((packed)) {
+    uint8_t  addr[6];
+    uint8_t  addr_type;  /* 0 = public, 1 = random */
+    int8_t   rssi;
+    uint8_t  family;     /* POSEI_DET_FAM_* */
+    uint8_t  flags;      /* reserved, 0 in P0 */
+} posei_ble_det_entry_t;
+
+/* Wi-Fi detection batch: publishing node_id, count, then `count` entries. */
+typedef struct __attribute__((packed)) {
+    uint8_t  node_id;
+    uint8_t  count;
+    posei_wifi_det_entry_t det[POSEI_DET_MAX];
+} posei_wifi_det_t;
+
+/* BLE detection batch. */
+typedef struct __attribute__((packed)) {
+    uint8_t  node_id;
+    uint8_t  count;
+    posei_ble_det_entry_t det[POSEI_DET_MAX];
+} posei_ble_det_t;
+
+static_assert(sizeof(posei_wifi_det_entry_t) == 10, "wifi det entry 10B");
+static_assert(sizeof(posei_ble_det_entry_t)  == 10, "ble det entry 10B");
+/* Literal size pins both headers to the same number (c5_cmd.h mirrors it). */
+static_assert(sizeof(posei_wifi_det_t) == 2 + POSEI_DET_MAX * 10, "posei_wifi_det_t size");
+static_assert(sizeof(posei_ble_det_t)  == 2 + POSEI_DET_MAX * 10, "posei_ble_det_t size");
+static_assert(sizeof(posei_wifi_det_t) <= POSEI_PAYLOAD_MAX, "posei_wifi_det_t fits frame");
+static_assert(sizeof(posei_ble_det_t)  <= POSEI_PAYLOAD_MAX, "posei_ble_det_t fits frame");
+
+/* Bytes actually used by a batch of `count` entries — set payload_len to this
+ * so only the populated prefix rides the wire. Clamps an over-max count. */
+static inline size_t posei_wifi_det_bytes(uint8_t count)
+{
+    if (count > POSEI_DET_MAX) count = POSEI_DET_MAX;
+    return offsetof(posei_wifi_det_t, det) +
+           (size_t)count * sizeof(posei_wifi_det_entry_t);
+}
+static inline size_t posei_ble_det_bytes(uint8_t count)
+{
+    if (count > POSEI_DET_MAX) count = POSEI_DET_MAX;
+    return offsetof(posei_ble_det_t, det) +
+           (size_t)count * sizeof(posei_ble_det_entry_t);
+}
 
 /* ---- proto.c API ---- */
 void proto_init_msg(posei_msg_t *m, uint8_t type);
