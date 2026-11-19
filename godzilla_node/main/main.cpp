@@ -18,6 +18,7 @@
 #include "gz_stats.h"      /* P2a: counters behind the status screen */
 #include "gz_ui.h"         /* P2a: ST77916 display + LVGL status screen */
 #include "gz_rtc.h"        /* P2a: PCF85063 RTC read / build-time seed */
+#include "gz_imu.h"        /* P3: QMI8658 IMU, read-only, board-aware */
 #include "gz_recon_task.h" /* P3: microSD + Recon session writer */
 #include "gz_board.h"      /* which board: GZ_BOARD_NAME / _HAS_UI / _HAS_SD */
 
@@ -64,6 +65,13 @@ void setup()
      * and Recon writes to its NODATE file until the time is set. */
     gz_stats_set_rtc(false, false);
     Serial.println("  RTC: none on this board — clock starts unset");
+#endif
+
+#if GZ_BOARD_HAS_IMU
+    /* P3: IMU bring-up on the same bus. Read-only — the part only reports.
+     * The WHO_AM_I read (0x05) is the hardware proof. After boot only the
+     * LVGL task reads it (status line), as with touch. */
+    gz_imu_begin();
 #endif
 
     /* P2a: status screen. Identity first, then the panel + LVGL task. The

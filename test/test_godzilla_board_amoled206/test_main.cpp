@@ -72,7 +72,7 @@ static void test_scan_labels(void)
 {
     TEST_ASSERT_EQUAL_STRING("FT3168 touch",          gz_i2c_expected_device(0x38));
     TEST_ASSERT_EQUAL_STRING("PCF85063 RTC",          gz_i2c_expected_device(0x51));
-    TEST_ASSERT_EQUAL_STRING("QMI8658 IMU (unused)",  gz_i2c_expected_device(0x6B));
+    TEST_ASSERT_EQUAL_STRING("QMI8658 IMU",  gz_i2c_expected_device(0x6B));
     TEST_ASSERT_EQUAL_STRING("AXP2101 PMIC (unused)", gz_i2c_expected_device(0x34));
     TEST_ASSERT_EQUAL_STRING("ES8311 codec? (unused)",   gz_i2c_expected_device(0x18));
     TEST_ASSERT_EQUAL_STRING("ES7210 mic ADC? (unused)", gz_i2c_expected_device(0x40));

@@ -26,7 +26,7 @@ static void test_tracks_board_macros(void)
  * log does not call them unknown. */
 static void test_other_onboard_parts(void)
 {
-    TEST_ASSERT_EQUAL_STRING("QMI8658 IMU (unused)",           gz_i2c_expected_device(GZ_I2C_ADDR_IMU));
+    TEST_ASSERT_EQUAL_STRING("QMI8658 IMU",           gz_i2c_expected_device(GZ_I2C_ADDR_IMU));
     TEST_ASSERT_EQUAL_STRING("BQ27220 battery gauge (unused)", gz_i2c_expected_device(GZ_I2C_ADDR_GAUGE));
     TEST_ASSERT_EQUAL_STRING("ES8311 codec? (unused)",         gz_i2c_expected_device(GZ_I2C_ADDR_CODEC));
     TEST_ASSERT_EQUAL_STRING("ES7210 mic ADC? (unused)",       gz_i2c_expected_device(GZ_I2C_ADDR_MIC_ADC));
