@@ -20,6 +20,7 @@
 #include "gz_radar_store.h"
 #include "gz_board.h"
 #include "gz_geom.h"   /* the one geometry source (#88 §3.2) */
+#include "gz_fmt.h"    /* gz_plural */
 
 #include <stdio.h>
 #include <string.h>
@@ -180,8 +181,9 @@ void gz_ui_hunt_refresh(uint32_t now)
 
     int8_t lo, hi;
     if (gz_hunt_minmax(&s_h, &lo, &hi))
-        lv_label_set_text_fmt(s_stats, "min %d  |  max %d  |  %u samples",
-                              (int)lo, (int)hi, (unsigned)s_h.n);
+        lv_label_set_text_fmt(s_stats, "min %d  |  max %d  |  %u %s",
+                              (int)lo, (int)hi, (unsigned)s_h.n,
+                              gz_plural(s_h.n, "sample", "samples"));
     char age[16];
     fmt_age(now - s_h.last_ms, age, sizeof age);
     lv_label_set_text_fmt(s_age, "heard %s ago  |  hold to stop", age);
