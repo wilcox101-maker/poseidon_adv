@@ -19,6 +19,7 @@
 #include "gz_ui.h"         /* P2a: ST77916 display + LVGL status screen */
 #include "gz_rtc.h"        /* P2a: PCF85063 RTC read / build-time seed */
 #include "gz_recon_task.h" /* P3: microSD + Recon session writer */
+#include "gz_board.h"      /* which board: GZ_BOARD_NAME / _HAS_UI / _HAS_SD */
 
 static constexpr uint32_t GZ_HELLO_PERIOD_MS = 5000;
 
@@ -56,11 +57,19 @@ void setup()
      * radios below start either way — headless is still a working node. */
     gz_stats_set_static(GZ_HELLO_NAME, GZ_LINK_CHANNEL,
                         (uint32_t)(psram / 1024), i2c_found);
+#if GZ_BOARD_HAS_UI
     gz_ui_start();
+#else
+    Serial.println("  UI: not driven on this board yet — headless");
+#endif
 
     /* P3: microSD + Recon session writer. Mounts the card if one is in; a
      * session only starts on a long-press of the radar. Headless-safe. */
+#if GZ_BOARD_HAS_SD
     gz_recon_start();
+#else
+    Serial.println("  SD: not driven on this board yet — no Recon log");
+#endif
 
     gz_link_init();
     gz_link_send_hello();        /* announce immediately, like c5_node */
@@ -69,6 +78,7 @@ void setup()
 
     Serial.println();
     Serial.println("POSEIDON GODZILLA node — P3: radar / watch / status + Recon SD log, passive BLE/Wi-Fi publish");
+    Serial.printf("  board: %s\n", GZ_BOARD_NAME);
     Serial.printf("  link: WiFi STA ch%u, ESP-NOW, broadcast peer\n",
                   (unsigned)GZ_LINK_CHANNEL);
     Serial.printf("  HELLO '%s' role=%u every %lu ms\n",

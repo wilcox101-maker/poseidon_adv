@@ -15,7 +15,18 @@
 #include <string.h>
 #include "../../c5_node/main/proto.h"
 
+/* One name per board so the Cardputer can tell two GODZILLAs apart. Must fit
+ * posei_hello_t.name (11 chars + NUL); checked below. */
+#if defined(GZ_BOARD_AMOLED206)
+#define GZ_HELLO_NAME "GODZILLA206"
+#else
 #define GZ_HELLO_NAME "GODZILLA"
+#endif
+#if defined(__cplusplus) || (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L)
+#include <assert.h>
+static_assert(sizeof(GZ_HELLO_NAME) <= sizeof(((posei_hello_t *)0)->name),
+              "GZ_HELLO_NAME does not fit posei_hello_t.name");
+#endif
 
 /* Role advertised in HELLO. 1 is the C5; the S3 does not gate admission on
  * role, so this is a display/identity tag. 2 marks a passive detection node. */
@@ -26,7 +37,8 @@
 static inline void gz_build_hello(posei_hello_t *h, uint32_t heap_kb)
 {
     memset(h, 0, sizeof(*h));
-    strncpy(h->name, GZ_HELLO_NAME, sizeof(h->name) - 1);
+    /* Fits with its NUL (static_assert above), so copy it exactly. */
+    memcpy(h->name, GZ_HELLO_NAME, sizeof(GZ_HELLO_NAME));
     h->heap_kb        = heap_kb;
     h->role           = GZ_ROLE;
     h->has_5g         = 0;  /* ESP32-S3: 2.4 GHz only */

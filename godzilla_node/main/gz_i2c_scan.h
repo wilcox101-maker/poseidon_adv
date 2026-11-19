@@ -28,15 +28,15 @@
 
 #include "gz_board.h"   /* GZ_I2C_ADDR_TOUCH / GZ_I2C_ADDR_RTC / GZ_PIN_I2C_* */
 
-/* Pure: annotate an I2C address with the peripheral the 1.85B map expects
+/* Pure: annotate an I2C address with the peripheral the board map expects
  * there, for the boot log and for the host test. Single-sourced on gz_board.h
  * so a pin/address edit cannot drift the two apart. */
 static inline const char *gz_i2c_expected_device(uint8_t addr)
 {
-    if (addr == GZ_I2C_ADDR_TOUCH) return "CST816S touch";
+    if (addr == GZ_I2C_ADDR_TOUCH) return GZ_I2C_NAME_TOUCH;
     if (addr == GZ_I2C_ADDR_RTC)   return "PCF85063 RTC";
     if (addr == GZ_I2C_ADDR_IMU)     return "QMI8658 IMU (unused)";
-    if (addr == GZ_I2C_ADDR_GAUGE)   return "BQ27220 battery gauge (unused)";
+    if (addr == GZ_I2C_ADDR_GAUGE)   return GZ_I2C_NAME_GAUGE;
     if (addr == GZ_I2C_ADDR_CODEC)   return "ES8311 codec? (unused)";
     if (addr == GZ_I2C_ADDR_MIC_ADC) return "ES7210 mic ADC? (unused)";
     return "unknown";
