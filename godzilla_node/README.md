@@ -13,7 +13,7 @@ Wire contract: [`docs/godzilla-detection-publish-contract.md`](../docs/godzilla-
 | Piece | State |
 |---|---|
 | `main/gz_batch.h` — detection batching core | done, native-tested (`test/test_godzilla_batch`) |
-| `[env:godzilla]` + board bring-up | not started |
+| `[env:godzilla]` + `main/main.cpp` skeleton | done, builds in CI (`build.yml` matrix) |
 | Passive BLE / Wi-Fi scan loop + ESP-NOW publish | not started |
 
 Nothing here has run on hardware yet.

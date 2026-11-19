@@ -20,6 +20,7 @@ jobs:
           - cardputer-launcher
           - cardputer-launcher-dual
           - cardputer-ota
+          - godzilla
 
     steps:
       - uses: actions/checkout@v7
