@@ -22,6 +22,7 @@
 #include "ble_db.h"
 #include "../sigdb_bt.h"
 #include "../sigdb_surveillance.h"
+#include "../det_classify.h"
 #include "sd_helper.h"
 #include <NimBLEDevice.h>
 #include <SD.h>
@@ -182,18 +183,13 @@ static void classify(const NimBLEAdvertisedDevice *d, char *out, size_t out_sz)
             NimBLEUUID u = d->getServiceUUID(i);
             std::string s = u.toString();
             uint16_t u16 = 0;
-            bool got16 = false;
-            if (s.size() == 4) {
-                /* Already bare "XXXX" form. */
-                sscanf(s.c_str(), "%4hx", &u16);
-                got16 = true;
-            } else if (s.size() >= 8) {
-                /* Full 128-bit form: chars 4..7. */
-                sscanf(s.c_str() + 4, "%4hx", &u16);
-                got16 = true;
-            }
+            /* "XXXX", "0xXXXX" or the Bluetooth-base 128-bit form only; a
+             * vendor 128-bit UUID is not a 16-bit UUID (det_classify.h). */
+            bool got16 = det_uuid_str_to16(s.c_str(), &u16);
             if (got16) {
-                if (raven_uuid_match(u16)) {
+                /* Raven custom UUIDs only: the SIG services in the Raven list
+                 * (0x180A Device Information etc.) are on most devices. */
+                if (det_raven_custom_uuid(u16)) {
                     snprintf(out, out_sz, "RAVEN-UUID");
                     return;
                 }
