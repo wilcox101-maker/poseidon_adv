@@ -26,6 +26,8 @@ typedef struct {
     uint8_t  link_channel;
     uint32_t psram_kb;
     uint8_t  i2c_found;
+    bool     rtc_ok;        /* PCF85063 answered at boot                  */
+    bool     rtc_seeded;    /* clock was seeded from build time this boot */
     /* live counters */
     uint32_t ble_frames;
     uint8_t  ble_last_entries;

@@ -30,6 +30,16 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   amber trackers), 60 s TTL with a 30 s fade. Tap a dot for a detail card
   (family, RSSI, address, age, hits); swipe left/right for the status screen.
   Original trident glyph. Native-tested (`test/test_godzilla_radar`). Passive.
+- **GODZILLA node — pocket-watch face (P2c).** A functional old-fashioned
+  watch drawn from LVGL primitives (`gz_watch.h` model, `gz_ui_watch.*` face):
+  brass case, crown and bow, ivory dial, Roman numerals (IIII), hour / minute
+  hands and a second hand that ticks at 1 Hz. Time runs on a software clock
+  resynced from the PCF85063 about once a minute, so it is right across power
+  cycles without per-frame I2C. Long-press sets the time (tap upper half =
+  hour +1, lower half = minute +1, long-press again writes the RTC, 15 s idle
+  cancels); "hold to set" shows until a build-time-seeded clock has been set.
+  Screens are now a swipe ring: radar, watch, status; the status screen shows
+  the clock. Native-tested (`test/test_godzilla_watch`). Passive.
 
 ## [0.9.2] - 2026-11-16
 

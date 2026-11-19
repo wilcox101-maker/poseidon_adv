@@ -12,9 +12,10 @@
  * SPI "color transfer done" ISR calls lv_display_flush_ready(). The backlight
  * comes on only after that first flush completes — no white flash at boot.
  *
- * Screens (P2b): the radar (gz_ui_radar.cpp) is home; a left or right swipe
- * flips between radar and status. Swipes come from LVGL's own gesture
- * detection on the touch pointer; a swipe never also counts as a tap.
+ * Screens: a swipe ring, radar -> watch -> status (left = next, right =
+ * previous). The home screen is GZ_UI_HOME. Swipes come from LVGL's own
+ * gesture detection on the touch pointer; a swipe or a long-press never also
+ * counts as a tap. Only the visible screen refreshes.
  *
  * Look: "deepwater" palette. Original layout; no third-party artwork.
  */
@@ -25,6 +26,7 @@
 #include "gz_st77916_rev.h"
 #include "gz_touch.h"       /* sole ARDUINO user of the touch driver */
 #include "gz_ui_radar.h"
+#include "gz_ui_watch.h"
 
 #include <Arduino.h>
 #include <esp_heap_caps.h>
@@ -45,8 +47,14 @@ static lv_display_t *s_disp = nullptr;
 static lv_indev_t   *s_touch = nullptr;
 static gz_touch_point_t s_touch_pt = {};   /* last report; LVGL task only */
 static volatile bool s_first_flush_done = false;
-static lv_obj_t *s_scr_radar = nullptr, *s_scr_status = nullptr;
-static bool      s_gesture_seen = false;     /* suppress the tap that ends a swipe */
+/* Swipe ring order. GZ_UI_HOME is the screen shown at boot — one line to
+ * change after the bench. */
+enum { GZ_SCR_RADAR = 0, GZ_SCR_WATCH = 1, GZ_SCR_STATUS = 2, GZ_SCR_COUNT = 3 };
+#define GZ_UI_HOME GZ_SCR_RADAR
+
+static lv_obj_t *s_scr[GZ_SCR_COUNT];
+static int       s_cur = GZ_UI_HOME;
+static bool      s_suppress_click = false;   /* the tap that ends a swipe / long-press */
 
 /* ---- display glue -------------------------------------------------------- */
 
@@ -95,7 +103,7 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 /* ---- status screen ------------------------------------------------------- */
 
 static lv_obj_t *s_lbl_name, *s_lbl_up, *s_lbl_ble, *s_lbl_wifi,
-                *s_lbl_age, *s_lbl_mem, *s_lbl_hw, *s_lbl_touch;
+                *s_lbl_age, *s_lbl_mem, *s_lbl_hw, *s_lbl_touch, *s_lbl_sub;
 
 static lv_obj_t *add_label(lv_obj_t *parent, const lv_font_t *font, uint32_t rgb)
 {
@@ -128,7 +136,7 @@ static void build_status_screen(lv_obj_t *scr)
 
     s_lbl_name = add_label(col, &lv_font_montserrat_28, GZ_COL_TEAL);
     lv_obj_t *sub = add_label(col, &lv_font_montserrat_14, GZ_COL_DIM);
-    lv_label_set_text(sub, "POSEIDON detection node");
+    s_lbl_sub = sub;
     s_lbl_up   = add_label(col, &lv_font_montserrat_16, GZ_COL_FOAM);
     s_lbl_ble  = add_label(col, &lv_font_montserrat_16, GZ_COL_FOAM);
     s_lbl_wifi = add_label(col, &lv_font_montserrat_16, GZ_COL_FOAM);
@@ -148,6 +156,13 @@ static void refresh_status_screen(void)
     gz_fmt_pub_age(&st, now, age, sizeof age);
 
     lv_label_set_text(s_lbl_name, st.node_name[0] ? st.node_name : "GODZILLA");
+    gz_datetime_t clk;
+    if (gz_ui_watch_time(now, &clk))
+        lv_label_set_text_fmt(s_lbl_sub, "POSEIDON node | %02u:%02u:%02u",
+                              (unsigned)clk.hour, (unsigned)clk.minute,
+                              (unsigned)clk.second);
+    else
+        lv_label_set_text(s_lbl_sub, "POSEIDON detection node");
     lv_label_set_text_fmt(s_lbl_up, "up %s | ch %u", up, (unsigned)st.link_channel);
     lv_label_set_text_fmt(s_lbl_ble, "BLE  %lu sent | %u last",
                           (unsigned long)st.ble_frames, (unsigned)st.ble_last_entries);
@@ -172,24 +187,45 @@ static void refresh_status_screen(void)
 
 /* ---- navigation ---------------------------------------------------------- */
 
+static void refresh_current(uint32_t now)
+{
+    if (s_cur == GZ_SCR_RADAR)      gz_ui_radar_refresh(now);
+    else if (s_cur == GZ_SCR_WATCH) gz_ui_watch_refresh(now);
+    else                            refresh_status_screen();
+}
+
+static void go_to(int idx)
+{
+    uint32_t now = millis();
+    if (s_cur == GZ_SCR_WATCH) gz_ui_watch_hide();     /* drops an unfinished set */
+    s_cur = idx;
+    if (s_cur == GZ_SCR_WATCH) gz_ui_watch_show(now);  /* resync before the first frame */
+    else                       refresh_current(now);
+    lv_screen_load(s_scr[s_cur]);   /* no slide animation: QSPI full-screen moves are slow */
+}
+
 static void screen_event_cb(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_PRESSED) {
-        s_gesture_seen = false;
+        s_suppress_click = false;
     } else if (code == LV_EVENT_GESTURE) {
         lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_active());
         if (dir == LV_DIR_LEFT || dir == LV_DIR_RIGHT) {
-            s_gesture_seen = true;
-            lv_obj_t *next = (lv_screen_active() == s_scr_radar) ? s_scr_status
-                                                                 : s_scr_radar;
-            lv_screen_load(next);      /* no slide animation: QSPI full-screen moves are slow */
+            s_suppress_click = true;
+            int step = (dir == LV_DIR_LEFT) ? 1 : GZ_SCR_COUNT - 1;
+            go_to((s_cur + step) % GZ_SCR_COUNT);
         }
+    } else if (code == LV_EVENT_LONG_PRESSED) {
+        if (s_cur != GZ_SCR_WATCH || s_suppress_click) return;
+        s_suppress_click = true;       /* the release must not also count as a tap */
+        gz_ui_watch_long_press(millis());
     } else if (code == LV_EVENT_CLICKED) {
-        if (s_gesture_seen || lv_screen_active() != s_scr_radar) return;
+        if (s_suppress_click) return;
         lv_point_t p;
         lv_indev_get_point(lv_indev_active(), &p);
-        gz_ui_radar_tap(p.x, p.y, millis());
+        if (s_cur == GZ_SCR_RADAR)      gz_ui_radar_tap(p.x, p.y, millis());
+        else if (s_cur == GZ_SCR_WATCH) gz_ui_watch_tap(p.y, millis());
     }
 }
 
@@ -197,6 +233,7 @@ static void wire_screen(lv_obj_t *scr)
 {
     lv_obj_add_event_cb(scr, screen_event_cb, LV_EVENT_PRESSED, nullptr);
     lv_obj_add_event_cb(scr, screen_event_cb, LV_EVENT_GESTURE, nullptr);
+    lv_obj_add_event_cb(scr, screen_event_cb, LV_EVENT_LONG_PRESSED, nullptr);
     lv_obj_add_event_cb(scr, screen_event_cb, LV_EVENT_CLICKED, nullptr);
 }
 
@@ -205,15 +242,15 @@ static void wire_screen(lv_obj_t *scr)
 static void ui_task(void *arg)
 {
     (void)arg;
-    s_scr_radar  = lv_obj_create(nullptr);
-    s_scr_status = lv_obj_create(nullptr);
-    gz_ui_radar_build(s_scr_radar);
-    build_status_screen(s_scr_status);
-    wire_screen(s_scr_radar);
-    wire_screen(s_scr_status);
-    gz_ui_radar_refresh(millis());
-    refresh_status_screen();
-    lv_screen_load(s_scr_radar);        /* radar is home */
+    for (int i = 0; i < GZ_SCR_COUNT; ++i) {
+        s_scr[i] = lv_obj_create(nullptr);
+        wire_screen(s_scr[i]);
+    }
+    gz_ui_radar_build(s_scr[GZ_SCR_RADAR]);
+    gz_ui_watch_build(s_scr[GZ_SCR_WATCH]);     /* first RTC read, on this task */
+    build_status_screen(s_scr[GZ_SCR_STATUS]);
+    refresh_current(millis());
+    lv_screen_load(s_scr[s_cur]);
 
     bool     backlight_on = false;
     uint32_t last_refresh = 0;
@@ -227,9 +264,8 @@ static void ui_task(void *arg)
         uint32_t now = millis();
         if ((uint32_t)(now - last_refresh) >= GZ_UI_REFRESH_MS) {
             last_refresh = now;
-            /* Only the visible screen; the other catches up when shown. */
-            if (lv_screen_active() == s_scr_radar) gz_ui_radar_refresh(now);
-            else                                   refresh_status_screen();
+            /* Only the visible screen; the others catch up when shown. */
+            refresh_current(now);
         }
         if (wait < 5)  wait = 5;
         if (wait > 10) wait = 10;
@@ -280,7 +316,7 @@ bool gz_ui_start(void)
         Serial.println("!! UI: task create failed — headless");
         return false;
     }
-    Serial.printf("  UI: LVGL %d.%d.%d, 2 x %u B draw buffers, radar + status screens\n",
+    Serial.printf("  UI: LVGL %d.%d.%d, 2 x %u B draw buffers, radar + watch + status screens\n",
                   LVGL_VERSION_MAJOR, LVGL_VERSION_MINOR, LVGL_VERSION_PATCH,
                   (unsigned)buf_bytes);
     return true;
