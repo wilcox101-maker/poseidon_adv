@@ -44,6 +44,15 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   cancels); "hold to set" shows until a build-time-seeded clock has been set.
   Screens are now a swipe ring: radar, watch, status; the status screen shows
   the clock. Native-tested (`test/test_godzilla_watch`). Passive.
+- **GODZILLA node — microSD + Recon session log (P3).** The TF card comes up
+  in SDMMC 4-bit mode (`gz_board.h` pins from the Waveshare wiki) and a
+  long-press on the radar starts or stops a Recon session: the node's own
+  detections are appended to `/recon/<year>/<MMDDHHMM>.CSV` — a row when a
+  device is first seen, then at most one every 30 s while it stays in view —
+  with RTC wall time, radio, address, channel / address type, RSSI, family and
+  hit count. A writer task owns the card; nothing is written outside a
+  session and the card is never formatted. The radar shows `REC n` while
+  recording. Model native-tested (`test/test_godzilla_recon`). Passive.
 
 ## [0.9.2] - 2026-11-16
 

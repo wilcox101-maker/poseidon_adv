@@ -11,6 +11,8 @@
  *        CS=21 PCLK=40 DATA0=46 DATA1=45 DATA2=42 DATA3=41 RST=3 BL=5
  *   Touch CST816S  I2C 0x15:  SCL=10 SDA=11 RST=1 INT=4
  *   RTC   PCF85063 I2C 0x51:  SCL=10 SDA=11 INT=6   (shares the touch I2C bus)
+ *   TF    microSD  SDMMC 4-bit: CLK=15 CMD=14 D0=16 D1=17 D2=12 D3=13
+ *         (GPIO allocation table on the same page; separate from the LCD QSPI)
  *
  * This is the "B" revision. It differs from the plain 1.85 (which puts LCD_RST
  * on an I/O expander and RTC_INT on GPIO9); do NOT mix the two maps.
@@ -50,6 +52,14 @@
 #define GZ_I2C_ADDR_RTC   0x51
 #define GZ_PIN_RTC_INT     6
 
+/* ---- microSD (TF): SDMMC 4-bit (P3 Recon log) ---- */
+#define GZ_PIN_SD_CLK     15
+#define GZ_PIN_SD_CMD     14
+#define GZ_PIN_SD_D0      16
+#define GZ_PIN_SD_D1      17
+#define GZ_PIN_SD_D2      12
+#define GZ_PIN_SD_D3      13
+
 /* ---- Other parts on the same I2C bus (not driven yet; P3) ----
  * Named so the boot I2C scan can label them instead of printing "unknown".
  * IMU and gauge addresses are from Waveshare's 1.85B page
@@ -82,6 +92,27 @@ static_assert(GZ_PIN_I2C_SCL != GZ_PIN_I2C_SDA, "I2C SCL/SDA collide");
 static_assert(GZ_PIN_TOUCH_RST != GZ_PIN_TOUCH_INT &&
               GZ_PIN_TOUCH_INT != GZ_PIN_RTC_INT &&
               GZ_PIN_TOUCH_RST != GZ_PIN_RTC_INT, "touch/RTC control pins collide");
+/* The six SDMMC lines are distinct, and none lands on the I2C bus or on the
+ * touch / RTC / LCD control pins. */
+#define GZ_SD_PIN_FREE(p) ((p) != GZ_PIN_I2C_SCL && (p) != GZ_PIN_I2C_SDA && \
+                           (p) != GZ_PIN_TOUCH_RST && (p) != GZ_PIN_TOUCH_INT && \
+                           (p) != GZ_PIN_RTC_INT && (p) != GZ_PIN_LCD_CS && \
+                           (p) != GZ_PIN_LCD_PCLK && (p) != GZ_PIN_LCD_RST && \
+                           (p) != GZ_PIN_LCD_BL && (p) != GZ_PIN_LCD_DATA0 && \
+                           (p) != GZ_PIN_LCD_DATA1 && (p) != GZ_PIN_LCD_DATA2 && \
+                           (p) != GZ_PIN_LCD_DATA3)
+static_assert(GZ_SD_PIN_FREE(GZ_PIN_SD_CLK) && GZ_SD_PIN_FREE(GZ_PIN_SD_CMD) &&
+              GZ_SD_PIN_FREE(GZ_PIN_SD_D0) && GZ_SD_PIN_FREE(GZ_PIN_SD_D1) &&
+              GZ_SD_PIN_FREE(GZ_PIN_SD_D2) && GZ_SD_PIN_FREE(GZ_PIN_SD_D3),
+              "SD pins collide with the LCD / I2C / touch / RTC pins");
+static_assert(GZ_PIN_SD_CLK != GZ_PIN_SD_CMD && GZ_PIN_SD_CLK != GZ_PIN_SD_D0 &&
+              GZ_PIN_SD_CLK != GZ_PIN_SD_D1 && GZ_PIN_SD_CLK != GZ_PIN_SD_D2 &&
+              GZ_PIN_SD_CLK != GZ_PIN_SD_D3 && GZ_PIN_SD_CMD != GZ_PIN_SD_D0 &&
+              GZ_PIN_SD_CMD != GZ_PIN_SD_D1 && GZ_PIN_SD_CMD != GZ_PIN_SD_D2 &&
+              GZ_PIN_SD_CMD != GZ_PIN_SD_D3 && GZ_PIN_SD_D0 != GZ_PIN_SD_D1 &&
+              GZ_PIN_SD_D0 != GZ_PIN_SD_D2 && GZ_PIN_SD_D0 != GZ_PIN_SD_D3 &&
+              GZ_PIN_SD_D1 != GZ_PIN_SD_D2 && GZ_PIN_SD_D1 != GZ_PIN_SD_D3 &&
+              GZ_PIN_SD_D2 != GZ_PIN_SD_D3, "SD pins collide with each other");
 /* The two I2C peripherals have different addresses. */
 static_assert(GZ_I2C_ADDR_TOUCH != GZ_I2C_ADDR_RTC, "touch and RTC share an I2C address");
 #endif

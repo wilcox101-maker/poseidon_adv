@@ -35,6 +35,7 @@
 #include "gz_ui_watch.h"
 #include "gz_watch.h"
 #include "gz_stats.h"
+#include "gz_clock.h"
 #include "gz_board.h"
 
 #include <Arduino.h>
@@ -147,12 +148,20 @@ static lv_obj_t *dial_label(lv_obj_t *scr, const lv_font_t *font, uint32_t rgb,
     return l;
 }
 
+/* Every change to the software clock goes through here, so other tasks (the
+ * Recon writer) see the same time via gz_clock without touching I2C. */
+static void set_clock(const gz_datetime_t *t, uint32_t now_ms)
+{
+    gz_watch_sync(&s_clock, t, now_ms);
+    gz_clock_publish(&s_clock);
+}
+
 /* Try the RTC; on success the software clock restarts from it. */
 static void resync(uint32_t now_ms)
 {
     gz_datetime_t t;
     if (gz_rtc_read(&t) && gz_rtc_valid(&t)) {
-        gz_watch_sync(&s_clock, &t, now_ms);
+        set_clock(&t, now_ms);
         s_rtc_fault = false;
     } else {
         s_rtc_fault = true;
@@ -160,12 +169,12 @@ static void resync(uint32_t now_ms)
             /* Never had a time: run from the build stamp so the hands move. */
             gz_datetime_t build;
             if (gz_rtc_parse_build(__DATE__, __TIME__, &build))
-                gz_watch_sync(&s_clock, &build, now_ms);
+                set_clock(&build, now_ms);
         } else {
             /* Keep running, but don't hammer a dead bus every refresh. */
             gz_datetime_t cur;
             gz_watch_now(&s_clock, now_ms, &cur);
-            gz_watch_sync(&s_clock, &cur, now_ms);
+            set_clock(&cur, now_ms);
         }
     }
     s_force_draw = true;
@@ -340,7 +349,7 @@ void gz_ui_watch_long_press(uint32_t now_ms)
     gz_watch_set_commit(&s_set, &t);
     t.weekday = gz_rtc_weekday(t.year, t.month, t.day);
     bool ok = gz_rtc_write(&t);
-    gz_watch_sync(&s_clock, &t, now_ms);            /* run from the set time either way */
+    set_clock(&t, now_ms);                          /* run from the set time either way */
     s_rtc_fault = !ok;
     if (ok) s_needs_set = false;
     Serial.printf("  watch: set %02u:%02u:00 -> RTC %s\n",

@@ -13,10 +13,15 @@
  * clickable, so taps reach the screen and gz_ui_radar_tap() hit-tests them
  * with a finger-sized tolerance (a 10 px dot is too small to aim at).
  *
+ * Recon (P3): a long-press starts or stops a session log on the SD card
+ * (gz_recon_task). While one runs, a red "REC n" line sits above the footer;
+ * "no SD card" / "SD error" show there for a few seconds when a start fails.
+ *
  * Deepwater palette, original artwork only.
  */
 #include "gz_ui_radar.h"
 #include "gz_radar_store.h"
+#include "gz_recon_task.h"
 #include "gz_board.h"
 
 #include <stdio.h>
@@ -39,11 +44,12 @@
 #define R_MAX     158           /* inside the 180 px round glass        */
 #define HIT_TOL   24            /* finger tolerance, px                 */
 #define SWEEP_STEP_DEG 9        /* per ~250 ms refresh: ~10 s / turn    */
+#define REC_NOTE_MS 4000u       /* how long a failed-start note stays   */
 
 static lv_obj_t *s_dots[GZ_RADAR_MAX];
 static uint8_t   s_dot_sev[GZ_RADAR_MAX];     /* last styled severity, 0xFF = none */
 static uint8_t   s_dot_opa[GZ_RADAR_MAX];
-static lv_obj_t *s_sweep, *s_footer;
+static lv_obj_t *s_sweep, *s_footer, *s_rec;
 static lv_point_precise_t s_sweep_pts[2];
 static uint16_t  s_sweep_deg;
 
@@ -168,6 +174,12 @@ void gz_ui_radar_build(lv_obj_t *scr)
     lv_label_set_text(s_footer, "");
     lv_obj_align(s_footer, LV_ALIGN_BOTTOM_MID, 0, -34);   /* inside the glass */
 
+    s_rec = lv_label_create(scr);
+    lv_obj_set_style_text_font(s_rec, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(s_rec, lv_color_hex(COL_SURVEIL), 0);
+    lv_label_set_text(s_rec, "");
+    lv_obj_align(s_rec, LV_ALIGN_BOTTOM_MID, 0, -54);
+
     /* Detail card: hidden until a dot is tapped; any tap closes it. */
     s_card = plain_obj(scr);
     lv_obj_set_size(s_card, 236, 146);
@@ -272,7 +284,31 @@ void gz_ui_radar_refresh(uint32_t now)
     if (live == 0) lv_label_set_text(s_footer, "listening...");
     else lv_label_set_text_fmt(s_footer, "%d seen | %d red | %d amber", live, red, amber);
 
+    /* Recon line: REC while a session runs, a short note if a start failed. */
+    gz_recon_status_t rs;
+    gz_recon_status(&rs);
+    bool fresh = (uint32_t)(now - rs.state_ms) < REC_NOTE_MS;
+    if (rs.state == GZ_RECON_REC) {
+        if (rs.dropped) lv_label_set_text_fmt(s_rec, "REC %lu (%lu lost)",
+                                              (unsigned long)rs.rows, (unsigned long)rs.dropped);
+        else            lv_label_set_text_fmt(s_rec, "REC %lu", (unsigned long)rs.rows);
+    } else if (rs.state == GZ_RECON_NO_CARD && fresh) {
+        lv_label_set_text(s_rec, "no SD card");
+    } else if (rs.state == GZ_RECON_ERROR && fresh) {
+        lv_label_set_text(s_rec, "SD error");
+    } else if (rs.state == GZ_RECON_IDLE && fresh && rs.rows > 0) {
+        lv_label_set_text_fmt(s_rec, "saved %lu rows", (unsigned long)rs.rows);
+    } else {
+        lv_label_set_text(s_rec, "");
+    }
+
     refresh_card(now);
+}
+
+void gz_ui_radar_long_press(void)
+{
+    if (s_card_open) return;            /* the card is modal: close it first */
+    gz_recon_toggle();
 }
 
 void gz_ui_radar_tap(int32_t x, int32_t y, uint32_t now)

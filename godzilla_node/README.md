@@ -22,6 +22,7 @@ Wire contract: [`docs/godzilla-detection-publish-contract.md`](../docs/godzilla-
 | RTC + touch (`main/gz_rtc.h`, `main/gz_touch.h`) | P2a — PCF85063 clock seeded from build time on oscillator stop; CST816S touch as an LVGL pointer, INT-gated reads. Pure logic native-tested (`test/test_godzilla_rtc`, `test/test_godzilla_touch`) |
 | Radar (`main/gz_radar.h`, `main/gz_radar_store.*`, `main/gz_ui_radar.*`) | P2b — home screen: the node's own published detections, radius from RSSI, stable hashed bearing (a layout slot, not a direction), Cardputer family colours (red surveillance / Remote ID, amber trackers). Tap a dot for a detail card; swipe left/right for the status screen. Table + geometry native-tested (`test/test_godzilla_radar`) |
 | Pocket watch (`main/gz_watch.h`, `main/gz_ui_watch.*`) | P2c — brass-and-ivory watch face from LVGL primitives: Roman numerals (IIII), ticking second hand, software clock resynced from the PCF85063 about once a minute. Long-press sets the time (tap upper half hour +1, lower half minute +1, long-press writes the RTC, 15 s idle cancels). Swipe ring radar → watch → status. Model native-tested (`test/test_godzilla_watch`) |
+| Recon log (`main/gz_recon.h`, `main/gz_recon_task.*`, `main/gz_clock.*`) | P3 — microSD (SDMMC 4-bit) session log. Long-press the radar to start or stop; detections are written to `/recon/<year>/<MMDDHHMM>.CSV`, one row on first sight and then at most every 30 s per device. Never formats the card. Policy, queue, paths and CSV native-tested (`test/test_godzilla_recon`) |
 
 ## Board
 

@@ -35,7 +35,7 @@
 
 #include "../../c5_node/main/proto.h"   /* POSEI_DET_FAM_* */
 
-#define GZ_RADAR_MAX          48       /* rows kept (48 x 16 B)            */
+#define GZ_RADAR_MAX          48       /* rows kept (48 x 24 B)            */
 #define GZ_RADAR_TTL_MS       60000u   /* a dot leaves the dial after 60 s */
 #define GZ_RADAR_FADE_MS      30000u   /* ...and dims after 30 s           */
 #define GZ_RADAR_RSSI_STRONG  (-35)    /* at/above: innermost radius       */
@@ -54,6 +54,8 @@ typedef struct {
     uint8_t  family;        /* POSEI_DET_FAM_*, sticky once specific   */
     uint16_t hits;          /* published sightings, saturating         */
     uint32_t last_seen_ms;
+    uint32_t log_ms;        /* Recon: when this row was last logged    */
+    bool     logged;        /* Recon: logged in the current session    */
 } gz_radar_row_t;
 
 typedef struct {
@@ -105,6 +107,8 @@ static inline int gz_radar_note(gz_radar_table_t *t, uint8_t kind,
         t->e[i].kind   = kind;
         t->e[i].family = family;
         t->e[i].hits   = 0;
+        t->e[i].logged = false;
+        t->e[i].log_ms = 0;
     }
     gz_radar_row_t *r = &t->e[i];
     r->aux  = aux;
