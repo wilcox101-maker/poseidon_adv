@@ -24,6 +24,15 @@
 #include "gz_board.h"
 
 #include <Arduino.h>
+/* The card libraries are included HERE, unconditionally, so PlatformIO's LDF
+ * (chain mode) sees them: it does not follow includes behind gz_sd.h's board
+ * #if, and without these lines the bundled SD_MMC / SD were never linked in
+ * (CI: "SD_MMC.h: No such file or directory"). All four ship with the
+ * Arduino core on every board; gz_sd.h then picks the one this board uses. */
+#include <FS.h>
+#include <SPI.h>
+#include <SD.h>
+#include <SD_MMC.h>
 #include "gz_sd.h"         /* GZ_SD_FS: SDMMC or SPI, per board */
 
 #define RECON_TASK_STACK   6144
