@@ -217,9 +217,10 @@ static void screen_event_cb(lv_event_t *e)
             go_to((s_cur + step) % GZ_SCR_COUNT);
         }
     } else if (code == LV_EVENT_LONG_PRESSED) {
-        if (s_cur != GZ_SCR_WATCH || s_suppress_click) return;
+        if (s_cur == GZ_SCR_STATUS || s_suppress_click) return;
         s_suppress_click = true;       /* the release must not also count as a tap */
-        gz_ui_watch_long_press(millis());
+        if (s_cur == GZ_SCR_WATCH) gz_ui_watch_long_press(millis());
+        else                       gz_ui_radar_long_press();   /* Recon start/stop */
     } else if (code == LV_EVENT_CLICKED) {
         if (s_suppress_click) return;
         lv_point_t p;

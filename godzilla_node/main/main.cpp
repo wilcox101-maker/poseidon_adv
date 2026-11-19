@@ -18,6 +18,7 @@
 #include "gz_stats.h"      /* P2a: counters behind the status screen */
 #include "gz_ui.h"         /* P2a: ST77916 display + LVGL status screen */
 #include "gz_rtc.h"        /* P2a: PCF85063 RTC read / build-time seed */
+#include "gz_recon_task.h" /* P3: microSD + Recon session writer */
 
 static constexpr uint32_t GZ_HELLO_PERIOD_MS = 5000;
 
@@ -57,13 +58,17 @@ void setup()
                         (uint32_t)(psram / 1024), i2c_found);
     gz_ui_start();
 
+    /* P3: microSD + Recon session writer. Mounts the card if one is in; a
+     * session only starts on a long-press of the radar. Headless-safe. */
+    gz_recon_start();
+
     gz_link_init();
     gz_link_send_hello();        /* announce immediately, like c5_node */
     gz_ble_scan_init(GZ_NODE_ID);
     gz_wifi_scan_init(GZ_NODE_ID);
 
     Serial.println();
-    Serial.println("POSEIDON GODZILLA node — P2a: status screen + passive BLE/Wi-Fi publish");
+    Serial.println("POSEIDON GODZILLA node — P3: radar / watch / status + Recon SD log, passive BLE/Wi-Fi publish");
     Serial.printf("  link: WiFi STA ch%u, ESP-NOW, broadcast peer\n",
                   (unsigned)GZ_LINK_CHANNEL);
     Serial.printf("  HELLO '%s' role=%u every %lu ms\n",

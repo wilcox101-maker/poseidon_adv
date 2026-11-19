@@ -38,11 +38,23 @@ static void test_control_lines(void)
     TEST_ASSERT_EQUAL_INT(6, GZ_PIN_RTC_INT);
 }
 
+static void test_documented_sd_pins(void)
+{
+    /* Waveshare 1.85B GPIO allocation table: TF card, SDMMC 4-bit. */
+    TEST_ASSERT_EQUAL_INT(15, GZ_PIN_SD_CLK);
+    TEST_ASSERT_EQUAL_INT(14, GZ_PIN_SD_CMD);
+    TEST_ASSERT_EQUAL_INT(16, GZ_PIN_SD_D0);
+    TEST_ASSERT_EQUAL_INT(17, GZ_PIN_SD_D1);
+    TEST_ASSERT_EQUAL_INT(12, GZ_PIN_SD_D2);
+    TEST_ASSERT_EQUAL_INT(13, GZ_PIN_SD_D3);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_documented_lcd_pins);
     RUN_TEST(test_touch_and_rtc_share_i2c);
     RUN_TEST(test_control_lines);
+    RUN_TEST(test_documented_sd_pins);
     return UNITY_END();
 }
