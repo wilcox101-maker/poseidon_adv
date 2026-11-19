@@ -15,6 +15,13 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   oscillator-stopped seed policy — `test/test_godzilla_rtc`) with the Wire I2C
   read/write on-target only. Boot bring-up seeds the clock from firmware build
   time when the oscillator stopped (cold boot / no backup cell). Passive.
+- **GODZILLA node — CST816S touch (P2a).** Capacitive touch on the shared I2C
+  bus (`godzilla_node/main/gz_touch.h`) as an LVGL 9 pointer input. Pure,
+  native-tested report parse / orientation / name tables
+  (`test/test_godzilla_touch`); on-target reads are gated on the INT edge (or a
+  finger already down), so the auto-sleeping controller is never polled into
+  NACKs. The status screen gains a bench line: chip, last gesture, last point.
+  Passive.
 
 ## [0.9.2] - 2026-11-16
 

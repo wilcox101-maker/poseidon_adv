@@ -20,6 +20,7 @@
 #include "gz_board.h"
 #include "gz_stats.h"
 #include "gz_st77916_rev.h"
+#include "gz_touch.h"       /* sole ARDUINO user of the touch driver */
 
 #include <Arduino.h>
 #include <esp_heap_caps.h>
@@ -37,6 +38,8 @@
 #define GZ_UI_REFRESH_MS   250
 
 static lv_display_t *s_disp = nullptr;
+static lv_indev_t   *s_touch = nullptr;
+static gz_touch_point_t s_touch_pt = {};   /* last report; LVGL task only */
 static volatile bool s_first_flush_done = false;
 
 /* ---- display glue -------------------------------------------------------- */
@@ -71,10 +74,22 @@ static void rounder_cb(lv_event_t *e)
     if (a->y2 > GZ_LCD_HEIGHT - 1) a->y2 = GZ_LCD_HEIGHT - 1;
 }
 
+/* CST816S -> LVGL pointer. Keeps the last coordinates on release, as LVGL
+ * expects; gz_touch_poll() only touches the bus after INT or while down. */
+static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
+{
+    (void)indev;
+    gz_touch_poll(&s_touch_pt);
+    data->point.x = (int32_t)s_touch_pt.x;
+    data->point.y = (int32_t)s_touch_pt.y;
+    data->state   = s_touch_pt.pressed ? LV_INDEV_STATE_PRESSED
+                                       : LV_INDEV_STATE_RELEASED;
+}
+
 /* ---- status screen ------------------------------------------------------- */
 
 static lv_obj_t *s_lbl_name, *s_lbl_up, *s_lbl_ble, *s_lbl_wifi,
-                *s_lbl_age, *s_lbl_mem, *s_lbl_hw;
+                *s_lbl_age, *s_lbl_mem, *s_lbl_hw, *s_lbl_touch;
 
 static lv_obj_t *add_label(lv_obj_t *parent, const lv_font_t *font, uint32_t rgb)
 {
@@ -112,6 +127,7 @@ static void build_status_screen(void)
     s_lbl_age  = add_label(col, &lv_font_montserrat_16, GZ_COL_FOAM);
     s_lbl_mem  = add_label(col, &lv_font_montserrat_14, GZ_COL_DIM);
     s_lbl_hw   = add_label(col, &lv_font_montserrat_14, GZ_COL_DIM);
+    s_lbl_touch = add_label(col, &lv_font_montserrat_14, GZ_COL_DIM);
 }
 
 static void refresh_status_screen(void)
@@ -135,6 +151,15 @@ static void refresh_status_screen(void)
                           (unsigned long)st.psram_kb);
     lv_label_set_text_fmt(s_lbl_hw, "I2C %u dev | panel rev %d",
                           (unsigned)st.i2c_found, gz_display_panel_rev());
+    /* Bench aid until P2b/P2c give touch a job: chip, last gesture, last point. */
+    if (gz_touch_chip_id() == 0) {
+        lv_label_set_text(s_lbl_touch, "touch: not found");
+    } else {
+        lv_label_set_text_fmt(s_lbl_touch, "%s | %s %u,%u",
+                              gz_touch_chip_name(gz_touch_chip_id()),
+                              gz_touch_gesture_name(gz_touch_last_gesture()),
+                              (unsigned)s_touch_pt.x, (unsigned)s_touch_pt.y);
+    }
 }
 
 /* ---- task ---------------------------------------------------------------- */
@@ -191,6 +216,15 @@ bool gz_ui_start(void)
     lv_display_set_buffers(s_disp, b1, b2, (uint32_t)buf_bytes,
                            LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_add_event_cb(s_disp, rounder_cb, LV_EVENT_INVALIDATE_AREA, nullptr);
+
+    /* Touch on the shared I2C bus (Wire already up from the boot scan). The
+     * indev is registered even if the chip didn't answer: it may just be
+     * asleep, and a touch wakes it and fires INT. */
+    gz_touch_begin();
+    s_touch = lv_indev_create();
+    lv_indev_set_type(s_touch, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_read_cb(s_touch, touch_read_cb);
+    lv_indev_set_display(s_touch, s_disp);
 
     BaseType_t ok = xTaskCreatePinnedToCore(ui_task, "gz_ui", GZ_UI_TASK_STACK,
                                             nullptr, GZ_UI_TASK_PRIO, nullptr,
