@@ -6,6 +6,16 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **GODZILLA node — PCF85063 RTC driver (P2a).** Real-time clock on the node's
+  shared touch+RTC I2C bus (`godzilla_node/main/gz_rtc.h`): pure, native-tested
+  BCD/time logic (decode/encode with OS-flag + reserved-bit masking, strict
+  leap-year validation, Sakamoto weekday, `__DATE__`/`__TIME__` build parse,
+  oscillator-stopped seed policy — `test/test_godzilla_rtc`) with the Wire I2C
+  read/write on-target only. Boot bring-up seeds the clock from firmware build
+  time when the oscillator stopped (cold boot / no backup cell). Passive.
+
 ## [0.9.2] - 2026-11-16
 
 Release that completes the C5 command surface, lands the ESP-NOW v2 (wire v5)
