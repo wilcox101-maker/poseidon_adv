@@ -47,7 +47,9 @@ void setup()
      * firmware build time so the clock and the later pocket-watch face start
      * sane. Passive — I2C to a soldered peripheral, no radio. */
     gz_datetime_t gz_now;
-    gz_rtc_begin(&gz_now);
+    bool rtc_seeded = false;
+    bool rtc_ok = gz_rtc_begin(&gz_now, &rtc_seeded);
+    gz_stats_set_rtc(rtc_ok, rtc_seeded);   /* watch face: "hold to set" hint */
 
     /* P2a: status screen. Identity first, then the panel + LVGL task. The
      * radios below start either way — headless is still a working node. */

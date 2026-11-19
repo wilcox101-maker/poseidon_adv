@@ -28,6 +28,15 @@ void gz_stats_set_static(const char *node_name, uint8_t link_channel,
     portEXIT_CRITICAL(&s_mux);
 }
 
+void gz_stats_set_rtc(bool ok, bool seeded)
+{
+    portENTER_CRITICAL(&s_mux);
+    ensure_init();
+    s_status.rtc_ok     = ok;
+    s_status.rtc_seeded = seeded;
+    portEXIT_CRITICAL(&s_mux);
+}
+
 void gz_stats_note_publish(gz_radio_t radio, uint8_t entries)
 {
     uint32_t now = millis();

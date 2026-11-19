@@ -108,20 +108,28 @@ static inline void gz_rtc_encode(const gz_datetime_t *dt,
 
 /* ---- Validation ---- */
 
+/* Days in a Gregorian month (1-12) of a full year; 0 for a bad month. Shared
+ * by gz_rtc_valid() and the watch's software clock (gz_watch.h) so there is
+ * one calendar. */
+static inline uint8_t gz_rtc_days_in_month(uint16_t year, uint8_t month)
+{
+    static const uint8_t mdays[12] = {31,28,31,30,31,30,31,31,30,31,30,31};
+    if (month < 1 || month > 12) return 0;
+    bool leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+    return (uint8_t)((month == 2 && leap) ? 29 : mdays[month - 1]);
+}
+
 /* True if every field is in range for a real calendar date/time. Deliberately
  * strict (rejects month 0, day 0, hour 24) so a garbage read or a stopped clock
  * is caught and the caller seeds from build time. Day is bounded per-month,
  * including a Gregorian leap-year check on February. */
 static inline bool gz_rtc_valid(const gz_datetime_t *dt)
 {
-    static const uint8_t mdays[12] = {31,28,31,30,31,30,31,31,30,31,30,31};
     if (dt->year < 2000 || dt->year > 2099) return false;
     if (dt->month < 1 || dt->month > 12)    return false;
     if (dt->hour > 23 || dt->minute > 59 || dt->second > 59) return false;
     if (dt->weekday > 6) return false;
-    uint8_t dmax = mdays[dt->month - 1];
-    bool leap = (dt->year % 4 == 0 && dt->year % 100 != 0) || (dt->year % 400 == 0);
-    if (dt->month == 2 && leap) dmax = 29;
+    uint8_t dmax = gz_rtc_days_in_month(dt->year, dt->month);
     if (dt->day < 1 || dt->day > dmax) return false;
     return true;
 }
@@ -228,9 +236,11 @@ static inline bool gz_rtc_write(const gz_datetime_t *dt)
 /* Boot bring-up: read the clock; if it stopped or is garbage, seed from the
  * firmware build time (__DATE__/__TIME__) and write it back. Prints a one-line
  * status to Serial. Leaves *now holding the current best time. Returns true if
- * the RTC answered on the bus at all. */
-static inline bool gz_rtc_begin(gz_datetime_t *now)
+ * the RTC answered on the bus at all. *seeded (optional) is set true when the
+ * clock was seeded from build time this boot — i.e. nobody has set it yet. */
+static inline bool gz_rtc_begin(gz_datetime_t *now, bool *seeded)
 {
+    if (seeded) *seeded = false;
     if (!gz_rtc_read(now)) {
         Serial.printf("  RTC PCF85063 (0x%02X): no ACK — check I2C wiring\n",
                       (unsigned)GZ_I2C_ADDR_RTC);
@@ -240,6 +250,7 @@ static inline bool gz_rtc_begin(gz_datetime_t *now)
     bool built = gz_rtc_parse_build(__DATE__, __TIME__, &build);
     if (built && gz_rtc_seed_if_stopped(now, &build)) {
         gz_rtc_write(now);
+        if (seeded) *seeded = true;
         Serial.printf("  RTC PCF85063: oscillator was stopped — seeded %04u-%02u-%02u %02u:%02u:%02u (build)\n",
                       now->year, now->month, now->day,
                       now->hour, now->minute, now->second);
