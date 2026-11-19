@@ -27,9 +27,11 @@ static const uint8_t GZ_BROADCAST[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
  * polled by the main loop — volatile, single-writer, no lock needed. */
 static volatile bool s_send_done = false;
 
-static void gz_on_sent(const uint8_t *mac, esp_now_send_status_t status)
+/* IDF >= 5.5 signature: the send callback gets wifi_tx_info_t, not the peer
+ * MAC (esp_now_send_cb_t in esp_now.h). We only need "it aired". */
+static void gz_on_sent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status)
 {
-    (void)mac;
+    (void)tx_info;
     (void)status;
     s_send_done = true;
 }
