@@ -1,0 +1,190 @@
+/* Native Unity test for godzilla_node/main/ui/faces/gz_faces.h — the pure
+ * watch-faces model (watch-faces orders, unit 1). Three jobs:
+ *   1. registry selection: the requested face wins when it fits the board,
+ *      else the first registered face that fits (CLASSIC) is chosen, and an
+ *      out-of-range request falls back cleanly;
+ *   2. capability filter: a complication a board can't source is hidden on
+ *      that board and shown where the hardware exists, for all three boards;
+ *   3. the NVS settings codec round-trips (encode -> decode == identity), and
+ *      an unknown / short / corrupt blob falls back to defaults.
+ * All three boards are checked in one TU from hand-built capability masks, the
+ * same way test_godzilla_geom checks geometry. */
+#include <unity.h>
+#include <string.h>
+#include "../../godzilla_node/main/ui/faces/gz_faces.h"
+
+void setUp(void) {}
+void tearDown(void) {}
+
+/* The three shipping boards as capability masks (from their gz_board_*.h). */
+static const uint8_t CAPS_185B = GZ_CAP_RTC | GZ_CAP_IMU | GZ_CAP_SD; /* gauge undriven: no BATT */
+static const uint8_t CAPS_206  = GZ_CAP_RTC | GZ_CAP_IMU | GZ_CAP_BATT | GZ_CAP_SD;
+static const uint8_t CAPS_ES3  = GZ_CAP_BATT | GZ_CAP_SD;   /* no RTC, no IMU */
+
+/* ---- 1. registry selection ---------------------------------------------- */
+static void test_select_requested_when_available(void)
+{
+    /* Every face is available on every board, so a valid request is honoured. */
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_COMMAND, gz_face_select(GZ_FACE_COMMAND, CAPS_185B));
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_MINIMAL, gz_face_select(GZ_FACE_MINIMAL, CAPS_ES3));
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_MODULAR, gz_face_select(GZ_FACE_MODULAR, CAPS_206));
+}
+
+static void test_select_out_of_range_falls_back_to_first_fit(void)
+{
+    /* Garbage / old face ids fall back to the first registered face (CLASSIC). */
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_CLASSIC, gz_face_select(-1,  CAPS_ES3));
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_CLASSIC, gz_face_select(99,  CAPS_ES3));
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_CLASSIC, gz_face_select(GZ_FACE_COUNT, CAPS_185B));
+}
+
+static void test_caps_filter_primitive(void)
+{
+    /* The filter underneath selection: a face/complication is allowed iff the
+     * board sources every cap it needs. Every shipping face is cap-0, so each
+     * is available on even a capability-less board — selection therefore never
+     * drops a real face, and the fallback walk is reached only by an
+     * out-of-range request (covered above). Prove the primitive directly so a
+     * future cap-gated face is filtered correctly. */
+    TEST_ASSERT_TRUE (gz_caps_ok(0, 0));
+    TEST_ASSERT_TRUE (gz_caps_ok(GZ_CAP_RTC, GZ_CAP_RTC | GZ_CAP_IMU));
+    TEST_ASSERT_FALSE(gz_caps_ok(GZ_CAP_RTC, GZ_CAP_IMU));
+    TEST_ASSERT_FALSE(gz_caps_ok(GZ_CAP_RTC | GZ_CAP_IMU, GZ_CAP_RTC));
+    for (int f = 0; f < GZ_FACE_COUNT; ++f)
+        TEST_ASSERT_TRUE(gz_face_available((gz_face_id_t)f, 0));
+}
+
+/* ---- 2. capability filter ------------------------------------------------ */
+static void test_all_board_complications_show_everywhere(void)
+{
+    const gz_comp_id_t all[] = { GZ_COMP_STATUS, GZ_COMP_CONTACTS,
+                                 GZ_COMP_PUBLISH, GZ_COMP_CHANNEL, GZ_COMP_DECODE };
+    for (unsigned i = 0; i < sizeof all / sizeof all[0]; ++i) {
+        TEST_ASSERT_TRUE(gz_comp_available(all[i], CAPS_185B));
+        TEST_ASSERT_TRUE(gz_comp_available(all[i], CAPS_206));
+        TEST_ASSERT_TRUE(gz_comp_available(all[i], CAPS_ES3));
+    }
+}
+
+static void test_gated_complications_follow_the_hardware(void)
+{
+    /* IMU + clock are present on 1.85B / AMOLED, absent on ES3C28P. */
+    TEST_ASSERT_TRUE (gz_comp_available(GZ_COMP_IMU,   CAPS_185B));
+    TEST_ASSERT_TRUE (gz_comp_available(GZ_COMP_IMU,   CAPS_206));
+    TEST_ASSERT_FALSE(gz_comp_available(GZ_COMP_IMU,   CAPS_ES3));
+
+    TEST_ASSERT_TRUE (gz_comp_available(GZ_COMP_CLOCK, CAPS_185B));
+    TEST_ASSERT_FALSE(gz_comp_available(GZ_COMP_CLOCK, CAPS_ES3));
+
+    /* Recon needs an SD slot; all three have one. Battery likewise. */
+    TEST_ASSERT_TRUE(gz_comp_available(GZ_COMP_RECON,   CAPS_ES3));
+    TEST_ASSERT_TRUE(gz_comp_available(GZ_COMP_BATTERY, CAPS_ES3));
+
+    /* An empty slot is always allowed; an out-of-range id never is. */
+    TEST_ASSERT_TRUE (gz_comp_available(GZ_COMP_NONE, CAPS_ES3));
+    TEST_ASSERT_FALSE(gz_comp_available((gz_comp_id_t)GZ_COMP_COUNT, CAPS_185B));
+}
+
+static void test_sanitise_drops_unsourceable_slots(void)
+{
+    gz_ui_settings_t s;
+    gz_ui_settings_defaults(&s);
+    s.slots[0] = GZ_COMP_IMU;      /* not on ES3C28P */
+    s.slots[1] = GZ_COMP_CLOCK;    /* not on ES3C28P */
+    s.slots[2] = GZ_COMP_RECON;    /* ok (SD) */
+    s.slots[3] = GZ_COMP_CONTACTS; /* ok (all) */
+    s.accent   = 200;              /* out of range */
+    s.background = 7;              /* out of range */
+
+    gz_ui_settings_sanitise(&s, CAPS_ES3);
+
+    TEST_ASSERT_EQUAL_INT(GZ_COMP_NONE,     s.slots[0]);
+    TEST_ASSERT_EQUAL_INT(GZ_COMP_NONE,     s.slots[1]);
+    TEST_ASSERT_EQUAL_INT(GZ_COMP_RECON,    s.slots[2]);
+    TEST_ASSERT_EQUAL_INT(GZ_COMP_CONTACTS, s.slots[3]);
+    TEST_ASSERT_EQUAL_INT(0,                s.accent);
+    TEST_ASSERT_EQUAL_INT(GZ_BG_BLACK,      s.background);
+    /* On ES3C28P the same slots survive untouched. */
+    gz_ui_settings_t t;
+    gz_ui_settings_defaults(&t);
+    t.slots[0] = GZ_COMP_IMU;
+    gz_ui_settings_sanitise(&t, CAPS_185B);
+    TEST_ASSERT_EQUAL_INT(GZ_COMP_IMU, t.slots[0]);
+}
+
+/* ---- 3. settings codec --------------------------------------------------- */
+static void test_codec_round_trips(void)
+{
+    gz_ui_settings_t in;
+    gz_ui_settings_defaults(&in);
+    in.face       = GZ_FACE_COMMAND;
+    in.accent     = 5;
+    in.background = GZ_BG_TEXTURE;
+    in.always_on  = 1;
+    in.slots[0]   = GZ_COMP_IMU;
+    in.slots[1]   = GZ_COMP_BATTERY;
+    in.slots[2]   = GZ_COMP_RECON;
+    in.slots[3]   = GZ_COMP_DECODE;
+
+    uint8_t blob[GZ_SETTINGS_WIRE_LEN];
+    int n = gz_ui_settings_encode(&in, blob);
+    TEST_ASSERT_EQUAL_INT(GZ_SETTINGS_WIRE_LEN, n);
+
+    gz_ui_settings_t out;
+    TEST_ASSERT_TRUE(gz_ui_settings_decode(blob, n, &out));
+    TEST_ASSERT_EQUAL_MEMORY(&in, &out, sizeof in);
+}
+
+static void test_codec_defaults_round_trip(void)
+{
+    gz_ui_settings_t d, out;
+    gz_ui_settings_defaults(&d);
+    uint8_t blob[GZ_SETTINGS_WIRE_LEN];
+    int n = gz_ui_settings_encode(&d, blob);
+    TEST_ASSERT_TRUE(gz_ui_settings_decode(blob, n, &out));
+    TEST_ASSERT_EQUAL_MEMORY(&d, &out, sizeof d);
+}
+
+static void test_codec_rejects_bad_blobs_to_defaults(void)
+{
+    gz_ui_settings_t def, out;
+    gz_ui_settings_defaults(&def);
+
+    /* null / short / long / bad magic / bad version all -> defaults, false. */
+    TEST_ASSERT_FALSE(gz_ui_settings_decode(NULL, GZ_SETTINGS_WIRE_LEN, &out));
+    TEST_ASSERT_EQUAL_MEMORY(&def, &out, sizeof def);
+
+    uint8_t good[GZ_SETTINGS_WIRE_LEN];
+    gz_ui_settings_encode(&def, good);
+
+    TEST_ASSERT_FALSE(gz_ui_settings_decode(good, GZ_SETTINGS_WIRE_LEN - 1, &out));
+    TEST_ASSERT_EQUAL_MEMORY(&def, &out, sizeof def);
+    TEST_ASSERT_FALSE(gz_ui_settings_decode(good, GZ_SETTINGS_WIRE_LEN + 1, &out));
+
+    uint8_t bad_magic[GZ_SETTINGS_WIRE_LEN];
+    memcpy(bad_magic, good, sizeof good);
+    bad_magic[0] = 0x00;
+    TEST_ASSERT_FALSE(gz_ui_settings_decode(bad_magic, GZ_SETTINGS_WIRE_LEN, &out));
+    TEST_ASSERT_EQUAL_MEMORY(&def, &out, sizeof def);
+
+    uint8_t bad_ver[GZ_SETTINGS_WIRE_LEN];
+    memcpy(bad_ver, good, sizeof good);
+    bad_ver[1] = 0xFE;   /* an older/newer schema */
+    TEST_ASSERT_FALSE(gz_ui_settings_decode(bad_ver, GZ_SETTINGS_WIRE_LEN, &out));
+    TEST_ASSERT_EQUAL_MEMORY(&def, &out, sizeof def);
+}
+
+int main(int, char **)
+{
+    UNITY_BEGIN();
+    RUN_TEST(test_select_requested_when_available);
+    RUN_TEST(test_select_out_of_range_falls_back_to_first_fit);
+    RUN_TEST(test_caps_filter_primitive);
+    RUN_TEST(test_all_board_complications_show_everywhere);
+    RUN_TEST(test_gated_complications_follow_the_hardware);
+    RUN_TEST(test_sanitise_drops_unsourceable_slots);
+    RUN_TEST(test_codec_round_trips);
+    RUN_TEST(test_codec_defaults_round_trip);
+    RUN_TEST(test_codec_rejects_bad_blobs_to_defaults);
+    return UNITY_END();
+}
