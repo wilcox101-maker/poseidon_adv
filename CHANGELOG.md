@@ -15,6 +15,10 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   oscillator-stopped seed policy — `test/test_godzilla_rtc`) with the Wire I2C
   read/write on-target only. Boot bring-up seeds the clock from firmware build
   time when the oscillator stopped (cold boot / no backup cell). Passive.
+- **GODZILLA node — boot I2C scan labels.** The scan now names the other parts
+  on the 1.85B's bus (QMI8658 IMU 0x6B, BQ27220 gauge 0x55, and the audio parts
+  at 0x18 / 0x40, the last two inferred) instead of "unknown". Labels only;
+  nothing new is driven.
 - **GODZILLA node — CST816S touch (P2a).** Capacitive touch on the shared I2C
   bus (`godzilla_node/main/gz_touch.h`) as an LVGL 9 pointer input. Pure,
   native-tested report parse / orientation / name tables

@@ -33,7 +33,7 @@ void setup()
 
     /* P2a board bring-up, before the radios: confirm PSRAM is mapped (the UI
      * framebuffer will live there) and probe the I2C bus so Dale's first flash
-     * settles the still-unconfirmed touch/RTC pins. Fail loudly on no PSRAM. */
+     * confirms the touch/RTC pins on real hardware. Fail loudly on no PSRAM. */
     size_t psram = ESP.getPsramSize();
     if (psram == 0) {
         Serial.println("!! PSRAM NOT DETECTED (ESP.getPsramSize()==0) — check "
