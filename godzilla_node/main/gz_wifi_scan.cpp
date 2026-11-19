@@ -24,6 +24,7 @@
 #include "gz_batch.h"
 #include "gz_link.h"
 #include "gz_stats.h"
+#include "gz_radar_store.h"  /* P2b: radar of what was published */
 
 #include <Arduino.h>
 #include <esp_wifi.h>
@@ -91,6 +92,7 @@ static void publish_if_due(uint32_t now)
     if (n) {
         gz_link_send(&msg);   /* gz_link_send returns to ch1 for the TX */
         gz_stats_note_publish(GZ_RADIO_WIFI, snap.count);   /* status screen (P2a) */
+        gz_radar_feed(GZ_RADAR_WIFI, (const uint8_t *)snap.det, snap.count, now);  /* P2b radar */
     }
     s_last_pub_ms = now;
 }

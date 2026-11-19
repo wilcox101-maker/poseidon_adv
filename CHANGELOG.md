@@ -22,6 +22,14 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   finger already down), so the auto-sleeping controller is never polled into
   NACKs. The status screen gains a bench line: chip, last gesture, last point.
   Passive.
+- **GODZILLA node — radar screen (P2b).** New home screen: a round radar of
+  the node's own published detections (`gz_radar.h` table + geometry,
+  `gz_radar_store.*` spinlocked copy, `gz_ui_radar.*` LVGL). Radius from RSSI,
+  a stable hashed bearing per address (layout slot, not direction), family
+  colours matching the Cardputer GODZILLA view (red surveillance / Remote ID,
+  amber trackers), 60 s TTL with a 30 s fade. Tap a dot for a detail card
+  (family, RSSI, address, age, hits); swipe left/right for the status screen.
+  Original trident glyph. Native-tested (`test/test_godzilla_radar`). Passive.
 
 ## [0.9.2] - 2026-11-16
 
