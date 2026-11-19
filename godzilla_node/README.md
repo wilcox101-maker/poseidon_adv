@@ -17,7 +17,8 @@ Wire contract: [`docs/godzilla-detection-publish-contract.md`](../docs/godzilla-
 | ESP-NOW link + HELLO (`main/gz_link.*`, `main/gz_hello.h`) | task 3a — STA ch1, broadcast peer, HELLO every 5 s; HELLO builder native-tested (`test/test_godzilla_hello`) |
 | Passive BLE scan → batch → publish (`main/gz_ble_scan.*`) | task 3b — continuous NimBLE passive scan → `det_classify_ble` → `gz_batch.h`, broadcast every ~1 s; publish-timing predicate native-tested (`test/test_godzilla_publish_due`) |
 | Passive Wi-Fi scan → batch → publish (`main/gz_wifi_scan.*`) | task 3c — promiscuous mgmt capture hopping 1..13 → `flock_frame_classify` → `gz_batch.h`, broadcast every ~1 s (returns to ch1 to send); hop step native-tested (`test/test_godzilla_wifi_hop`) |
-| Board pin map (`main/gz_board.h`) | task 2a — cited 1.85B pins (LCD/touch/RTC), collision-guarded, native-tested (`test/test_godzilla_board`); display/touch/RTC drivers next |
+| Board pin map (`main/gz_board.h`) | task 2a — cited 1.85B pins (LCD/touch/RTC), collision-guarded, native-tested (`test/test_godzilla_board`) |
+| Display + status screen (`main/gz_display.*`, `main/gz_ui.*`, `main/gz_stats.*`) | task 2a — ST77916 QSPI via vendored `esp_lcd_st77916` + Waveshare's two panel-revision init tables (picked from reg 0x04), LVGL 9.2.2 in its own task; status screen from publish counters. Rev pick + status formatters native-tested (`test/test_godzilla_display_rev`, `test/test_godzilla_status`). Touch + RTC next |
 
 ## Board
 
