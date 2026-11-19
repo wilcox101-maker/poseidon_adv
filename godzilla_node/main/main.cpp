@@ -15,6 +15,7 @@
 #include "gz_ble_scan.h"   /* task 3b: passive BLE scan → batch → publish */
 #include "gz_wifi_scan.h"  /* task 3c: passive Wi-Fi scan → batch → publish */
 #include "gz_i2c_scan.h"   /* P2a: boot-time I2C bus probe (touch + RTC) */
+#include "gz_rtc.h"        /* P2a: PCF85063 RTC read / build-time seed */
 
 static constexpr uint32_t GZ_HELLO_PERIOD_MS = 5000;
 
@@ -38,6 +39,13 @@ void setup()
         Serial.printf("  PSRAM: %u KB\n", (unsigned)(psram / 1024));
     }
     gz_i2c_scan_report();
+
+    /* RTC bring-up on the same bus the scan just opened: read the PCF85063 and,
+     * if its oscillator stopped (cold boot / no backup cell), seed it from the
+     * firmware build time so the clock and the later pocket-watch face start
+     * sane. Passive — I2C to a soldered peripheral, no radio. */
+    gz_datetime_t gz_now;
+    gz_rtc_begin(&gz_now);
 
     gz_link_init();
     gz_link_send_hello();        /* announce immediately, like c5_node */
