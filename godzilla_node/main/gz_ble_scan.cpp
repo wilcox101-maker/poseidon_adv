@@ -22,6 +22,7 @@
  * persistent device.
  */
 #include "gz_ble_scan.h"
+#include "gz_ble_lab_store.h"  /* BLE Lab: latest raw advert per device */
 #include "gz_batch.h"
 #include "gz_link.h"
 #include "gz_stats.h"
@@ -53,6 +54,9 @@ class GzBleScanCb : public NimBLEScanCallbacks {
          * det_classify_ble is pure and allocation-free. */
         const std::vector<uint8_t> &pl = dev->getPayload();
         uint8_t fam = det_classify_ble(pl.data(), pl.size());
+        /* BLE Lab (#98 §2.4): keep this device's latest raw advert for the
+         * passive decoder. Its own spinlock; a 31-byte copy at most. */
+        gz_ble_lab_feed(addr, atype, rssi, pl.data(), (int)pl.size(), (uint32_t)millis());
 
         portENTER_CRITICAL(&s_mux);
         if (gz_ble_batch_add(&s_stage, addr, atype, rssi, fam) == GZ_ADD_FULL)

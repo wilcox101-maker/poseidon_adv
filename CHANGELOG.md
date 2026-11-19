@@ -8,6 +8,16 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **GODZILLA node — BLE Lab decoder and store (#98 §2.4, part a).** A pure,
+  bounds-checked advertisement decoder (`godzilla_node/main/gz_ble_adv.h`:
+  flags, names, TX power, appearance, 16/32/128-bit UUID lists, service and
+  manufacturer data, HID detection, one-line summary) and a 24-row table of
+  recently heard adverts (`gz_ble_lab.h`, least-recently-heard eviction, >31-byte
+  payloads kept truncated and flagged), fed from the existing passive scan
+  callback through a spinlocked store. Native-tested (`test/test_godzilla_ble_adv`,
+  also clean under ASan/UBSan). Passive only: HID reports and GATT need a
+  connection, which stays Dale-gated, so `src/hid_decode` is not copied. The
+  screen follows in part b.
 - **GODZILLA node — PCF85063 RTC driver (P2a).** Real-time clock on the node's
   shared touch+RTC I2C bus (`godzilla_node/main/gz_rtc.h`): pure, native-tested
   BCD/time logic (decode/encode with OS-flag + reserved-bit masking, strict
