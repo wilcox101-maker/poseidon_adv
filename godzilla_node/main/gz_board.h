@@ -50,6 +50,18 @@
 #define GZ_I2C_ADDR_RTC   0x51
 #define GZ_PIN_RTC_INT     6
 
+/* ---- Other parts on the same I2C bus (not driven yet; P3) ----
+ * Named so the boot I2C scan can label them instead of printing "unknown".
+ * IMU and gauge addresses are from Waveshare's 1.85B page
+ * (docs.waveshare.com/ESP32-S3-Touch-LCD-1.85B). That page lists the codecs
+ * as 0x30 / 0x80, which are 8-bit forms; the 7-bit values below are those
+ * shifted right by one and match the parts' usual defaults — INFERRED, to be
+ * confirmed by the scan on Dale's bench. */
+#define GZ_I2C_ADDR_IMU     0x6B   /* QMI8658 6-axis IMU            */
+#define GZ_I2C_ADDR_GAUGE   0x55   /* BQ27220 battery gauge         */
+#define GZ_I2C_ADDR_CODEC   0x18   /* ES8311 audio codec (inferred) */
+#define GZ_I2C_ADDR_MIC_ADC 0x40   /* ES7210 mic ADC (inferred)     */
+
 /* Compile-time guards: the touch and RTC deliberately SHARE the I2C bus, but
  * nothing else may collide. A fat-fingered pin edit fails the build here. */
 #if defined(__cplusplus) || (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L)
