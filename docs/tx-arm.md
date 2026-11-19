@@ -24,22 +24,27 @@ transmission can start.
 ## Gated actions
 
 WiFi: deauth, deauth-all, AP clone, evil-twin, beacon spam, karma, CIW,
-portal. BLE: spam, HID, beacon, clone, flood, karma, sourapple, findmy,
-blueducky, whisperpair. Sub-GHz: jammer, broadcast, replay, bruteforce.
-nRF24: jammer, mousejack, BLE-spam. C5: deauth-5G, nuke-5G, beacon spam,
-CIW, AP clone, karma.
+portal, **AP Signal Test** (SoftAP beacon). BLE: spam, HID, beacon, clone,
+flood, karma, sourapple, findmy, blueducky, whisperpair. Sub-GHz: jammer,
+broadcast, replay, bruteforce. nRF24: jammer, mousejack, BLE-spam. C5:
+deauth-5G, nuke-5G, beacon spam, CIW, AP clone, karma. **nRF52:** MITM,
+MITM-Relay, Scout+Strike, WiFi+BLE combo. **Argus** (auto-deauth).
 
 Passive features (scan, sniff, detect, spectrum, finder) are **not**
 gated.
 
+**In-feature attack hotkeys are gated too.** The deauth/clone/portal keys on
+the WiFi-scan detail screen (`D`/`X`/`C`/`P`) and the active BLE keys on the
+BLE-scan detail screen (`G`/`H`/`X`/`P`/`C`/`W`, including the
+`whisperpair_from_target` entry point) call `tx_arm_require()` at their own
+transmit point, so they refuse while SAFE. Passive PMKID capture, client-hunt
+and the RSSI tracker still run while SAFE — only their active deauth sub-steps
+self-gate.
+
 ## Known gaps (follow-ups)
 
-1. **In-feature attack hotkeys** (e.g. Scan → `D` deauth) call the TX
-   functions directly, bypassing `menu_execute_action`. Covering them
-   means gating at each function's transmit point — best done with the
-   on-target build loop to confirm the passive paths still work.
-2. **IR pranks** are not gated yet (low-power, non-RF). Easy to add to
-   the table if wanted.
+1. **IR TX** (TV-B-Gone, remote, clone, the IR pranks) is not gated —
+   low-power, non-RF. Add the IR entry points to the gate if wanted.
 
 ## Verification status
 

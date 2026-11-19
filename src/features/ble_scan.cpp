@@ -13,6 +13,7 @@
  *   FN+`     back
  */
 #include "app.h"
+#include "tx_arm.h"   /* gate the in-feature active hotkeys (G/C/H/X/P/W) */
 #include "../theme.h"
 #include "ui.h"
 #include "input.h"
@@ -655,12 +656,15 @@ void feat_ble_scan(void)
                 if (k2 == PK_NONE) { delay(20); continue; }
                 if (k2 == PK_ESC) break;
                 char ch = (char)tolower((int)k2);
-                if (ch == 'g') { feat_ble_gatt();  break; }
-                if (ch == 'c') { feat_ble_clone(); break; }
-                if (ch == 'h') { feat_ble_hid();   break; }
-                if (ch == 'x') { feat_ble_flood(); break; }
-                if (ch == 'p') { feat_ble_spam();  break; }
-                if (ch == 'w') { feat_ble_whisperpair_from_target(); break; }
+                /* Active BLE actions (connect / advertise / spam) go behind the
+                 * master TX-arm gate, like their menu-launch entries; the passive
+                 * Track/finder below is never gated. */
+                if (ch == 'g') { if (tx_arm_require()) feat_ble_gatt();  break; }
+                if (ch == 'c') { if (tx_arm_require()) feat_ble_clone(); break; }
+                if (ch == 'h') { if (tx_arm_require()) feat_ble_hid();   break; }
+                if (ch == 'x') { if (tx_arm_require()) feat_ble_flood(); break; }
+                if (ch == 'p') { if (tx_arm_require()) feat_ble_spam();  break; }
+                if (ch == 'w') { if (tx_arm_require()) feat_ble_whisperpair_from_target(); break; }
                 if (ch == 't' || ch == 'f') {
                     /* Track: Geiger hot/cold RSSI finder on the selected
                      * device. Beeps faster + higher-pitched as you near
