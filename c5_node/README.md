@@ -9,32 +9,46 @@ This firmware turns a C5 into a remote radio for POSEIDON (running on the Cardpu
 
 ## Protocol (over PigSync ESP-NOW)
 
+Wire **v5** (ESP-NOW v2 flag day). The header is a fixed 10 bytes and the frame
+is **variable length** — `payload_len` sits in the header, ahead of `payload`,
+and a sender transmits only `POSEI_HEADER_SZ + payload_len` bytes
+(`posei_wire_len()`), so a PONG is ~10 bytes on air while a large RESP batch uses
+the headroom up to `POSEI_PAYLOAD_MAX` (1024). The authoritative definition is
+`c5_node/main/proto.h`, kept byte-identical with the S3 side `src/c5_cmd.h`.
+
 ```c
 struct posei_msg_t {
-    uint32_t magic;       // 0x504F5345 "POSE"
-    uint8_t  version;     // 5
+    uint32_t magic;        // 0x504F5345 "POSE"
+    uint8_t  version;      // 5
     uint8_t  type;         // see POSEI_TYPE_*
     uint16_t seq;
-    uint8_t  payload[230];
-    uint8_t  payload_len;
-} __packed;
+    uint16_t payload_len;  // bytes used in payload (ahead of payload → var length)
+    uint8_t  payload[POSEI_PAYLOAD_MAX];  // 1024
+} __packed;                // header = 10 bytes
 ```
 
-Types:
+Types (see `proto.h` for the full set and payload structs):
 
 | Type | Name | Direction | Payload |
 |------|------|-----------|---------|
-| 1    | HELLO            | both | node name, heap, gps |
+| 1    | HELLO            | both  | name, heap, role, caps |
 | 10   | CMD_PING         | S3→C5 | — |
 | 11   | CMD_SCAN_5G      | S3→C5 | duration_ms |
 | 12   | CMD_SCAN_ZB      | S3→C5 | channel or 0xFF for hop |
 | 13   | CMD_SCAN_2G      | S3→C5 | duration_ms |
-| 14   | CMD_DEAUTH_5G    | S3→C5 | bssid + channel |
+| 14   | CMD_DEAUTH       | S3→C5 | bssid + channel + bcast_all |
 | 15   | CMD_STOP         | S3→C5 | — |
-| 20   | RESP_PONG        | C5→S3 | — |
-| 21   | RESP_AP_BATCH    | C5→S3 | count + array of APs |
-| 22   | RESP_ZB_FRAME    | C5→S3 | pan id + src + dst |
-| 23   | RESP_STATUS      | C5→S3 | last_cmd + ok flag |
+| 16–26 | CMD_PMKID … CMD_CIW | S3→C5 | PMKID, handshake, clients hunt, probe sniff, deauth detect, karma, apclone, spectrum, CIW |
+| 40   | RESP_PONG        | C5→S3 | — |
+| 41   | RESP_AP          | C5→S3 | AP record(s) |
+| 42   | RESP_ZB          | C5→S3 | pan id + src + dst |
+| 43   | RESP_STATUS      | C5→S3 | last_cmd + ok flag |
+| 44–49 | RESP_PMKID … RESP_SPECTRUM | C5→S3 | PMKID, handshake, STA, probe, deauth hit, spectrum |
+| 60   | RESP_WIFI_DET    | node→S3 | GODZILLA Wi-Fi detection batch (node_id + entries) |
+| 61   | RESP_BLE_DET     | node→S3 | GODZILLA BLE detection batch (node_id + entries) |
+
+Types 60–61 are published by the full-UI GODZILLA node, not the C5; the C5's
+on-air format is unchanged by their addition.
 
 ## Building
 
