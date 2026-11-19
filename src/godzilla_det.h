@@ -16,8 +16,9 @@
  * what the node says about itself (informational). Both are kept per row.
  *
  * Trust: `count` and every field come from the radio. A frame whose count
- * exceeds GZ_DET_BATCH_MAX, or whose length cannot hold `count` entries, is
- * rejected whole, so no byte past payload_len is ever read.
+ * exceeds GZ_DET_BATCH_MAX, or whose payload_len is not exactly
+ * 2 + 10 * count (the consumer contract, #45), is rejected whole, so no byte
+ * past payload_len is ever read.
  */
 #pragma once
 
@@ -85,7 +86,8 @@ static inline int gz_det_ingest(gz_det_table_t *t, uint8_t kind,
     const uint8_t node_id = payload[0];
     const uint8_t count   = payload[1];
     if (count > GZ_DET_BATCH_MAX) return -1;
-    if ((size_t)GZ_DET_HDR_SZ + (size_t)count * GZ_DET_ENTRY_SZ > payload_len) return -1;
+    /* Exact length, per docs/godzilla-detection-publish-contract.md (#45). */
+    if ((size_t)GZ_DET_HDR_SZ + (size_t)count * GZ_DET_ENTRY_SZ != payload_len) return -1;
 
     int applied = 0;
     for (uint8_t k = 0; k < count; ++k) {

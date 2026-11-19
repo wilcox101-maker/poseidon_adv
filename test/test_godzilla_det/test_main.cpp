@@ -133,12 +133,15 @@ static void test_rejects_bad_args(void)
     TEST_ASSERT_EQUAL_INT(-1, gz_det_ingest(&T, 9, (const uint8_t *)&b, (uint16_t)n, MAC_A, 1));
 }
 
-/* Trailing bytes past count*10 are tolerated (forward-compatible extension). */
-static void test_trailing_bytes_tolerated(void)
+/* Length must equal the size count implies (contract #45): trailing bytes
+ * reject the frame just as missing ones do. */
+static void test_trailing_bytes_rejected(void)
 {
     posei_wifi_det_t b;
     size_t n = wifi_batch(&b, 1, 2, 0);
-    TEST_ASSERT_EQUAL_INT(2, gz_det_ingest(&T, GZ_KIND_WIFI, (const uint8_t *)&b, (uint16_t)(n + 10), MAC_A, 1));
+    TEST_ASSERT_EQUAL_INT(-1, gz_det_ingest(&T, GZ_KIND_WIFI, (const uint8_t *)&b, (uint16_t)(n + 1), MAC_A, 1));
+    TEST_ASSERT_EQUAL_INT(-1, gz_det_ingest(&T, GZ_KIND_WIFI, (const uint8_t *)&b, (uint16_t)(n + 10), MAC_A, 1));
+    TEST_ASSERT_EQUAL_INT(0, T.n);
 }
 
 static void test_all_zero_addr_skipped(void)
@@ -269,7 +272,7 @@ int main(int, char **)
     RUN_TEST(test_rejects_short_and_lying_frames);
     RUN_TEST(test_rejects_count_over_max);
     RUN_TEST(test_rejects_bad_args);
-    RUN_TEST(test_trailing_bytes_tolerated);
+    RUN_TEST(test_trailing_bytes_rejected);
     RUN_TEST(test_all_zero_addr_skipped);
     RUN_TEST(test_upsert_refreshes);
     RUN_TEST(test_duplicate_inside_one_batch);
