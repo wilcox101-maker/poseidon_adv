@@ -141,6 +141,14 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   1.85B and ES3C28P, SPI on the 2.06 (its own SPI3 host; the display holds
   SPI2), both bundled with the Arduino core. The Recon writer is otherwise
   unchanged and still never formats a card. All three boards now record.
+- **GODZILLA node — battery readout on the AMOLED-2.06 and the ES3C28P.**
+  `godzilla_node/main/gz_power.h` puts a power line on the status screen,
+  read-only and showing only what the hardware measured. The 2.06 reads its
+  AXP2101 PMIC (VBUS, battery present, charging state; percentage and voltage
+  only when the PMIC's own gauge / ADC are already running, since enabling them
+  takes a write and the PMIC is never written). The ES3C28P reads its battery
+  divider on IO9 (2:1, R14 / R15 200 k from the schematic), as volts only, with
+  no guessed percentage. Native-tested (`test/test_godzilla_power`).
 
 ## [0.9.2] - 2026-11-16
 
