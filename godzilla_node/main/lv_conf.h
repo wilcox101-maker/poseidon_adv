@@ -37,4 +37,9 @@
  * of the image. */
 #define LV_BUILD_EXAMPLES 0
 
+/* Observer (lv_subject): the watch faces bind widgets to the node's live state
+ * so they self-update without polling (watch-faces unit 1, gz_face_subjects).
+ * Default-on in 9.2.2; pinned here so the subjects never vanish on a reconfig. */
+#define LV_USE_OBSERVER 1
+
 #endif /* LV_CONF_H */
