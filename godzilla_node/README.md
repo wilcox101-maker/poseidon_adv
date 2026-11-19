@@ -17,6 +17,15 @@ Wire contract: [`docs/godzilla-detection-publish-contract.md`](../docs/godzilla-
 | ESP-NOW link + HELLO (`main/gz_link.*`, `main/gz_hello.h`) | task 3a — STA ch1, broadcast peer, HELLO every 5 s; HELLO builder native-tested (`test/test_godzilla_hello`) |
 | Passive BLE scan → batch → publish (`main/gz_ble_scan.*`) | task 3b — continuous NimBLE passive scan → `det_classify_ble` → `gz_batch.h`, broadcast every ~1 s; publish-timing predicate native-tested (`test/test_godzilla_publish_due`) |
 | Passive Wi-Fi scan → batch → publish (`main/gz_wifi_scan.*`) | task 3c — promiscuous mgmt capture hopping 1..13 → `flock_frame_classify` → `gz_batch.h`, broadcast every ~1 s (returns to ch1 to send); hop step native-tested (`test/test_godzilla_wifi_hop`) |
+| Board pin map (`main/gz_board.h`) | task 2a — cited 1.85B pins (LCD/touch/RTC), collision-guarded, native-tested (`test/test_godzilla_board`); display/touch/RTC drivers next |
+
+## Board
+
+Pin map for the Waveshare ESP32-S3-Touch-LCD-1.85B lives in `main/gz_board.h`, cited from the
+Waveshare wiki ([ESP32-S3-Touch-LCD-1.85B](https://docs.waveshare.com/ESP32-S3-Touch-LCD-1.85B)).
+This is the **B** revision (LCD reset on GPIO3, not an I/O expander) — do not mix it with the plain
+1.85 map. Peripherals: ST77916 display (QSPI, 360×360), CST816S touch and PCF85063 RTC (shared I2C
+bus, SCL=10 / SDA=11).
 
 Nothing here has run on hardware yet.
 
