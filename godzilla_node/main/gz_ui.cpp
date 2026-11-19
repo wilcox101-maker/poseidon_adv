@@ -12,8 +12,8 @@
  * SPI "color transfer done" ISR calls lv_display_flush_ready(). The backlight
  * comes on only after that first flush completes — no white flash at boot.
  *
- * Screens: a swipe ring, radar -> watch -> status (left = next, right =
- * previous). The home screen is GZ_UI_HOME. Swipes come from LVGL's own
+ * Screens: a swipe ring, radar -> hunt -> watch -> status (left = next,
+ * right = previous). The home screen is GZ_UI_HOME. Swipes come from LVGL's own
  * gesture detection on the touch pointer; a swipe or a long-press never also
  * counts as a tap. Only the visible screen refreshes.
  *
@@ -27,6 +27,7 @@
 #include "gz_touch.h"       /* sole ARDUINO user of the touch driver */
 #include "gz_imu.h"         /* P3: QMI8658 IMU, read live on this task */
 #include "gz_ui_radar.h"
+#include "gz_ui_hunt.h"
 #include "gz_ui_watch.h"
 
 #include <Arduino.h>
@@ -50,7 +51,8 @@ static gz_touch_point_t s_touch_pt = {};   /* last report; LVGL task only */
 static volatile bool s_first_flush_done = false;
 /* Swipe ring order. GZ_UI_HOME is the screen shown at boot — one line to
  * change after the bench. */
-enum { GZ_SCR_RADAR = 0, GZ_SCR_WATCH = 1, GZ_SCR_STATUS = 2, GZ_SCR_COUNT = 3 };
+enum { GZ_SCR_RADAR = 0, GZ_SCR_HUNT = 1, GZ_SCR_WATCH = 2, GZ_SCR_STATUS = 3,
+       GZ_SCR_COUNT = 4 };
 #define GZ_UI_HOME GZ_SCR_RADAR
 
 static lv_obj_t *s_scr[GZ_SCR_COUNT];
@@ -210,6 +212,7 @@ static void refresh_status_screen(void)
 static void refresh_current(uint32_t now)
 {
     if (s_cur == GZ_SCR_RADAR)      gz_ui_radar_refresh(now);
+    else if (s_cur == GZ_SCR_HUNT)  gz_ui_hunt_refresh(now);
     else if (s_cur == GZ_SCR_WATCH) gz_ui_watch_refresh(now);
     else                            refresh_status_screen();
 }
@@ -239,8 +242,9 @@ static void screen_event_cb(lv_event_t *e)
     } else if (code == LV_EVENT_LONG_PRESSED) {
         if (s_cur == GZ_SCR_STATUS || s_suppress_click) return;
         s_suppress_click = true;       /* the release must not also count as a tap */
-        if (s_cur == GZ_SCR_WATCH) gz_ui_watch_long_press(millis());
-        else                       gz_ui_radar_long_press();   /* Recon start/stop */
+        if (s_cur == GZ_SCR_WATCH)     gz_ui_watch_long_press(millis());
+        else if (s_cur == GZ_SCR_HUNT) gz_ui_hunt_long_press();      /* stop hunting */
+        else if (gz_ui_radar_long_press()) go_to(GZ_SCR_HUNT);       /* card: hunt it */
     } else if (code == LV_EVENT_CLICKED) {
         if (s_suppress_click) return;
         lv_point_t p;
@@ -268,6 +272,7 @@ static void ui_task(void *arg)
         wire_screen(s_scr[i]);
     }
     gz_ui_radar_build(s_scr[GZ_SCR_RADAR]);
+    gz_ui_hunt_build(s_scr[GZ_SCR_HUNT]);
     gz_ui_watch_build(s_scr[GZ_SCR_WATCH]);     /* first RTC read, on this task */
     build_status_screen(s_scr[GZ_SCR_STATUS]);
     refresh_current(millis());
@@ -337,7 +342,7 @@ bool gz_ui_start(void)
         Serial.println("!! UI: task create failed — headless");
         return false;
     }
-    Serial.printf("  UI: LVGL %d.%d.%d, 2 x %u B draw buffers, radar + watch + status screens\n",
+    Serial.printf("  UI: LVGL %d.%d.%d, 2 x %u B draw buffers, radar + hunt + watch + status screens\n",
                   LVGL_VERSION_MAJOR, LVGL_VERSION_MINOR, LVGL_VERSION_PATCH,
                   (unsigned)buf_bytes);
     return true;
