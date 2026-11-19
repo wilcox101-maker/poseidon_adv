@@ -50,7 +50,21 @@ void gz_link_init(void)
 
 bool gz_link_send(const posei_msg_t *m)
 {
-    return esp_now_send(GZ_BROADCAST, (const uint8_t *)m, posei_wire_len(m)) == ESP_OK;
+    /* Return to the C5 link channel for the transmit, then restore whatever
+     * channel the Wi-Fi scanner is dwelling on (task 3c hops 1..13). ESP-NOW
+     * only reaches the S3 on its channel, so a publish sent mid-hop would be
+     * lost. All sends run on the main loop, single-threaded with the hopper,
+     * so there is no race with the channel changes. On a node that is not
+     * hopping (3a/3b) the channel is already 1 and this is a no-op. */
+    uint8_t prim = GZ_LINK_CHANNEL;
+    wifi_second_chan_t sec = WIFI_SECOND_CHAN_NONE;
+    esp_wifi_get_channel(&prim, &sec);
+    bool off_channel = (prim != GZ_LINK_CHANNEL);
+
+    if (off_channel) esp_wifi_set_channel(GZ_LINK_CHANNEL, WIFI_SECOND_CHAN_NONE);
+    bool ok = esp_now_send(GZ_BROADCAST, (const uint8_t *)m, posei_wire_len(m)) == ESP_OK;
+    if (off_channel) esp_wifi_set_channel(prim, sec);
+    return ok;
 }
 
 void gz_link_send_hello(void)
