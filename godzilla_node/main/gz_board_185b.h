@@ -38,6 +38,7 @@
 #define GZ_BOARD_HAS_MIC_ADC 1    /* ES7210                                */
 #define GZ_LCD_ROUND         1    /* round 360x360 glass                   */
 #define GZ_BOARD_DISPLAY     1    /* GZ_PANEL_ST77916 (gz_display.cpp)      */
+#define GZ_BOARD_POWER       0    /* BQ27220 fitted but not driven yet     */
 #define GZ_I2C_NAME_TOUCH    "CST816S touch"
 #define GZ_BOARD_TOUCH_FT    0    /* Hynitron CST816S driver (gz_touch.h)  */
 #define GZ_I2C_NAME_GAUGE    "BQ27220 battery gauge (unused)"

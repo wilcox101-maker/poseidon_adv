@@ -30,6 +30,7 @@ Wire contract: [`docs/godzilla-detection-publish-contract.md`](../docs/godzilla-
 | UI geometry (`main/gz_geom.h`) | One source for every screen size: radial parts scale with `min(W,H)/2`, top-anchored layouts centre with clamped widths. Identical values on the 1.85B; fits the 2.06 and ES3C28P. Native-tested (`test/test_godzilla_geom`) |
 | IMU (`main/gz_imu.h`) | QMI8658, read-only, behind `GZ_BOARD_HAS_IMU` (1.85B + 2.06; compiled out on the ES3C28P). Boot WHO_AM_I 0x05; status line still/moving + orientation with hysteresis. Native-tested (`test/test_godzilla_imu`) |
 | Display back ends (`main/gz_display_co5300.cpp`, `main/gz_display_ili9341.cpp`, `main/gz_panel_tables.h`) | CO5300 QSPI AMOLED (2.06) and ILI9341V SPI (ES3C28P) behind `gz_display.h`, selected by `GZ_BOARD_DISPLAY`; reuse the vendored ST77916 driver with vendor init tables. Tables native-tested (`test/test_godzilla_panel`) |
+| Power readout (`main/gz_power.h`) | Read-only status line: AXP2101 on the 2.06 (VBUS / battery / charging; % and V only when the PMIC already measures them), IO9 divider on the ES3C28P (volts only). Native-tested (`test/test_godzilla_power`) |
 
 ## Board
 

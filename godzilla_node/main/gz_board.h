@@ -19,6 +19,7 @@
  *   GZ_LCD_ROUND       1 = round glass; 0 = rectangular panel
  *   GZ_BOARD_TOUCH_FT  1 = FocalTech touch (gz_touch_ft.h); 0 = CST816S
  *   GZ_BOARD_DISPLAY   display back end: 1 ST77916, 2 CO5300, 3 ILI9341V
+ *   GZ_BOARD_POWER     power readout: 0 none, 1 AXP2101 (read-only), 2 ADC divider
  *                      (GZ_PANEL_* in gz_panel_tables.h; one gz_display_*.cpp each)
  *   GZ_LCD_WIDTH / GZ_LCD_HEIGHT
  *   GZ_PIN_I2C_SCL / GZ_PIN_I2C_SDA, GZ_I2C_ADDR_TOUCH / _RTC / _IMU / _GAUGE /

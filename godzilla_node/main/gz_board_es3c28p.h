@@ -9,7 +9,8 @@
  *         RST shared with the S3's EN (no GPIO), backlight IO45 (high = on)
  *   Touch FT6336G I2C: SDA=16 SCL=15 RST=18 (low = reset) INT=17 (low on touch)
  *   TF    SDIO 4-bit: CLK=38 CMD=40 D0=39 D1=41 D2=48 D3=47
- *   Audio ES8311 + FM8002E amp: EN=IO1 (low = enabled), I2S MCLK=4 BCLK=5
+ *   Audio ES8311 + 8002-class amp (lcdwiki lists FM8002E; the schematic shows
+ *         SC8002B U6, SHUTDOWN active-high): EN=IO1 (low = enabled), I2S MCLK=4 BCLK=5
  *         DIN=6 LRCK=7 DOUT=8; MEMS mic
  *   Power TP4054 charger, battery ADC on IO9 · RGB LED (WS2812-type) IO42
  *   Keys  BOOT=IO0 · expansion header IO2/3/14/21 · I2C header shares SDA16/SCL15
@@ -43,6 +44,7 @@
 #define GZ_BOARD_HAS_MIC_ADC 0    /* MEMS mic, no I2C mic ADC                */
 #define GZ_LCD_ROUND         0    /* rectangular 240x320 portrait            */
 #define GZ_BOARD_DISPLAY     3    /* GZ_PANEL_ILI9341V (gz_display_ili9341.cpp) */
+#define GZ_BOARD_POWER       2    /* battery divider on IO9 (gz_power.h)      */
 #define GZ_I2C_NAME_TOUCH    "FT6336G touch"
 #define GZ_BOARD_TOUCH_FT    1    /* FocalTech driver (gz_touch_ft.h)         */
 #define GZ_TOUCH_FT_ID_REG   0xA3 /* FT6x36 chip-ID register (inferred; logged only) */
@@ -72,7 +74,7 @@
 /* ---- Audio (not driven; amp held off) ---- */
 #define GZ_I2C_ADDR_CODEC 0x18   /* ES8311 (inferred) */
 #define GZ_PIN_AMP_EN      1
-#define GZ_AMP_OFF_LEVEL   1     /* FM8002E: low = enabled, so drive high */
+#define GZ_AMP_OFF_LEVEL   1     /* 8002 amp: low = enabled, so drive high */
 #define GZ_PIN_I2S_MCLK    4
 #define GZ_PIN_I2S_BCLK    5
 #define GZ_PIN_I2S_DIN     6
@@ -89,6 +91,8 @@
 
 /* ---- Power / extras ---- */
 #define GZ_PIN_BATT_ADC    9
+#define GZ_BATT_DIV_NUM    2     /* R14 200k / R15 200k (lcdwiki schematic): */
+#define GZ_BATT_DIV_DEN    1     /* V_batt = 2 x V_pin                        */
 #define GZ_PIN_RGB_LED    42
 #define GZ_PIN_KEY_BOOT    0
 

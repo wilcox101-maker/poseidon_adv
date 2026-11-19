@@ -26,6 +26,7 @@
 #include "gz_st77916_rev.h"
 #include "gz_touch.h"       /* sole ARDUINO user of the touch driver */
 #include "gz_imu.h"         /* QMI8658 status line (boards with an IMU) */
+#include "gz_power.h"       /* battery / supply line (boards with a readout) */
 #include "gz_ui_radar.h"
 #include "gz_ui_hunt.h"
 #include "gz_ui_watch.h"
@@ -34,6 +35,7 @@
 #include <Arduino.h>
 #include <esp_heap_caps.h>
 #include <lvgl.h>
+#include <stdio.h>
 
 /* Deepwater palette */
 #define GZ_COL_ABYSS   0x031627   /* background */
@@ -127,6 +129,9 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 
 static lv_obj_t *s_lbl_name, *s_lbl_up, *s_lbl_ble, *s_lbl_wifi,
                 *s_lbl_age, *s_lbl_mem, *s_lbl_hw, *s_lbl_touch, *s_lbl_sub;
+#if GZ_BOARD_POWER
+static lv_obj_t *s_lbl_pwr;
+#endif
 #if GZ_BOARD_HAS_IMU
 static lv_obj_t *s_lbl_imu;
 static uint8_t   s_imu_rot = 0;   /* last orientation, feeds the hysteresis */
@@ -173,6 +178,9 @@ static void build_status_screen(lv_obj_t *scr)
     s_lbl_touch = add_label(col, &lv_font_montserrat_14, GZ_COL_DIM);
 #if GZ_BOARD_HAS_IMU
     s_lbl_imu   = add_label(col, &lv_font_montserrat_14, GZ_COL_DIM);
+#endif
+#if GZ_BOARD_POWER
+    s_lbl_pwr   = add_label(col, &lv_font_montserrat_14, GZ_COL_DIM);
 #endif
 }
 
@@ -235,6 +243,29 @@ static void refresh_status_screen(void)
         } else {
             lv_label_set_text(s_lbl_imu, "IMU: read error");
         }
+    }
+#endif
+#if GZ_BOARD_POWER
+    /* Power: only what the hardware measured (gz_power.h). */
+    gz_power_t pw;
+    if (!gz_power_read(&pw)) {
+        lv_label_set_text(s_lbl_pwr, "power: no answer");
+    } else {
+        char v[12] = "", pc[8] = "";
+        if (pw.mv_valid)  snprintf(v, sizeof v, " %u.%02u V", (unsigned)(pw.mv / 1000u),
+                                   (unsigned)((pw.mv % 1000u) / 10u));
+        if (pw.pct_valid) snprintf(pc, sizeof pc, " %u%%", (unsigned)pw.pct);
+#if GZ_BOARD_POWER == 1
+        if (!pw.batt)
+            lv_label_set_text(s_lbl_pwr, pw.vbus ? "USB power, no battery" : "power: no battery");
+        else
+            lv_label_set_text_fmt(s_lbl_pwr, "batt%s%s%s%s", pc, v,
+                                  (pw.mv_valid || pw.pct_valid) ? " | " : " | gauge off | ",
+                                  gz_power_chg_name(pw.chg));
+#else
+        if (pw.mv_valid) lv_label_set_text_fmt(s_lbl_pwr, "batt%s", v);
+        else             lv_label_set_text(s_lbl_pwr, "batt: not measured");
+#endif
     }
 #endif
 }
