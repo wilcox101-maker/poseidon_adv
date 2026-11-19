@@ -14,12 +14,44 @@
   [![release](https://img.shields.io/badge/release-v0.9.2-blueviolet)](https://github.com/wilcox101-maker/poseidon_adv)
   [![version](https://img.shields.io/badge/version-Deepwater-success)](CHANGELOG.md)
   [![use](https://img.shields.io/badge/use-authorized%20%2F%20owned%20hardware-important)](#safety--authorized-use)
+  [![nodes](https://img.shields.io/badge/nodes-TRIDENT%20C5%20%C2%B7%20GODZILLA-teal)](#godzilla--the-new-detection-node)
 
 </div>
 
 ---
 
-## Screenshots
+## GODZILLA — the new detection node
+
+**GODZILLA** is a second POSEIDON node: a passive, full-UI **detection head** with its own touch screen. It scans Wi-Fi and BLE on its own 2.4 GHz radio, classifies what it hears with Poseidon's shared classifiers (Flock-style surveillance cameras, Remote ID drones, AirTag / Find My / Tile / SmartTag trackers, iBeacons), shows it on its own screen, and **publishes every detection to the Cardputer over ESP-NOW v2**. The Cardputer merges detections from every GODZILLA in range — `C5 nodes (5) → x  GODZILLA dets`. It joins the fabric additively (detection types 60/61 on wire v5): no flag day, and the TRIDENT C5's on-air format is untouched.
+
+One source tree builds for **three boards**, chosen at build time; parts a board doesn't have are compiled out, never faked:
+
+| Board | Screen | Touch | Clock / motion / power | microSD | Env |
+| --- | --- | --- | --- | --- | --- |
+| Waveshare ESP32-S3-Touch-LCD-1.85B | ST77916 · 360×360 round · QSPI | CST816S | PCF85063 RTC · QMI8658 IMU | SDMMC | `godzilla` |
+| Waveshare ESP32-S3-Touch-AMOLED-2.06 | CO5300 · 410×502 AMOLED · QSPI | FT3168 | PCF85063 RTC · QMI8658 IMU · AXP2101 battery | SPI | `godzilla-amoled206` |
+| 2.8″ ESP32-S3 Display (ES3C28P) | ILI9341V · 240×320 · SPI | FT6336G | battery voltage (no RTC → no watch) | SDMMC | `godzilla-es3c28p` |
+
+- **Radar** (home) — every contact the node publishes, radius from RSSI, red for surveillance / Remote ID, amber for trackers. Tap a dot for its detail card.
+- **Hunt** — hold a card to follow one contact: live RSSI, a stronger / weaker trend and the last minute of readings. A signal-strength meter, not a direction finder.
+- **Pocket watch** — a working brass-and-ivory watch on the boards with an RTC; long-press to set the time.
+- **Status** — publish counters, uptime, the board's touch / IMU / battery lines.
+- **Recon** — long-press the radar to log a session to microSD as CSV (first sight, then at most every 30 s per device).
+- Swipe between screens; idle dim with wake on touch or motion; auto-rotate on the IMU boards.
+
+**Passive only** — the node transmits nothing but its ESP-NOW HELLO and detection frames. **Status:** code complete; all three boards build in CI and every pure-logic unit has a native test. Nothing has run on hardware yet — the 2.8″ bench pass is next. Node docs: [godzilla_node/README.md](godzilla_node/README.md) · wire contract: [docs/godzilla-detection-publish-contract.md](docs/godzilla-detection-publish-contract.md).
+
+> Rendered from the node's own LVGL 9.2.2 UI code on a PC, at each board's real resolution, with sample data — not device photos.
+
+| | Radar | Hunt | Watch | Status |
+| :--- | :---: | :---: | :---: | :---: |
+| **1.85B** | <img src="docs/screens/godzilla/185b-radar.png" width="170" alt="1.85B radar"> | <img src="docs/screens/godzilla/185b-hunt.png" width="170" alt="1.85B hunt"> | <img src="docs/screens/godzilla/185b-watch.png" width="170" alt="1.85B pocket watch"> | <img src="docs/screens/godzilla/185b-status.png" width="170" alt="1.85B status"> |
+| **AMOLED-2.06** | <img src="docs/screens/godzilla/amoled206-radar.png" width="140" alt="AMOLED-2.06 radar"> | <img src="docs/screens/godzilla/amoled206-hunt.png" width="140" alt="AMOLED-2.06 hunt"> | <img src="docs/screens/godzilla/amoled206-watch.png" width="140" alt="AMOLED-2.06 pocket watch"> | <img src="docs/screens/godzilla/amoled206-status.png" width="140" alt="AMOLED-2.06 status"> |
+| **2.8″ ES3C28P** | <img src="docs/screens/godzilla/es3c28p-radar.png" width="128" alt="ES3C28P radar"> | <img src="docs/screens/godzilla/es3c28p-hunt.png" width="128" alt="ES3C28P hunt"> | — | <img src="docs/screens/godzilla/es3c28p-status.png" width="128" alt="ES3C28P status"> |
+
+Detail card (tap a radar dot): [1.85B](docs/screens/godzilla/185b-card.png) · [AMOLED-2.06](docs/screens/godzilla/amoled206-card.png) · [ES3C28P](docs/screens/godzilla/es3c28p-card.png)
+
+## Screenshots — TRIDENT C5
 
 > Rendered from code at the real 240×135 resolution — [`tools/render_c5_screens.py`](tools/render_c5_screens.py) reproduces the exact draw calls in `src/features/c5_tier2.cpp` with the Deepwater RGB565 palette. Not device photos. The red `ARMED` badge is the TX-arm cue; pixel-exact captures follow the hardware pass.
 
@@ -41,7 +73,7 @@ Full detail in [CHANGELOG.md](CHANGELOG.md). One item owed: the on-device v5 val
 
 ## What's coming
 
-Depth and integration, roughly in order: first-class **pcap/pcapng export** to SD (opens straight in Wireshark), the **educational lab-mode** fleshed out over the shipped shell, **Thread / Matter** observation on the C5's 802.15.4 radio, **cross-radio + GPS** correlation, and the **C5 GPIO expander** ([design spec](docs/specs/2026-11-16-c5-gpio-expander-design.md)). Plus the remaining pre-1.0 items: un-clipped EAPOL, C5 diagnostics Phase B, and multi-node wire fields. The multi-node work opens the door to **GODZILLA** — a second, full-UI detection node on the Waveshare ESP32-S3-Touch-LCD-1.85B that scans on its own 2.4 GHz radio and publishes to the Cardputer over ESP-NOW v2, with a radar/lab UI reimplemented from [Dragon Detector](https://github.com/wilcox101-maker/Dragon-Detector) (MIT, credited). Kickoff brief: [docs/proposals/2026-11-18-godzilla-node.md](docs/proposals/2026-11-18-godzilla-node.md).
+Depth and integration, roughly in order: first-class **pcap/pcapng export** to SD (opens straight in Wireshark), the **educational lab-mode** fleshed out over the shipped shell, **Thread / Matter** observation on the C5's 802.15.4 radio, **cross-radio + GPS** correlation, and the **C5 GPIO expander** ([design spec](docs/specs/2026-11-16-c5-gpio-expander-design.md)). Plus the remaining pre-1.0 items: un-clipped EAPOL and C5 diagnostics Phase B. For **GODZILLA**: the hardware pass (2.8″ board first), a passive BLE-Lab viewer, a three-board bench runbook, and optional alert tones.
 
 ## What this fork adds that upstream lacks
 
@@ -49,16 +81,18 @@ Depth and integration, roughly in order: first-class **pcap/pcapng export** to S
 
 - **Deauth actually goes on air.** The ESP-IDF `ieee80211_raw_frame_sanity_check` filter is identified and defeated — a link-time override on the S3 and a reproducible `libnet80211` binary patch on the C5 — so raw management frames transmit instead of being silently dropped.
 - **TRIDENT ESP32-C5 node over ESP-NOW v2.** The entire 5 GHz Wi-Fi + 802.15.4 capability and the v5 wire protocol ([below](#trident-esp32-c5--esp-now-v2)) — nothing like it upstream.
+- **GODZILLA detection node** ([above](#godzilla--the-new-detection-node)) — a passive, full-UI node on three ESP32-S3 touch boards, with multi-node detection publishing to the Cardputer, shared Wi-Fi/BLE classifiers and Remote ID decoding from Wi-Fi beacons.
 - **Hydra RF cap pin map** — correct PINGEQUA wiring plus shared-SPI arbitration ([below](#hydra-rf-cap-pingequa--works-with-the-bruce-wiring)).
 - **Raw AP/STA bring-up hardened** — every `esp_netif` site destroys a stale netif before creating its own, fixing a duplicate-key crash.
 - **TX-arm safety system**, the `cardputer-launcher` warning cleanup, CI for both firmwares + native tests, and the release-drift guards.
 
-Counted inventory: [FEATURES.md](FEATURES.md). Live divergence ledger (**+109 / −0** vs upstream): [docs/fork-status.md](docs/fork-status.md).
+Counted inventory: [FEATURES.md](FEATURES.md). Live divergence ledger (**+235 / −0** vs upstream): [docs/fork-status.md](docs/fork-status.md).
 
 ### Milestone timeline (newest first)
 
 | When | Milestone |
 | --- | --- |
+| Unreleased (Nov 2026) | **GODZILLA detection node** — passive Wi-Fi/BLE detection head with radar, Hunt, pocket watch, status and microSD Recon, publishing to the Cardputer over ESP-NOW v2 (detection types 60/61, wire v5 unchanged); one tree for three boards (Waveshare 1.85B, Waveshare AMOLED-2.06, 2.8″ ES3C28P); Cardputer `GODZILLA dets` view; shared BLE / Flock classifiers; Remote ID from Wi-Fi beacons. |
 | 0.9.2 (Nov 2026) | C5 **Tier 2** TX/SoftAP suite completes the command surface; **ESP-NOW v2 wire v5** flag day (variable-length, 1024-byte payload); **master TX-arm** switch + residual-hotkey gating; **PUIE UI** (ARMED indicator, C5 dashboard widget, lab-mode shell); C5 in CI + native tests; 2 MB C5 partition; release/partition CI guards; flash-tooling + BOOT-pin (GPIO28) fixes. |
 | 0.9.1 (Nov 2026) | C5 **Tier 1** passive suite (probe sniff, deauth detect, client hunt, activity sweep) + read-only diagnostics screen; Zigbee-vs-Thread labelling. |
 | 0.9.0 (Nov 2026) | **TRIDENT ESP32-C5 companion node** — the only ESP chip here with 5 GHz Wi-Fi + 802.15.4, driven from the Cardputer over ESP-NOW (5 GHz scan / deauth / PMKID, Zigbee sniff). |
@@ -112,11 +146,12 @@ Authorized use only — networks and hardware you own or have written permission
 
 ```text
 pio run -e cardputer -e cardputer-ota -e cardputer-launcher -e cardputer-launcher-dual
+pio run -e godzilla -e godzilla-amoled206 -e godzilla-es3c28p   # GODZILLA: 1.85B, AMOLED-2.06, ES3C28P
 pio test -e native-test
 idf.py -C c5_node build          # TRIDENT C5 — ESP-IDF >= 5.5, target esp32c5
 ```
 
-CI builds every Cardputer profile, compiles `c5_node/`, and runs the native unit tests (protocol layout included) on each push/PR, so a C5 break surfaces in CI, not at flash time. Release packaging (after building the profiles): `scripts/prepare_deepwater_release.ps1 -Version <x.y.z>` refreshes `release_binaries/` + SHA256 sums. On-device UI smoke test: `scripts/test_deepwater_ui.ps1 -Port COM<n>`.
+CI builds every Cardputer profile and all three GODZILLA boards, compiles `c5_node/`, and runs the native unit tests (protocol layout included) on each push/PR, so a C5 break surfaces in CI, not at flash time. Release packaging (after building the profiles): `scripts/prepare_deepwater_release.ps1 -Version <x.y.z>` refreshes `release_binaries/` + SHA256 sums. On-device UI smoke test: `scripts/test_deepwater_ui.ps1 -Port COM<n>`.
 
 > **C5 build note:** if a local C5 build reports a 1 MB app partition, delete the stale generated `c5_node/sdkconfig` and rebuild — it overrides `sdkconfig.defaults` (which selects the 2 MB custom table), and `idf.py fullclean` does not remove it. A fresh checkout / CI is always correct.
 
@@ -129,6 +164,7 @@ CI builds every Cardputer profile, compiles `c5_node/`, and runs the native unit
 - **[@pr3y](https://github.com/pr3y)** — Bruce hardware reference implementations
 - **[@UberGuidoZ](https://github.com/UberGuidoZ)** — Flipper Sub-GHz signal libraries
 - **[@M5Stack](https://github.com/M5Stack)** — hardware design and SDKs
+- **[Valleytech Custom Solutions](https://github.com/valleytechsolutions)** (Your Pal Kal) — [Dragon Detector](https://github.com/valleytechsolutions/Dragon-Detector) (MIT), whose feature set the GODZILLA node reimplements natively; no Dragon Detector source, binaries or artwork are included
 
 ---
 
