@@ -9,6 +9,7 @@
 #include "../../godzilla_node/main/gz_board.h"
 #include "../../godzilla_node/main/gz_i2c_scan.h"
 #include "../../godzilla_node/main/gz_hello.h"
+#include "../../godzilla_node/main/gz_touch.h"   /* FocalTech parser on this board */
 
 void setUp(void) {}
 void tearDown(void) {}
@@ -89,6 +90,23 @@ static void test_hello_name(void)
     TEST_ASSERT_TRUE(strlen(h.name) < sizeof h.name);
 }
 
+static void test_touch_ft3168_clamp(void)
+{
+    TEST_ASSERT_EQUAL_INT(1, GZ_BOARD_TOUCH_FT);
+    TEST_ASSERT_EQUAL_HEX8(0xA0, GZ_TOUCH_FT_ID_REG);
+    /* 0x02..0x06: 1 point, contact, x=409 y=501 -> unchanged; x=500 -> clamped. */
+    uint8_t r[5] = { 1, (uint8_t)(0x80 | (409 >> 8)), (uint8_t)(409 & 0xFF),
+                     (uint8_t)(501 >> 8), (uint8_t)(501 & 0xFF) };
+    gz_touch_point_t p;
+    gz_touch_ft_parse(r, &p);
+    TEST_ASSERT_TRUE(p.pressed);
+    TEST_ASSERT_EQUAL_UINT16(409, p.x);
+    TEST_ASSERT_EQUAL_UINT16(501, p.y);
+    r[1] = (uint8_t)(0x80 | (500 >> 8)); r[2] = (uint8_t)(500 & 0xFF);
+    gz_touch_ft_parse(r, &p);
+    TEST_ASSERT_EQUAL_UINT16(409, p.x);
+}
+
 int main(int argc, char **argv)
 {
     (void)argc; (void)argv;
@@ -99,5 +117,6 @@ int main(int argc, char **argv)
     RUN_TEST(test_sd_spi_and_keys);
     RUN_TEST(test_scan_labels);
     RUN_TEST(test_hello_name);
+    RUN_TEST(test_touch_ft3168_clamp);
     return UNITY_END();
 }

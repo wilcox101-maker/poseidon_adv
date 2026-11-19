@@ -42,6 +42,9 @@
 #define GZ_BOARD_HAS_MIC_ADC 0    /* MEMS mic, no I2C mic ADC                */
 #define GZ_LCD_ROUND         0    /* rectangular 240x320 portrait            */
 #define GZ_I2C_NAME_TOUCH    "FT6336G touch"
+#define GZ_BOARD_TOUCH_FT    1    /* FocalTech driver (gz_touch_ft.h)         */
+#define GZ_TOUCH_FT_ID_REG   0xA3 /* FT6x36 chip-ID register (inferred; logged only) */
+#define GZ_TOUCH_FT_BOOT_MS  200  /* after reset; bench-tunable               */
 
 /* ---- LCD: ILI9341V over 4-wire SPI ---- */
 #define GZ_PIN_LCD_CS     10

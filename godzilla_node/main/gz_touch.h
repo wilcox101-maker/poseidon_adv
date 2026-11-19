@@ -37,6 +37,11 @@
  * Wire transactions and the INT ISR are ARDUINO-only, behind #ifdef. The LVGL
  * indev glue lives in gz_ui.cpp (the only LVGL caller).
  *
+ * Boards: this file is the touch entry point for every board. On the CST816S
+ * board (1.85B, GZ_BOARD_TOUCH_FT 0) its own ARDUINO half below is the driver;
+ * on FocalTech boards it includes gz_touch_ft.h, which provides the same API
+ * (gz_touch_begin / _poll / _found / _name / _last_gesture).
+ *
  * ONE TU ONLY: the ARDUINO half keeps its state in file-static variables, so
  * it must be used from exactly one translation unit — gz_ui.cpp, which calls
  * gz_touch_begin() from gz_ui_start() and gz_touch_poll() from the indev
@@ -155,7 +160,7 @@ static inline const char *gz_touch_gesture_name(uint8_t g)
     }
 }
 
-#ifdef ARDUINO
+#if defined(ARDUINO) && !GZ_BOARD_TOUCH_FT   /* CST816S boards (1.85B) */
 #include <Arduino.h>
 #include <Wire.h>
 
@@ -233,4 +238,12 @@ static inline bool gz_touch_poll(gz_touch_point_t *p)
 
 static inline uint8_t gz_touch_chip_id(void)      { return s_gz_touch_chip_id; }
 static inline uint8_t gz_touch_last_gesture(void) { return s_gz_touch_last_gesture; }
-#endif /* ARDUINO */
+/* Board-neutral API, shared with the FocalTech driver (gz_touch_ft.h). */
+static inline bool        gz_touch_found(void) { return s_gz_touch_chip_id != 0; }
+static inline const char *gz_touch_name(void)  { return gz_touch_chip_name(s_gz_touch_chip_id); }
+#endif /* ARDUINO && !GZ_BOARD_TOUCH_FT */
+
+/* FocalTech boards (AMOLED-2.06, ES3C28P): parser + driver with the same API. */
+#if GZ_BOARD_TOUCH_FT
+#include "gz_touch_ft.h"
+#endif

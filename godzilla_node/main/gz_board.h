@@ -16,6 +16,7 @@
  *                      1 = that I2C part is fitted; 0 = absent, and its
  *                      GZ_I2C_ADDR_* macro is not defined at all
  *   GZ_LCD_ROUND       1 = round glass; 0 = rectangular panel
+ *   GZ_BOARD_TOUCH_FT  1 = FocalTech touch (gz_touch_ft.h); 0 = CST816S
  *   GZ_LCD_WIDTH / GZ_LCD_HEIGHT
  *   GZ_PIN_I2C_SCL / GZ_PIN_I2C_SDA, GZ_I2C_ADDR_TOUCH / _RTC / _IMU / _GAUGE /
  *   _CODEC / _MIC_ADC (each only when fitted), GZ_I2C_NAME_TOUCH and, with a
