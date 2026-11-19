@@ -15,6 +15,10 @@
 void gz_stats_set_static(const char *node_name, uint8_t link_channel,
                          uint32_t psram_kb, uint8_t i2c_found);
 
+/* Boot RTC result (main task -> UI): did it answer, and was it seeded from
+ * build time (so the watch face should hint that the time needs setting). */
+void gz_stats_set_rtc(bool ok, bool seeded);
+
 /* One non-empty batch of `entries` detections went on air for `radio`. */
 void gz_stats_note_publish(gz_radio_t radio, uint8_t entries);
 

@@ -21,6 +21,7 @@ Wire contract: [`docs/godzilla-detection-publish-contract.md`](../docs/godzilla-
 | Display + status screen (`main/gz_display.*`, `main/gz_ui.*`, `main/gz_stats.*`) | task 2a — ST77916 QSPI via vendored `esp_lcd_st77916` + Waveshare's two panel-revision init tables (picked from reg 0x04), LVGL 9.2.2 in its own task; status screen from publish counters. Rev pick + status formatters native-tested (`test/test_godzilla_display_rev`, `test/test_godzilla_status`). |
 | RTC + touch (`main/gz_rtc.h`, `main/gz_touch.h`) | P2a — PCF85063 clock seeded from build time on oscillator stop; CST816S touch as an LVGL pointer, INT-gated reads. Pure logic native-tested (`test/test_godzilla_rtc`, `test/test_godzilla_touch`) |
 | Radar (`main/gz_radar.h`, `main/gz_radar_store.*`, `main/gz_ui_radar.*`) | P2b — home screen: the node's own published detections, radius from RSSI, stable hashed bearing (a layout slot, not a direction), Cardputer family colours (red surveillance / Remote ID, amber trackers). Tap a dot for a detail card; swipe left/right for the status screen. Table + geometry native-tested (`test/test_godzilla_radar`) |
+| Pocket watch (`main/gz_watch.h`, `main/gz_ui_watch.*`) | P2c — brass-and-ivory watch face from LVGL primitives: Roman numerals (IIII), ticking second hand, software clock resynced from the PCF85063 about once a minute. Long-press sets the time (tap upper half hour +1, lower half minute +1, long-press writes the RTC, 15 s idle cancels). Swipe ring radar → watch → status. Model native-tested (`test/test_godzilla_watch`) |
 
 ## Board
 
