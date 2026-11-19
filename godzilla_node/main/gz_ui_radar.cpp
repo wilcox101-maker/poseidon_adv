@@ -14,7 +14,8 @@
  * with a finger-sized tolerance (a 10 px dot is too small to aim at).
  *
  * Recon (P3): a long-press starts or stops a session log on the SD card
- * (gz_recon_task). While one runs, a red "REC n" line sits above the footer;
+ * (gz_recon_task). Hunt (P3): a long-press while a card is open picks that
+ * contact for the Hunt screen instead. While one runs, a red "REC n" line sits above the footer;
  * "no SD card" / "SD error" show there for a few seconds when a start fails.
  *
  * Deepwater palette, original artwork only.
@@ -198,7 +199,7 @@ void gz_ui_radar_build(lv_obj_t *scr)
     s_card_addr = card_label(&lv_font_montserrat_14, COL_FOAM);
     s_card_age  = card_label(&lv_font_montserrat_14, COL_DIM);
     lv_obj_t *hint = card_label(&lv_font_montserrat_12, COL_DIM);
-    lv_label_set_text(hint, "tap to close");
+    lv_label_set_text(hint, "hold: hunt  |  tap: close");
     lv_obj_add_flag(s_card, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -305,10 +306,15 @@ void gz_ui_radar_refresh(uint32_t now)
     refresh_card(now);
 }
 
-void gz_ui_radar_long_press(void)
+bool gz_ui_radar_long_press(void)
 {
-    if (s_card_open) return;            /* the card is modal: close it first */
+    if (s_card_open) {                  /* hold on a card: hunt that contact */
+        s_card_open = false;
+        lv_obj_add_flag(s_card, LV_OBJ_FLAG_HIDDEN);
+        return gz_radar_store_hunt_select(s_card_kind, s_card_addr_key);
+    }
     gz_recon_toggle();
+    return false;
 }
 
 void gz_ui_radar_tap(int32_t x, int32_t y, uint32_t now)
