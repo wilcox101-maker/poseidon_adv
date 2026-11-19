@@ -128,6 +128,24 @@ static inline int odid_decode_message(const uint8_t *m, size_t len, odid_info_t 
     }
 }
 
+/* Decode a message pack [0xF?][size=25][count 1..9][count x 25].
+ * Returns messages decoded, or -1 if the pack header or length is wrong. */
+static inline int odid_decode_pack(const uint8_t *m, size_t mlen, odid_info_t *out)
+{
+    if (!m || !out || mlen < 3 || (m[0] >> 4) != ODID_MSG_PACK) return -1;
+    uint8_t size = m[1], count = m[2];
+    if (size != ODID_MSG_SIZE || count == 0 || count > ODID_PACK_MAX) return -1;
+    if (3 + (size_t)count * ODID_MSG_SIZE > mlen) return -1;
+
+    int n = 0;
+    for (uint8_t k = 0; k < count; ++k) {
+        const uint8_t *e = m + 3 + (size_t)k * ODID_MSG_SIZE;
+        if ((e[0] >> 4) == ODID_MSG_PACK) continue;      /* no nesting */
+        if (odid_decode_message(e, ODID_MSG_SIZE, out) >= 0) n++;
+    }
+    return n;
+}
+
 /* Decode a BLE 0xFFFA service-data body (bytes after the UUID).
  * Returns the number of messages decoded (0 if none were storable types),
  * or -1 if the framing is wrong (no app code, short, bad pack header). */
@@ -140,17 +158,60 @@ static inline int odid_decode_ble_svc(const uint8_t *sd, size_t len, odid_info_t
 
     if ((m[0] >> 4) != ODID_MSG_PACK)
         return odid_decode_message(m, mlen, out) >= 0 ? 1 : 0;
+    return odid_decode_pack(m, mlen, out);
+}
 
-    if (mlen < 3) return -1;
-    uint8_t size = m[1], count = m[2];
-    if (size != ODID_MSG_SIZE || count == 0 || count > ODID_PACK_MAX) return -1;
-    if (3 + (size_t)count * ODID_MSG_SIZE > mlen) return -1;
+/* ---- Wi-Fi Beacon transport ----
+ * Vendor-specific IE 221: [DD][len][FA 0B BC][0D][counter][message pack]
+ * (opendroneid-core-c wifi.c odid_wifi_build_message_pack_beacon_frame;
+ * receiver-android WiFiBeaconScanner). */
+#define ODID_WIFI_IE_VENDOR  221
+#define ODID_WIFI_OUI_0      0xFA
+#define ODID_WIFI_OUI_1      0x0B
+#define ODID_WIFI_OUI_2      0xBC
+#define ODID_WIFI_OUI_TYPE   0x0D
 
-    int n = 0;
-    for (uint8_t k = 0; k < count; ++k) {
-        const uint8_t *e = m + 3 + (size_t)k * ODID_MSG_SIZE;
-        if ((e[0] >> 4) == ODID_MSG_PACK) continue;      /* no nesting */
-        if (odid_decode_message(e, ODID_MSG_SIZE, out) >= 0) n++;
+/* Find the ODID vendor IE in a tagged-parameter area. On success *body points
+ * at the byte after the OUI type (the counter) and *body_len covers the rest
+ * of that IE. IEs that run past `len` stop the walk. */
+static inline bool odid_wifi_find_ie(const uint8_t *tags, size_t len,
+                                     const uint8_t **body, size_t *body_len)
+{
+    if (!tags) return false;
+    size_t i = 0;
+    while (i + 2 <= len) {
+        uint8_t id = tags[i], l = tags[i + 1];
+        if (i + 2 + l > len) return false;
+        const uint8_t *v = tags + i + 2;
+        if (id == ODID_WIFI_IE_VENDOR && l >= 4 &&
+            v[0] == ODID_WIFI_OUI_0 && v[1] == ODID_WIFI_OUI_1 &&
+            v[2] == ODID_WIFI_OUI_2 && v[3] == ODID_WIFI_OUI_TYPE) {
+            if (body)     *body = v + 4;
+            if (body_len) *body_len = (size_t)l - 4;
+            return true;
+        }
+        i += 2 + (size_t)l;
     }
-    return n;
+    return false;
+}
+
+static inline bool odid_wifi_has_ie(const uint8_t *tags, size_t len)
+{
+    return odid_wifi_find_ie(tags, len, nullptr, nullptr);
+}
+
+/* Decode Remote ID from one beacon / probe-response frame. `len` includes
+ * the 4-byte FCS (rx_ctrl.sig_len). Returns messages decoded, 0 if the frame
+ * carries no ODID IE, -1 if it is not a parseable beacon/probe response or
+ * the pack inside the IE is malformed. */
+static inline int odid_decode_wifi_beacon(const uint8_t *f, int len, odid_info_t *out)
+{
+    if (!f || !out || len < 36 + 4) return -1;
+    uint8_t type = (uint8_t)((f[0] >> 2) & 0x3), sub = (uint8_t)((f[0] >> 4) & 0xF);
+    if (type != 0 || (sub != 0x8 && sub != 0x5)) return -1;
+
+    const uint8_t *body; size_t blen;
+    if (!odid_wifi_find_ie(f + 36, (size_t)(len - 36 - 4), &body, &blen)) return 0;
+    if (blen < 1 + 3) return -1;                         /* counter + pack header */
+    return odid_decode_pack(body + 1, blen - 1, out);
 }

@@ -137,6 +137,23 @@ static void test_ssid_overrun(void)
     TEST_ASSERT_EQUAL_STRING("", r.ssid);
 }
 
+/* A beacon carrying an ODID vendor IE (FA:0B:BC type 0x0D) is a drone:
+ * family REMOTEID, ahead of AP. The hunter class is unaffected. */
+static void test_odid_beacon_family(void)
+{
+    uint8_t f[128]; flock_frame_t r;
+    int n = mk_beacon(f, 8, ANY_MAC, "DRONE");
+    n -= 4;                                       /* drop FCS, append IE, re-add FCS */
+    const uint8_t ie[] = { 221, 6, 0xFA, 0x0B, 0xBC, 0x0D, 0x01, 0xF2 };
+    memcpy(f + n, ie, sizeof(ie)); n += (int)sizeof(ie); n += 4;
+    TEST_ASSERT_EQUAL_INT(SURV_UNKNOWN, flock_frame_classify(f, n, &r));
+    TEST_ASSERT_TRUE(r.odid);
+    TEST_ASSERT_EQUAL_UINT8(DET_FAM_REMOTEID, flock_frame_family(&r));
+    n = mk_beacon(f, 8, ANY_MAC, "plain");
+    flock_frame_classify(f, n, &r);
+    TEST_ASSERT_FALSE(r.odid);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -149,5 +166,6 @@ int main(void)
     RUN_TEST(test_minimal_probe);
     RUN_TEST(test_rejects);
     RUN_TEST(test_ssid_overrun);
+    RUN_TEST(test_odid_beacon_family);
     return UNITY_END();
 }
