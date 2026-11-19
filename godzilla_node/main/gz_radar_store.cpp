@@ -11,6 +11,7 @@
 static gz_radar_table_t s_table;            /* zero-initialised: n = 0 */
 static gz_recon_q_t     s_recon_q;
 static bool             s_recon_on = false;
+static gz_hunt_t        s_hunt;             /* zero-initialised: not active */
 static portMUX_TYPE     s_mux = portMUX_INITIALIZER_UNLOCKED;
 
 void gz_radar_feed(uint8_t kind, const uint8_t *entries, uint8_t count, uint32_t now_ms)
@@ -18,12 +19,15 @@ void gz_radar_feed(uint8_t kind, const uint8_t *entries, uint8_t count, uint32_t
     if (!entries || count == 0) return;
     if (count > POSEI_DET_MAX) count = POSEI_DET_MAX;
     portENTER_CRITICAL(&s_mux);
-    /* Same walk as gz_radar_note_batch(), plus the Recon queue. */
+    /* Same walk as gz_radar_note_batch(), plus the Hunt trace and the Recon
+     * queue. */
     for (uint8_t k = 0; k < count; ++k) {
         const uint8_t *p = entries + (size_t)k * 10u;
         int i = gz_radar_note(&s_table, kind, p, p[6], (int8_t)p[7], p[8], now_ms);
-        if (i < 0 || !s_recon_on) continue;
+        if (i < 0) continue;
         gz_radar_row_t *r = &s_table.e[i];
+        gz_hunt_note(&s_hunt, kind, r->addr, r->aux, r->rssi, r->family, now_ms);
+        if (!s_recon_on) continue;
         if (gz_recon_due(r, now_ms) && gz_recon_q_push(&s_recon_q, r)) {
             r->logged = true;
             r->log_ms = now_ms;
@@ -50,6 +54,29 @@ int gz_radar_store_recon_pop(gz_radar_row_t *out, int max, uint32_t *dropped)
     if (dropped) *dropped = s_recon_q.dropped;
     portEXIT_CRITICAL(&s_mux);
     return n;
+}
+
+bool gz_radar_store_hunt_select(uint8_t kind, const uint8_t addr[6])
+{
+    portENTER_CRITICAL(&s_mux);
+    int i = gz_radar_find(&s_table, kind, addr);
+    if (i >= 0) gz_hunt_select(&s_hunt, &s_table.e[i]);
+    portEXIT_CRITICAL(&s_mux);
+    return i >= 0;
+}
+
+void gz_radar_store_hunt_clear(void)
+{
+    portENTER_CRITICAL(&s_mux);
+    gz_hunt_clear(&s_hunt);
+    portEXIT_CRITICAL(&s_mux);
+}
+
+void gz_radar_store_hunt_snapshot(gz_hunt_t *out)
+{
+    portENTER_CRITICAL(&s_mux);
+    memcpy(out, &s_hunt, sizeof *out);
+    portEXIT_CRITICAL(&s_mux);
 }
 
 int gz_radar_snapshot(gz_radar_row_t *out, int max)
