@@ -1,21 +1,23 @@
 /*
- * main.cpp — GODZILLA node bring-up skeleton.
+ * main.cpp — GODZILLA node entry.
  *
- * Minimal Arduino entry for [env:godzilla] (Waveshare ESP32-S3-Touch-LCD-1.85B).
- * Task 1 of the P1 node-producer brief: prove the env builds in CI and that the
- * shared v5 wire protocol (c5_node/main/proto.h) and the detection batching
- * core (gz_batch.h, #50) compile and link on-target on the S3.
+ * Task 3a: bring up the ESP-NOW link and announce the node with a HELLO every
+ * 5 s, so the Cardputer (S3) registers it as a peer (C5 -> Diagnostics). The
+ * passive BLE and Wi-Fi scan loops that feed gz_batch.h and publish detections
+ * land in 3b and 3c; this file only announces presence for now.
  *
- * No radio yet. Passive only — this transmits nothing. The NimBLE/Wi-Fi scan
- * loop and the ESP-NOW publisher land in task 3; the batches below are init'd
- * and ready for that loop to feed via gz_ble_batch_add()/gz_wifi_batch_add().
+ * Passive only — nothing transmits except ESP-NOW HELLO/publish.
  */
 #include <Arduino.h>
 
-#include "gz_batch.h"   /* pulls in ../../c5_node/main/proto.h (v5 wire structs) */
+#include "gz_link.h"
+#include "gz_hello.h"   /* GZ_HELLO_NAME / GZ_ROLE for the boot log */
+#include "gz_batch.h"   /* staging areas for 3b/3c; init'd ready to feed */
 
-/* This node's id on the POSEIDON fabric. Placeholder until task 3 wires HELLO;
- * the S3 maps node_id -> sender MAC from the HELLO frame. */
+static constexpr uint32_t GZ_HELLO_PERIOD_MS = 5000;
+
+/* This node's id on the fabric; carried in detection batches (3b/3c). The S3
+ * ties it to this node's MAC via the HELLO it hears. */
 static constexpr uint8_t GZ_NODE_ID = 2;
 
 static posei_ble_det_t  s_ble;
@@ -29,21 +31,26 @@ void setup()
     gz_ble_batch_init(&s_ble, GZ_NODE_ID);
     gz_wifi_batch_init(&s_wifi, GZ_NODE_ID);
 
+    gz_link_init();
+    gz_link_send_hello();   /* announce immediately, like c5_node */
+
     Serial.println();
-    Serial.println("POSEIDON GODZILLA node — bring-up skeleton");
-    Serial.printf("  proto v%u, POSEI_DET_MAX=%u\n",
-                  (unsigned)POSEI_VERSION, (unsigned)POSEI_DET_MAX);
-    Serial.printf("  wire sizes: ble_det=%u B  wifi_det=%u B  msg=%u B\n",
-                  (unsigned)sizeof(posei_ble_det_t),
-                  (unsigned)sizeof(posei_wifi_det_t),
-                  (unsigned)sizeof(posei_msg_t));
-    Serial.println("  radio: not started (passive scan + ESP-NOW publish land in task 3)");
+    Serial.println("POSEIDON GODZILLA node — task 3a: ESP-NOW link + HELLO");
+    Serial.printf("  link: WiFi STA ch%u, ESP-NOW, broadcast peer\n",
+                  (unsigned)GZ_LINK_CHANNEL);
+    Serial.printf("  HELLO '%s' role=%u every %lu ms\n",
+                  GZ_HELLO_NAME, (unsigned)GZ_ROLE,
+                  (unsigned long)GZ_HELLO_PERIOD_MS);
+    Serial.println("  passive only — scan loops land in 3b/3c");
 }
 
 void loop()
 {
-    /* Heartbeat only until the radio loop exists. */
-    static uint32_t beats = 0;
-    Serial.printf("gz alive %lu\n", (unsigned long)beats++);
-    delay(5000);
+    static uint32_t last_hello = 0;
+    uint32_t now = millis();
+    if (now - last_hello >= GZ_HELLO_PERIOD_MS) {
+        last_hello = now;
+        gz_link_send_hello();
+    }
+    delay(10);
 }

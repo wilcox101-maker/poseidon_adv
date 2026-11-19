@@ -1,0 +1,66 @@
+/*
+ * gz_link.cpp — GODZILLA node ESP-NOW link (task 3a).
+ *
+ * Mirrors c5_node's ESP-NOW bring-up and HELLO on the Arduino/pioarduino side:
+ * STA mode pinned to the C5 link channel, esp_now_init, a broadcast peer, and
+ * a HELLO beacon. ESP-NOW v2 is auto-negotiated on IDF >= 5.4 (this tree runs
+ * 5.5.4), which the v5 wire layout needs for the larger detection batches in
+ * 3b/3c; the HELLO itself is tiny and fits either version.
+ */
+#include "gz_link.h"
+#include "gz_hello.h"
+
+#include <Arduino.h>
+#include <WiFi.h>
+#include <esp_now.h>
+#include <esp_wifi.h>
+
+static const uint8_t GZ_BROADCAST[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+
+/* Passive node: validate the fixed header and otherwise ignore. P1 is
+ * fire-and-forget and takes no commands; detections flow node -> S3 only. A
+ * callback is registered anyway so the stack has a home for inbound frames
+ * (and so malformed frames are dropped cleanly rather than ignored blindly). */
+static void gz_on_recv(const esp_now_recv_info_t *info,
+                       const uint8_t *data, int len)
+{
+    (void)info;
+    if (len < (int)POSEI_HEADER_SZ) return;
+    const posei_msg_t *m = (const posei_msg_t *)data;
+    if (m->magic != POSEI_MAGIC || m->version != POSEI_VERSION) return;
+    if (m->payload_len > POSEI_PAYLOAD_MAX) return;
+    /* No command handling in P1. */
+}
+
+void gz_link_init(void)
+{
+    WiFi.mode(WIFI_STA);                 /* STA up, never associated */
+    esp_wifi_set_channel(GZ_LINK_CHANNEL, WIFI_SECOND_CHAN_NONE);
+
+    esp_now_init();
+    esp_now_register_recv_cb(gz_on_recv);
+
+    esp_now_peer_info_t peer = {};
+    memcpy(peer.peer_addr, GZ_BROADCAST, 6);
+    peer.ifidx   = WIFI_IF_STA;
+    peer.channel = 0;                    /* 0 = use the interface's current ch */
+    peer.encrypt = false;
+    esp_now_add_peer(&peer);
+}
+
+bool gz_link_send(const posei_msg_t *m)
+{
+    return esp_now_send(GZ_BROADCAST, (const uint8_t *)m, posei_wire_len(m)) == ESP_OK;
+}
+
+void gz_link_send_hello(void)
+{
+    posei_msg_t msg;
+    memset(&msg, 0, sizeof(msg));
+    msg.magic   = POSEI_MAGIC;
+    msg.version = POSEI_VERSION;
+    msg.type    = POSEI_TYPE_HELLO;
+    gz_build_hello((posei_hello_t *)msg.payload, ESP.getFreeHeap() / 1024);
+    msg.payload_len = sizeof(posei_hello_t);
+    gz_link_send(&msg);
+}
