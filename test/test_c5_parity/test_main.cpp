@@ -46,6 +46,7 @@ GZ_PARITY(C5_TYPE_CMD_KARMA,         POSEI_TYPE_CMD_KARMA);
 GZ_PARITY(C5_TYPE_CMD_APCLONE,       POSEI_TYPE_CMD_APCLONE);
 GZ_PARITY(C5_TYPE_CMD_SPECTRUM,      POSEI_TYPE_CMD_SPECTRUM);
 GZ_PARITY(C5_TYPE_CMD_CIW,           POSEI_TYPE_CMD_CIW);
+GZ_PARITY(C5_TYPE_CMD_TIMESET,       POSEI_TYPE_CMD_TIMESET);
 GZ_PARITY(C5_TYPE_RESP_PONG,         POSEI_TYPE_RESP_PONG);
 GZ_PARITY(C5_TYPE_RESP_AP,           POSEI_TYPE_RESP_AP);
 GZ_PARITY(C5_TYPE_RESP_ZB,           POSEI_TYPE_RESP_ZB);
@@ -62,6 +63,9 @@ GZ_PARITY(C5_TYPE_RESP_BLE_DET,      POSEI_TYPE_RESP_BLE_DET);
 /* The frame magic and flag-day version must also match. */
 static_assert((unsigned)C5_MAGIC   == (unsigned)POSEI_MAGIC,   "wire magic");
 static_assert((int)C5_VERSION      == (int)POSEI_VERSION,      "wire version (v5 flag day)");
+
+/* The TIMESET payload must be byte-identical across the two sides. */
+static_assert(sizeof(c5_timeset_t) == sizeof(posei_timeset_t), "timeset payload size");
 
 void setUp(void) {}
 void tearDown(void) {}

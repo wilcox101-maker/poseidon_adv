@@ -56,6 +56,7 @@ enum {
     POSEI_TYPE_CMD_APCLONE        = 24,  /* manual SoftAP with given SSID  */
     POSEI_TYPE_CMD_SPECTRUM       = 25,  /* per-channel peak RSSI sweep    */
     POSEI_TYPE_CMD_CIW            = 26,  /* SSID-injection beacon spam     */
+    POSEI_TYPE_CMD_TIMESET        = 27,  /* S3→node: set wall-clock (epoch+tz) */
 
     /* Responses: C5 → S3 (40–49) */
     POSEI_TYPE_RESP_PONG          = 40,
@@ -174,6 +175,15 @@ typedef struct __attribute__((packed)) {
     uint8_t  channel;
     uint16_t duration_ms;
 } posei_pmkid_req_t;
+
+/* Time-set (v5, additive): S3 → node wall-clock. The node only RECEIVES this;
+ * it transmits nothing new, so the passive rule holds. */
+typedef struct __attribute__((packed)) {
+    uint32_t epoch;          /* UTC seconds                              */
+    int16_t  tz_offset_min;  /* local offset from UTC, display only      */
+} posei_timeset_t;
+static_assert(sizeof(posei_timeset_t) == 6, "posei_timeset_t must be 6 bytes");
+static_assert(sizeof(posei_timeset_t) <= POSEI_PAYLOAD_MAX, "posei_timeset_t fits payload");
 
 typedef struct __attribute__((packed)) {
     uint8_t  bssid[6];
