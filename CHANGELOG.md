@@ -117,6 +117,16 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   0..3. Native-tested (`test/test_godzilla_imu`, 7 tests; #85's gyro
   full-scale test was one LSB out and is corrected). The scan now labels 0x6B
   `QMI8658 IMU`.
+- **GODZILLA node — display back ends for the AMOLED-2.06 (CO5300) and the
+  ES3C28P (ILI9341V).** One back end per board behind the unchanged
+  `gz_display.h` API, chosen by `GZ_BOARD_DISPLAY`: `gz_display_co5300.cpp`
+  (QSPI, 22-column gap, brightness by DCS 0x51 starting at 0) and
+  `gz_display_ili9341.cpp` (4-wire SPI with D/C, software reset because the
+  panel reset is on EN, GPIO45 backlight). Both reuse the vendored
+  `esp_lcd_st77916` driver with vendor init tables in
+  `godzilla_node/main/gz_panel_tables.h`; no new library. The port envs now
+  build their back end; their UI switches on in the next unit. Tables and
+  selection native-tested (`test/test_godzilla_panel`).
 
 ## [0.9.2] - 2026-11-16
 

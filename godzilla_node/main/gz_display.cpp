@@ -12,6 +12,8 @@
  */
 #include "gz_display.h"
 #include "gz_board.h"
+
+#if GZ_BOARD_DISPLAY == 1   /* ST77916 boards (1.85B); see gz_display.h */
 #include "gz_st77916_rev.h"
 #include "gz_st77916_tables.h"
 
@@ -161,3 +163,5 @@ void gz_display_backlight(uint8_t pct)
     uint32_t max = (1u << GZ_BL_LEDC_BITS) - 1u;
     ledcWrite(GZ_PIN_LCD_BL, (max * pct) / 100u);
 }
+
+#endif /* GZ_BOARD_DISPLAY == 1 */
