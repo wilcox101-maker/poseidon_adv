@@ -97,6 +97,49 @@ static inline bool det_uuid128_to16(const uint8_t *u, uint16_t *out)
     return true;
 }
 
+static inline int det_hexval(char c)
+{
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+static inline bool det_hex16(const char *s, uint16_t *out)
+{
+    uint16_t v = 0;
+    for (int i = 0; i < 4; ++i) {
+        int h = det_hexval(s[i]);
+        if (h < 0) return false;
+        v = (uint16_t)((v << 4) | h);
+    }
+    *out = v;
+    return true;
+}
+
+/* UUID text → 16-bit, for the forms NimBLE versions print: "XXXX", "0xXXXX",
+ * or the 36-char "0000XXXX-0000-1000-8000-00805F9B34FB" (base UUID only, any
+ * case). Any other 128-bit UUID is vendor-specific and returns false. */
+static inline bool det_uuid_str_to16(const char *s, uint16_t *out)
+{
+    static const char tail[] = "-0000-1000-8000-00805f9b34fb";
+    if (!s || !out) return false;
+    size_t n = 0;
+    while (s[n]) ++n;
+    if (n == 4) return det_hex16(s, out);
+    if (n == 6 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) return det_hex16(s + 2, out);
+    if (n == 36) {
+        if (s[0] != '0' || s[1] != '0' || s[2] != '0' || s[3] != '0') return false;
+        for (int i = 0; i < 28; ++i) {
+            char c = s[8 + i];
+            if (c >= 'A' && c <= 'F') c = (char)(c - 'A' + 'a');
+            if (c != tail[i]) return false;
+        }
+        return det_hex16(s + 4, out);
+    }
+    return false;
+}
+
 typedef struct {
     bool remoteid, raven, findmy, tile, smarttag, ibeacon;
 } det_hits_t;

@@ -158,6 +158,36 @@ static void test_malformed_ad(void)
     TEST_ASSERT_EQUAL_UINT(DET_FAM_TILE, CLS(odd_uuid_list));
 }
 
+/* UUID strings as NimBLE versions print them. Only the Bluetooth base
+ * reduces to 16 bits; a vendor 128-bit UUID never does. */
+static void test_uuid_str_to16(void)
+{
+    uint16_t u = 0;
+    TEST_ASSERT_TRUE(det_uuid_str_to16("180a", &u));   TEST_ASSERT_EQUAL_HEX16(0x180A, u);
+    TEST_ASSERT_TRUE(det_uuid_str_to16("0x3200", &u)); TEST_ASSERT_EQUAL_HEX16(0x3200, u);
+    TEST_ASSERT_TRUE(det_uuid_str_to16("0000FEED-0000-1000-8000-00805F9B34FB", &u));
+    TEST_ASSERT_EQUAL_HEX16(0xFEED, u);
+    TEST_ASSERT_TRUE(det_uuid_str_to16("00003100-0000-1000-8000-00805f9b34fb", &u));
+    TEST_ASSERT_EQUAL_HEX16(0x3100, u);
+    /* Vendor UUID whose chars 4..7 read 3100: must not reduce. */
+    TEST_ASSERT_FALSE(det_uuid_str_to16("12343100-abcd-ef01-2345-6789abcdef01", &u));
+    TEST_ASSERT_FALSE(det_uuid_str_to16("00003100-0000-1000-8000-00805f9b34fc", &u));
+    TEST_ASSERT_FALSE(det_uuid_str_to16("", &u));
+    TEST_ASSERT_FALSE(det_uuid_str_to16("18g0", &u));
+    TEST_ASSERT_FALSE(det_uuid_str_to16(nullptr, &u));
+}
+
+/* The ble_scan Raven check: custom Raven UUIDs yes, SIG services no. */
+static void test_raven_custom_uuid_helper(void)
+{
+    TEST_ASSERT_TRUE(det_raven_custom_uuid(0x3100));
+    TEST_ASSERT_TRUE(det_raven_custom_uuid(0x3500));
+    TEST_ASSERT_FALSE(det_raven_custom_uuid(0x180A));
+    TEST_ASSERT_FALSE(det_raven_custom_uuid(0x1809));
+    TEST_ASSERT_FALSE(det_raven_custom_uuid(0x1819));
+    TEST_ASSERT_FALSE(det_raven_custom_uuid(0xFEED));
+}
+
 static void test_family_names(void)
 {
     TEST_ASSERT_EQUAL_STRING("Find My",  det_family_name(DET_FAM_FINDMY));
@@ -183,6 +213,8 @@ int main(void)
     RUN_TEST(test_smarttag);
     RUN_TEST(test_priority);
     RUN_TEST(test_malformed_ad);
+    RUN_TEST(test_uuid_str_to16);
+    RUN_TEST(test_raven_custom_uuid_helper);
     RUN_TEST(test_family_names);
     return UNITY_END();
 }
