@@ -36,7 +36,9 @@ The node boots to the radar. Swipe left for the watch, again for status, again f
 
 Boot log
 1. `PSRAM: ~8192 KB`.
-2. I2C scan lists `0x15` (touch) and `0x51` (RTC).
+2. I2C scan lists `0x15` (touch) and `0x51` (RTC). Expect more lines: `0x6B` IMU, `0x55` battery
+   gauge, and probably `0x18` / `0x40` (audio parts) — **send the full list**. `0x15` can be
+   missing from the scan (the touch chip sleeps); line 4 is the real touch check.
 3. `LCD: reg04 = .. .. .. .. -> panel rev N` — **send those four bytes**.
 4. `touch: CST816S (id 0xB4, fw 0x..) at 0x15, INT=4`.
 5. An RTC line: either the time, or "oscillator was stopped — seeded ... (build)".

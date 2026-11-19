@@ -1,13 +1,15 @@
 /*
  * gz_i2c_scan.h — boot-time I2C bus probe for the GODZILLA node (P2a).
  *
- * The Waveshare 1.85B pin map (gz_board.h) still has three lines UNCONFIRMED on
- * real hardware — I2C SCL/SDA (10/11) and TOUCH_RST (1). Per Claudius's P2a
- * advice (docs/proposals/2026-11-19-godzilla-p2a-display-advice.md §1), a
- * boot-time scan of the shared touch+RTC I2C bus prints every address that
- * ACKs, so Dale's FIRST FLASH settles those pins: we expect the CST816S touch
- * (0x15) and the PCF85063 RTC (0x51) to answer. If the bus is wired to other
- * pins, nothing ACKs — and that silence is itself the signal.
+ * A boot-time scan of the shared I2C bus prints every address that ACKs, so
+ * Dale's first flash confirms the pin map on real hardware: we expect the
+ * CST816S touch (0x15) and the PCF85063 RTC (0x51) to answer. SCL 10 / SDA 11
+ * and TOUCH_RST 1 match Waveshare's 1.85B page; the scan is the hardware
+ * proof. If the bus is wired to other pins, nothing ACKs — and that silence
+ * is itself the signal. The 1.85B also carries an IMU, a battery gauge and two
+ * audio parts on this bus; they are labelled but not driven (P3). The touch
+ * controller sleeps and may not ACK a scan: a missing 0x15 alone is not proof
+ * of a wrong pin (gz_touch.h resets it and reports separately).
  *
  * This is deliberately ahead of the ST77916/LVGL driver: committing a display
  * init table to pins we have not yet seen ACK would be guessing. The scan
@@ -33,6 +35,10 @@ static inline const char *gz_i2c_expected_device(uint8_t addr)
 {
     if (addr == GZ_I2C_ADDR_TOUCH) return "CST816S touch";
     if (addr == GZ_I2C_ADDR_RTC)   return "PCF85063 RTC";
+    if (addr == GZ_I2C_ADDR_IMU)     return "QMI8658 IMU (unused)";
+    if (addr == GZ_I2C_ADDR_GAUGE)   return "BQ27220 battery gauge (unused)";
+    if (addr == GZ_I2C_ADDR_CODEC)   return "ES8311 codec? (unused)";
+    if (addr == GZ_I2C_ADDR_MIC_ADC) return "ES7210 mic ADC? (unused)";
     return "unknown";
 }
 
