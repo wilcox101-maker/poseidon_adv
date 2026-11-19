@@ -45,6 +45,7 @@ enum {
     C5_TYPE_CMD_APCLONE        = 24,
     C5_TYPE_CMD_SPECTRUM       = 25,
     C5_TYPE_CMD_CIW            = 26,
+    C5_TYPE_CMD_TIMESET        = 27,   /* S3→node: set wall-clock (epoch+tz) */
 
     /* Responses: C5 → S3 (40–49) */
     C5_TYPE_RESP_PONG          = 40,
@@ -274,6 +275,13 @@ struct __attribute__((packed)) c5_ciw_req_t {
     uint16_t interval_ms;
 };
 
+/* Time-set (v5, additive): S3 → node wall-clock, byte-identical to
+ * posei_timeset_t (c5_node/main/proto.h). */
+struct __attribute__((packed)) c5_timeset_t {
+    uint32_t epoch;          /* UTC seconds                              */
+    int16_t  tz_offset_min;  /* local offset from UTC, display only      */
+};
+
 /* ---- wire-size guards: every payload struct must fit one frame, mirroring
  * the _Static_asserts in c5_node/main/proto.h so drift breaks the build. ---- */
 static_assert(sizeof(c5_ap_t)              <= C5_PAYLOAD_MAX, "c5_ap_t");
@@ -288,6 +296,8 @@ static_assert(sizeof(c5_beacon_spam_req_t) <= C5_PAYLOAD_MAX, "c5_beacon_spam_re
 static_assert(sizeof(c5_apclone_req_t)     <= C5_PAYLOAD_MAX, "c5_apclone_req_t");
 static_assert(sizeof(c5_spectrum_t)        <= C5_PAYLOAD_MAX, "c5_spectrum_t");
 static_assert(sizeof(c5_ciw_req_t)         <= C5_PAYLOAD_MAX, "c5_ciw_req_t");
+static_assert(sizeof(c5_timeset_t)         == 6, "c5_timeset_t == posei_timeset_t (6B)");
+static_assert(sizeof(c5_timeset_t)         <= C5_PAYLOAD_MAX, "c5_timeset_t");
 
 /* ---- GODZILLA detection-publish payloads — byte-identical to
  * posei_wifi_det_t / posei_ble_det_t in c5_node/main/proto.h. The literal
