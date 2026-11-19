@@ -6,6 +6,7 @@
  *   - RESP_AP → append to s_aps ring
  *   - RESP_ZB → append to s_zbs ring
  *   - RESP_PONG → update last_seen
+ *   - RESP_WIFI_DET / RESP_BLE_DET (GODZILLA nodes) → s_dets table
  *
  * Auto-adds any new sender to esp_now peer list so we can reply.
  */
@@ -75,6 +76,11 @@ static volatile int s_probe_n = 0;
 static c5_deauth_hit_t *s_dhits = nullptr;
 static volatile int s_dhit_n = 0;
 static c5_spectrum_t s_spectrum = {};
+
+/* GODZILLA detection table (types 60/61), merged by godzilla_det.h. */
+static gz_det_table_t *s_dets = nullptr;
+static volatile uint32_t s_dbg_det_frames  = 0;
+static volatile uint32_t s_dbg_det_rejects = 0;
 static volatile bool s_spectrum_valid = false;
 
 static volatile uint32_t s_last_status_frames  = 0;
@@ -303,6 +309,21 @@ static void handle_resp_spectrum(const c5_msg_t *m)
     portEXIT_CRITICAL(&s_mux);
 }
 
+/* GODZILLA detection batch. Validation and the merge are in godzilla_det.h;
+ * a malformed frame changes nothing and only bumps the reject counter. The
+ * merge is at most 64 x 64 address compares inside the spin-lock, the same
+ * order as handle_resp_ap's dedup. */
+static void handle_resp_det(const uint8_t *mac, const c5_msg_t *m, uint8_t kind)
+{
+    if (!s_dets) return;
+    uint32_t now = millis();
+    portENTER_CRITICAL(&s_mux);
+    int r = gz_det_ingest(s_dets, kind, m->payload, m->payload_len, mac, now);
+    if (r < 0) s_dbg_det_rejects = s_dbg_det_rejects + 1;
+    else       s_dbg_det_frames  = s_dbg_det_frames + 1;
+    portEXIT_CRITICAL(&s_mux);
+}
+
 /* ESP-NOW recv callback signature differs by ESP-IDF major version.
  *   IDF 4.x (stock espressif32@6.7.0): void(const uint8_t *mac, data, len)
  *   IDF 5.x (pioarduino 55.x):         void(const esp_now_recv_info_t*, ...)
@@ -379,6 +400,8 @@ static void on_recv(const uint8_t *mac, const uint8_t *data, int len)
     case C5_TYPE_RESP_PROBE:      handle_resp_probe(m);      break;
     case C5_TYPE_RESP_DEAUTH_HIT: handle_resp_deauth_hit(m); break;
     case C5_TYPE_RESP_SPECTRUM:   handle_resp_spectrum(m);   break;
+    case C5_TYPE_RESP_WIFI_DET:   handle_resp_det(mac, m, GZ_KIND_WIFI); break;
+    case C5_TYPE_RESP_BLE_DET:    handle_resp_det(mac, m, GZ_KIND_BLE);  break;
     }
 }
 
@@ -418,7 +441,9 @@ bool c5_begin(void)
     s_stas = (c5_sta_t *)malloc(sizeof(c5_sta_t) * MAX_STAS);
     s_probes = (c5_probe_t *)malloc(sizeof(c5_probe_t) * MAX_PROBES);
     s_dhits = (c5_deauth_hit_t *)malloc(sizeof(c5_deauth_hit_t) * MAX_DHITS);
-    if (!s_aps || !s_zbs || !s_pmkids || !s_hss || !s_stas || !s_probes || !s_dhits) {
+    s_dets = (gz_det_table_t *)malloc(sizeof(gz_det_table_t));
+    if (s_dets) gz_det_clear(s_dets);
+    if (!s_aps || !s_zbs || !s_pmkids || !s_hss || !s_stas || !s_probes || !s_dhits || !s_dets) {
         free(s_aps);    s_aps = nullptr;
         free(s_zbs);    s_zbs = nullptr;
         free(s_pmkids); s_pmkids = nullptr;
@@ -426,6 +451,7 @@ bool c5_begin(void)
         free(s_stas);   s_stas = nullptr;
         free(s_probes); s_probes = nullptr;
         free(s_dhits);  s_dhits = nullptr;
+        free(s_dets);   s_dets = nullptr;
         return false;
     }
     if (esp_now_init() != ESP_OK) {
@@ -436,6 +462,7 @@ bool c5_begin(void)
         free(s_stas);   s_stas = nullptr;
         free(s_probes); s_probes = nullptr;
         free(s_dhits);  s_dhits = nullptr;
+        free(s_dets);   s_dets = nullptr;
         return false;
     }
     esp_now_register_recv_cb(on_recv);
@@ -858,6 +885,9 @@ void c5_clear_results(void)
     s_ap_n = 0; s_zb_n = 0; s_pmkid_n = 0; s_hs_n = 0;
     s_sta_n = 0; s_probe_n = 0; s_dhit_n = 0;
     s_spectrum_valid = false;
+    if (s_dets) gz_det_clear(s_dets);
+    s_dbg_det_frames = 0;
+    s_dbg_det_rejects = 0;
     s_dbg_resp_ap_frames = 0;
     s_dbg_raw_ap_records = 0;
     portEXIT_CRITICAL(&s_mux);
@@ -865,3 +895,15 @@ void c5_clear_results(void)
 
 uint32_t c5_dbg_resp_ap_frames(void) { return s_dbg_resp_ap_frames; }
 uint32_t c5_dbg_raw_ap_records(void) { return s_dbg_raw_ap_records; }
+
+int c5_dets(gz_det_t *out, int max)
+{
+    portENTER_CRITICAL(&s_mux);
+    int total = s_dets ? s_dets->n : 0;
+    int n = total < max ? total : max;
+    if (out && n > 0) memcpy(out, s_dets->e, n * sizeof(gz_det_t));
+    portEXIT_CRITICAL(&s_mux);
+    return out ? n : total;
+}
+uint32_t c5_dbg_det_frames(void)  { return s_dbg_det_frames; }
+uint32_t c5_dbg_det_rejects(void) { return s_dbg_det_rejects; }

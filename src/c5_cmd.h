@@ -330,6 +330,17 @@ static_assert(sizeof(c5_ble_det_t)  == 2 + C5_DET_MAX * 10, "c5_ble_det_t == pos
 static_assert(sizeof(c5_wifi_det_t) <= C5_PAYLOAD_MAX, "c5_wifi_det_t fits frame");
 static_assert(sizeof(c5_ble_det_t)  <= C5_PAYLOAD_MAX, "c5_ble_det_t fits frame");
 
+/* S3-side merge of the batches above lives in a pure header (native-tested).
+ * Pin its mirrored constants to this file's so drift breaks the build. */
+#include "godzilla_det.h"
+static_assert(GZ_TYPE_WIFI_DET == C5_TYPE_RESP_WIFI_DET, "gz/c5 wifi det type");
+static_assert(GZ_TYPE_BLE_DET  == C5_TYPE_RESP_BLE_DET,  "gz/c5 ble det type");
+static_assert(GZ_DET_BATCH_MAX == C5_DET_MAX,            "gz/c5 det batch max");
+static_assert(GZ_DET_ENTRY_SZ  == sizeof(c5_wifi_det_entry_t), "gz/c5 wifi entry size");
+static_assert(GZ_DET_ENTRY_SZ  == sizeof(c5_ble_det_entry_t),  "gz/c5 ble entry size");
+static_assert(GZ_DET_HDR_SZ    == offsetof(c5_wifi_det_t, det), "gz/c5 wifi batch header");
+static_assert(GZ_DET_HDR_SZ    == offsetof(c5_ble_det_t, det),  "gz/c5 ble batch header");
+
 /* ---- API ---- */
 
 bool c5_begin(void);
@@ -389,4 +400,9 @@ int c5_stas(c5_sta_t *out, int max);
 int c5_probes(c5_probe_t *out, int max);
 int c5_deauth_hits(c5_deauth_hit_t *out, int max);
 bool c5_spectrum_get(c5_spectrum_t *out);   /* latest single batch */
+/* GODZILLA detections merged from every publishing node (types 60/61).
+ * Copies up to `max` rows; with out == NULL returns the row count. */
+int c5_dets(gz_det_t *out, int max);
+uint32_t c5_dbg_det_frames(void);    /* 60/61 frames accepted */
+uint32_t c5_dbg_det_rejects(void);   /* 60/61 frames rejected as malformed */
 void c5_clear_results(void);
