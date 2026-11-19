@@ -115,6 +115,7 @@ extern void feat_c5_beacon_spam(void);
 extern void feat_c5_ciw(void);
 extern void feat_c5_apclone(void);
 extern void feat_c5_karma(void);
+extern void feat_c5_godzilla(void);
 extern void feat_tool_sd_format(void);
 extern void feat_tool_flashlight(void);
 extern void feat_lab_mode(void);
@@ -421,6 +422,11 @@ static const menu_node_t MENU_C5[] = {
       "actively looking for a named network), then auto-clones that SSID as "
       "an OPEN SoftAP on ch 1 so the client auto-joins. = probe sniff + AP "
       "clone. Runs until ESC or the 5-minute safety cap." },
+    { 'x', "GODZILLA dets", "Detections from GODZILLA nodes", nullptr, feat_c5_godzilla,
+      "Passive bench view of what GODZILLA sensor nodes publish over ESP-NOW "
+      "(Wi-Fi/BLE detections: trackers, Remote ID, Flock, Raven, APs, STAs). "
+      "Shows accepted vs rejected frames and the newest rows with family, "
+      "RSSI, node and age. Sends nothing. c clears." },
     { 0, nullptr, nullptr, nullptr, nullptr, nullptr },
 };
 

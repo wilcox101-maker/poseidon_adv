@@ -262,6 +262,22 @@ static void test_clear(void)
     TEST_ASSERT_EQUAL_INT(0, T.n);
 }
 
+/* Bench view helper: newest first by age (wrap-safe), stable on ties. */
+static void test_sort_recent(void)
+{
+    gz_det_t rows[4];
+    memset(rows, 0, sizeof(rows));
+    uint32_t seen[4] = { 100, 900, 0xFFFFFF00u, 500 };
+    for (int i = 0; i < 4; ++i) { rows[i].addr[0] = (uint8_t)i; rows[i].last_seen_ms = seen[i]; }
+    gz_det_sort_recent(rows, 4, 1000);
+    TEST_ASSERT_EQUAL_UINT8(1, rows[0].addr[0]);   /* age 100 */
+    TEST_ASSERT_EQUAL_UINT8(3, rows[1].addr[0]);   /* age 500 */
+    TEST_ASSERT_EQUAL_UINT8(0, rows[2].addr[0]);   /* age 900 */
+    TEST_ASSERT_EQUAL_UINT8(2, rows[3].addr[0]);   /* pre-wrap, oldest */
+    gz_det_sort_recent(rows, 0, 1000);              /* no-op */
+    gz_det_sort_recent(nullptr, 4, 1000);           /* no crash */
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -282,5 +298,6 @@ int main(int, char **)
     RUN_TEST(test_lru_survives_millis_wrap);
     RUN_TEST(test_full_max_batch);
     RUN_TEST(test_clear);
+    RUN_TEST(test_sort_recent);
     return UNITY_END();
 }
