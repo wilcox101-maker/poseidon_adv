@@ -127,6 +127,15 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   `godzilla_node/main/gz_panel_tables.h`; no new library. The port envs now
   build their back end; their UI switches on in the next unit. Tables and
   selection native-tested (`test/test_godzilla_panel`).
+- **GODZILLA node — full UI on the AMOLED-2.06 and the ES3C28P.** Both boards
+  now run the radar, Hunt and status screens at their own resolution, with
+  touch (FT3168 / FT6336G); the 2.06 adds the watch. Features follow the
+  board's parts, never faked: the ES3C28P has no RTC, so its swipe ring is
+  radar, hunt, status and the watch is compiled out; the radar's Recon
+  controls appear only where the TF slot is driven (1.85B, ES3C28P; the 2.06's
+  SPI slot is a later unit). On the AMOLED the panel dims after 60 s untouched
+  and a touch restores it (burn-in care). The status screen names the panel
+  on the new boards.
 
 ## [0.9.2] - 2026-11-16
 

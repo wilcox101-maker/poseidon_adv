@@ -18,7 +18,7 @@ static void test_selects_es3c28p(void)
 {
     TEST_ASSERT_EQUAL_STRING("2.8in ESP32-S3 Display ES3C28P", GZ_BOARD_NAME);
     TEST_ASSERT_EQUAL_INT(0, GZ_LCD_ROUND);
-    TEST_ASSERT_EQUAL_INT(0, GZ_BOARD_HAS_UI);    /* until the ILI9341V unit */
+    TEST_ASSERT_EQUAL_INT(1, GZ_BOARD_HAS_UI);    /* ILI9341V + FT6336G driven */
     TEST_ASSERT_EQUAL_INT(1, GZ_BOARD_HAS_SD);    /* SDMMC + Recon on now    */
 }
 
