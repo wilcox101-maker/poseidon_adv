@@ -105,6 +105,18 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   place of fixed 360 / 180 numbers. On the 1.85B every value is identical
   (pinned by `test/test_godzilla_geom`, which also checks the layouts fit all
   three panels). Fonts are not scaled.
+- **GODZILLA node — QMI8658 IMU, read-only and board-aware.** `godzilla_node/main/gz_imu.h`
+  brings up the 6-axis IMU on the 1.85B and the AMOLED-2.06 (WHO_AM_I `0x05`
+  is the boot proof) and shows `IMU still|moving | rot N` on the status screen.
+  The Wire half exists only where `GZ_BOARD_HAS_IMU` is 1, so the IMU-less
+  ES3C28P has no IMU code at all, and nothing fabricates motion. Rebuilt from
+  the closed #85 with its register map and tested math, plus three fixes: the
+  driver state is one C++17 inline object across files (the status screen
+  previously read a per-file copy that stayed 0), orientation has real
+  hysteresis (a 0.2 g switching margin), and a held orientation is folded to
+  0..3. Native-tested (`test/test_godzilla_imu`, 7 tests; #85's gyro
+  full-scale test was one LSB out and is corrected). The scan now labels 0x6B
+  `QMI8658 IMU`.
 
 ## [0.9.2] - 2026-11-16
 

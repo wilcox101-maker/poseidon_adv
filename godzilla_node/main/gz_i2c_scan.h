@@ -38,7 +38,7 @@ static inline const char *gz_i2c_expected_device(uint8_t addr)
     if (addr == GZ_I2C_ADDR_RTC)   return "PCF85063 RTC";
 #endif
 #if GZ_BOARD_HAS_IMU
-    if (addr == GZ_I2C_ADDR_IMU)     return "QMI8658 IMU (unused)";
+    if (addr == GZ_I2C_ADDR_IMU)     return "QMI8658 IMU";
 #endif
 #if GZ_BOARD_HAS_GAUGE
     if (addr == GZ_I2C_ADDR_GAUGE)   return GZ_I2C_NAME_GAUGE;

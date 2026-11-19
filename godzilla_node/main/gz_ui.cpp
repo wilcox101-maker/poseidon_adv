@@ -25,6 +25,7 @@
 #include "gz_stats.h"
 #include "gz_st77916_rev.h"
 #include "gz_touch.h"       /* sole ARDUINO user of the touch driver */
+#include "gz_imu.h"         /* QMI8658 status line (boards with an IMU) */
 #include "gz_ui_radar.h"
 #include "gz_ui_hunt.h"
 #include "gz_ui_watch.h"
@@ -107,6 +108,10 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 
 static lv_obj_t *s_lbl_name, *s_lbl_up, *s_lbl_ble, *s_lbl_wifi,
                 *s_lbl_age, *s_lbl_mem, *s_lbl_hw, *s_lbl_touch, *s_lbl_sub;
+#if GZ_BOARD_HAS_IMU
+static lv_obj_t *s_lbl_imu;
+static uint8_t   s_imu_rot = 0;   /* last orientation, feeds the hysteresis */
+#endif
 
 static lv_obj_t *add_label(lv_obj_t *parent, const lv_font_t *font, uint32_t rgb)
 {
@@ -147,6 +152,9 @@ static void build_status_screen(lv_obj_t *scr)
     s_lbl_mem  = add_label(col, &lv_font_montserrat_14, GZ_COL_DIM);
     s_lbl_hw   = add_label(col, &lv_font_montserrat_14, GZ_COL_DIM);
     s_lbl_touch = add_label(col, &lv_font_montserrat_14, GZ_COL_DIM);
+#if GZ_BOARD_HAS_IMU
+    s_lbl_imu   = add_label(col, &lv_font_montserrat_14, GZ_COL_DIM);
+#endif
 }
 
 static void refresh_status_screen(void)
@@ -186,6 +194,22 @@ static void refresh_status_screen(void)
                               gz_touch_gesture_name(gz_touch_last_gesture()),
                               (unsigned)s_touch_pt.x, (unsigned)s_touch_pt.y);
     }
+#if GZ_BOARD_HAS_IMU
+    /* IMU bench aid: still / moving and the orientation quarter-turn. One live
+     * read on this (LVGL) task; Wire is mutexed in arduino-esp32. */
+    if (gz_imu_chip_id() != GZ_IMU_WHOAMI_VALUE) {
+        lv_label_set_text(s_lbl_imu, "IMU: not found");
+    } else {
+        gz_imu_sample_t im;
+        if (gz_imu_read(&im, s_imu_rot)) {
+            s_imu_rot = im.rotation;
+            lv_label_set_text_fmt(s_lbl_imu, "IMU %s | rot %u",
+                                  im.moving ? "moving" : "still", (unsigned)im.rotation);
+        } else {
+            lv_label_set_text(s_lbl_imu, "IMU: read error");
+        }
+    }
+#endif
 }
 
 /* ---- navigation ---------------------------------------------------------- */
