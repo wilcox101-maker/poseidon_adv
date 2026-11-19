@@ -14,6 +14,7 @@
 #include "ui.h"
 #include "input.h"
 #include "radio.h"
+#include "../det_classify.h"
 #include <NimBLEDevice.h>
 
 struct found_t {
@@ -38,24 +39,11 @@ static volatile bool     s_locating = false;
  * launched from BLE Scan. Empty = show "HUNT" + MAC only. */
 static char     s_lock_label[24] = {0};
 
+/* Shared, native-tested classification (det_classify.h). */
 static const char *tracker_kind(const NimBLEAdvertisedDevice *d)
 {
-    if (d->haveManufacturerData()) {
-        std::string md = d->getManufacturerData();
-        if (md.size() >= 3) {
-            uint16_t cid = (uint8_t)md[0] | ((uint8_t)md[1] << 8);
-            if (cid == 0x004C && (uint8_t)md[2] == 0x12) return "AirTag";
-            if (cid == 0x0075) return "SmartTag";
-        }
-    }
-    if (d->haveServiceUUID()) {
-        for (int i = 0; i < d->getServiceUUIDCount(); ++i) {
-            NimBLEUUID u = d->getServiceUUID(i);
-            if (u.equals(NimBLEUUID((uint16_t)0xFEED)) ||
-                u.equals(NimBLEUUID((uint16_t)0xFD84))) return "Tile";
-        }
-    }
-    return nullptr;
+    const std::vector<uint8_t> &pl = d->getPayload();
+    return det_tracker_label(det_classify_ble(pl.data(), pl.size()));
 }
 
 class finder_cb : public NimBLEScanCallbacks {

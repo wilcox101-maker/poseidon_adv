@@ -6,6 +6,7 @@
 #include "ui.h"
 #include "input.h"
 #include "radio.h"
+#include "../det_classify.h"
 #include <NimBLEDevice.h>
 #include <SD.h>
 #include "../sd_helper.h"
@@ -25,27 +26,16 @@ struct tracker_t {
 static tracker_t s_trackers[TRACKER_MAX];
 static volatile int s_tracker_count = 0;
 
+/* Classification is shared and native-tested (det_classify.h). A bare
+ * Samsung company ID is a phone or earbuds, not a SmartTag. */
 static bool is_tracker(const NimBLEAdvertisedDevice *d, char *type_out)
 {
-    if (d->haveManufacturerData()) {
-        std::string md = d->getManufacturerData();
-        if (md.size() >= 3) {
-            uint16_t cid = (uint8_t)md[0] | ((uint8_t)md[1] << 8);
-            if (cid == 0x004C && (uint8_t)md[2] == 0x12) { strcpy(type_out, "AirTag");   return true; }
-            if (cid == 0x0075)                           { strcpy(type_out, "SmartTag"); return true; }
-        }
-    }
-    if (d->haveServiceUUID()) {
-        for (int i = 0; i < d->getServiceUUIDCount(); ++i) {
-            NimBLEUUID u = d->getServiceUUID(i);
-            if (u.equals(NimBLEUUID((uint16_t)0xFEED)) ||
-                u.equals(NimBLEUUID((uint16_t)0xFD84))) {
-                strcpy(type_out, "Tile");
-                return true;
-            }
-        }
-    }
-    return false;
+    const std::vector<uint8_t> &pl = d->getPayload();
+    const char *lbl = det_tracker_label(det_classify_ble(pl.data(), pl.size()));
+    if (!lbl) return false;
+    strncpy(type_out, lbl, 11);
+    type_out[11] = '\0';
+    return true;
 }
 
 /* NimBLE 2.x: callback base class renamed to NimBLEScanCallbacks and

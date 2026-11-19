@@ -77,6 +77,19 @@ static inline const char *det_family_name(uint8_t fam)
     }
 }
 
+/* Label for the tracker screens, or NULL if the family is not a tracker.
+ * Every label fits an 11-char + NUL buffer. */
+static inline const char *det_tracker_label(uint8_t fam)
+{
+    switch (fam) {
+    case DET_FAM_FINDMY:   return "Find My";
+    case DET_FAM_AIRTAG:   return "AirTag";
+    case DET_FAM_SMARTTAG: return "SmartTag";
+    case DET_FAM_TILE:     return "Tile";
+    default:               return nullptr;
+    }
+}
+
 /* Raven custom service UUID: in the Raven list and not a SIG-assigned
  * service (0x1800-0x18FF). */
 static inline bool det_raven_custom_uuid(uint16_t u)
