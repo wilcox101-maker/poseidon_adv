@@ -96,6 +96,15 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   status screen uses the new board-neutral `gz_touch_found()` /
   `gz_touch_name()`. Native-tested (`test/test_godzilla_touch_ft`, plus a 410x502
   clamp case in `test_godzilla_board_amoled206`).
+- **GODZILLA node — one geometry source for the UI.** `godzilla_node/main/gz_geom.h`
+  derives every screen size from the board's `GZ_LCD_WIDTH / HEIGHT / ROUND`:
+  radial parts (radar dial, watch face) scale with the safe radius
+  `min(W, H) / 2`; top-anchored layouts (Hunt) keep their design y positions,
+  centred on the panel, with widths clamped (the radar card is 232 px on the
+  240 px ES3C28P). Radar, Hunt, watch and the status column now read it in
+  place of fixed 360 / 180 numbers. On the 1.85B every value is identical
+  (pinned by `test/test_godzilla_geom`, which also checks the layouts fit all
+  three panels). Fonts are not scaled.
 
 ## [0.9.2] - 2026-11-16
 

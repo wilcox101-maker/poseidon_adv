@@ -37,6 +37,7 @@
 #include "gz_stats.h"
 #include "gz_clock.h"
 #include "gz_board.h"
+#include "gz_geom.h"   /* the one geometry source (#88 §3.2) */
 
 #include <Arduino.h>
 
@@ -47,20 +48,23 @@
 #define COL_INK      0x1B2A3A
 #define COL_OXBLOOD  0xA63A2B
 
-#define WCX          (GZ_LCD_WIDTH / 2)        /* 180 */
-#define WCY          (GZ_LCD_HEIGHT / 2 + 8)   /* 188: room for the bow above */
-#define R_CASE       150                       /* outer edge of the brass ring */
-#define CASE_W       7
-#define R_INNER      139                       /* thin inner ring */
-#define R_TICK_OUT   135
-#define R_TICK_IN    129                       /* minute ticks */
-#define R_TICK_IN5   123                       /* five-minute ticks */
-#define R_NUMERAL    103
-#define LEN_HOUR     62
-#define LEN_MINUTE   96
-#define LEN_SECOND   112
-#define TAIL_HM      14
-#define TAIL_SECOND  24
+/* Designed on the 1.85B's 360 canvas; every radial length scales with the
+ * panel's safe radius via gz_geom.h (#88 §3.2), identity on the 1.85B. */
+#define WCX          GZ_UI_CX                      /* 180 on the 1.85B */
+#define WCY          (GZ_UI_CY + GZ_UI_S(8))       /* 188: room for the bow above */
+#define R_CASE       GZ_UI_S(150)                  /* outer edge of the brass ring */
+#define CASE_W       GZ_UI_S(7)
+#define R_INNER      GZ_UI_S(139)                  /* thin inner ring */
+#define R_TICK_OUT   GZ_UI_S(135)
+#define R_TICK_IN    GZ_UI_S(129)                  /* minute ticks */
+#define R_TICK_IN5   GZ_UI_S(123)                  /* five-minute ticks */
+#define R_NUMERAL    GZ_UI_S(103)
+#define LEN_HOUR     GZ_UI_S(62)
+#define LEN_MINUTE   GZ_UI_S(96)
+#define LEN_SECOND   GZ_UI_S(112)
+#define TAIL_HM      GZ_UI_S(14)
+#define TAIL_SECOND  GZ_UI_S(24)
+#define BOW_Y        (WCY - R_CASE - 21)           /* 17 on the 1.85B */
 #define BLINK_MS     500u
 
 static gz_watch_clock_t s_clock;
@@ -229,7 +233,7 @@ void gz_ui_watch_build(lv_obj_t *scr)
     lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
 
     /* Bow (ring) and crown (stem) first, so the case overlaps their roots. */
-    disc(scr, WCX, 17, 13, 4, COL_BRASS, false, 0);
+    disc(scr, WCX, BOW_Y, 13, 4, COL_BRASS, false, 0);
     lv_obj_t *crown = plain_obj(scr);
     lv_obj_set_size(crown, 22, 16);
     lv_obj_set_pos(crown, WCX - 11, WCY - R_CASE - 12);
@@ -258,8 +262,8 @@ void gz_ui_watch_build(lv_obj_t *scr)
         dial_label(scr, &lv_font_montserrat_20, COL_INK, x, y, gz_watch_roman((uint8_t)h));
     }
 
-    dial_label(scr, &lv_font_montserrat_12, COL_BRASS_D, WCX, WCY - 44, "POSEIDON");
-    s_note = dial_label(scr, &lv_font_montserrat_14, COL_INK, WCX, WCY + 46, "");
+    dial_label(scr, &lv_font_montserrat_12, COL_BRASS_D, WCX, WCY - GZ_UI_S(44), "POSEIDON");
+    s_note = dial_label(scr, &lv_font_montserrat_14, COL_INK, WCX, WCY + GZ_UI_S(46), "");
 
     /* Hands, bottom to top: hour, minute, second, then the centre cap. */
     s_hand_h = new_line(scr, COL_INK, 7);

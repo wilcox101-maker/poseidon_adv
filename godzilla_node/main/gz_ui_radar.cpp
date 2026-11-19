@@ -24,6 +24,7 @@
 #include "gz_radar_store.h"
 #include "gz_recon_task.h"
 #include "gz_board.h"
+#include "gz_geom.h"   /* the one geometry source (#88 §3.2) */
 
 #include <stdio.h>
 #include <string.h>
@@ -39,10 +40,10 @@
 #define COL_TRACKER  0xFFB020   /* amber — Find My / AirTag / Tile / SmartTag */
 #define COL_NEUTRAL  0x7FD1DE   /* pale sea — everything else          */
 
-#define CX        (GZ_LCD_WIDTH / 2)
-#define CY        (GZ_LCD_HEIGHT / 2)
-#define R_MIN     22            /* clear of the trident                 */
-#define R_MAX     158           /* inside the 180 px round glass        */
+#define CX        GZ_UI_CX
+#define CY        GZ_UI_CY
+#define R_MIN     GZ_GEOM_RADAR_R_MIN                     /* clear of the trident */
+#define R_MAX     gz_geom_radar_r_max(GZ_UI_W, GZ_UI_H)   /* 158 on the 1.85B      */
 #define HIT_TOL   24            /* finger tolerance, px                 */
 #define SWEEP_STEP_DEG 9        /* per ~250 ms refresh: ~10 s / turn    */
 #define REC_NOTE_MS 4000u       /* how long a failed-start note stays   */
@@ -183,7 +184,7 @@ void gz_ui_radar_build(lv_obj_t *scr)
 
     /* Detail card: hidden until a dot is tapped; any tap closes it. */
     s_card = plain_obj(scr);
-    lv_obj_set_size(s_card, 236, 146);
+    lv_obj_set_size(s_card, gz_geom_card_w(GZ_UI_W), 146);
     lv_obj_center(s_card);
     lv_obj_set_style_bg_color(s_card, lv_color_hex(COL_CARD), 0);
     lv_obj_set_style_bg_opa(s_card, LV_OPA_90, 0);
