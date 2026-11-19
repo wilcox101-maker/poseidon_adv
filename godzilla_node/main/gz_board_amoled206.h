@@ -31,7 +31,9 @@
 /* ---- Board identity + capabilities (see gz_board.h) ---- */
 #define GZ_BOARD_NAME        "ESP32-S3-Touch-AMOLED-2.06"
 #define GZ_BOARD_HAS_UI      1    /* CO5300 + FT3168 driven (full UI)          */
-#define GZ_BOARD_HAS_SD      0    /* unit 5: SPI TF slot not driven yet       */
+#define GZ_BOARD_HAS_SD      1    /* SPI TF slot + Recon writer driven        */
+#define GZ_BOARD_SD_SPI      1    /* SD over SPI on HSPI/SPI3 (gz_sd.h)       */
+#define GZ_SD_SPI_HZ  20000000u   /* conservative; raise after a bench run   */
 #define GZ_BOARD_HAS_RTC     1    /* PCF85063                              */
 #define GZ_BOARD_HAS_IMU     1    /* QMI8658                               */
 #define GZ_BOARD_HAS_GAUGE   1    /* AXP2101 PMIC (read-only)               */

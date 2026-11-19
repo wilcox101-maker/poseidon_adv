@@ -20,6 +20,7 @@ static void test_selects_es3c28p(void)
     TEST_ASSERT_EQUAL_INT(0, GZ_LCD_ROUND);
     TEST_ASSERT_EQUAL_INT(1, GZ_BOARD_HAS_UI);    /* ILI9341V + FT6336G driven */
     TEST_ASSERT_EQUAL_INT(1, GZ_BOARD_HAS_SD);    /* SDMMC + Recon on now    */
+    TEST_ASSERT_EQUAL_INT(0, GZ_BOARD_SD_SPI);    /* SDMMC, not SPI          */
 }
 
 static void test_absent_parts_are_compiled_out(void)

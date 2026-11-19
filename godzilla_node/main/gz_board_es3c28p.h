@@ -36,6 +36,7 @@
 #define GZ_BOARD_NAME        "2.8in ESP32-S3 Display ES3C28P"
 #define GZ_BOARD_HAS_UI      1    /* ILI9341V + FT6336G driven (UI, no watch) */
 #define GZ_BOARD_HAS_SD      1    /* SDMMC 4-bit TF + Recon writer driven    */
+#define GZ_BOARD_SD_SPI      0    /* SDMMC via SD_MMC (gz_sd.h)              */
 #define GZ_BOARD_HAS_RTC     0    /* no RTC: software clock, "hold to set"   */
 #define GZ_BOARD_HAS_IMU     0    /* no IMU                                  */
 #define GZ_BOARD_HAS_GAUGE   0    /* no I2C power part; battery is ADC IO9   */

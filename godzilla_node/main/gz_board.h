@@ -12,6 +12,7 @@
  *   GZ_BOARD_NAME      human name for the boot log
  *   GZ_BOARD_HAS_UI    1 = display + touch are driven (gz_ui_start is called)
  *   GZ_BOARD_HAS_SD    1 = the TF slot is driven (gz_recon_start is called)
+ *   GZ_BOARD_SD_SPI    with a TF slot: 0 = SDMMC 4-bit, 1 = SPI (gz_sd.h)
  *   GZ_BOARD_HAS_RTC / _IMU / _GAUGE / _MIC_ADC
  *                      1 = that I2C part is fitted; 0 = absent, and its
  *                      GZ_I2C_ADDR_* macro is not defined at all
