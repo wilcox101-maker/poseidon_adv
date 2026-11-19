@@ -28,6 +28,7 @@
 #include "gz_imu.h"         /* QMI8658 status line (boards with an IMU) */
 #include "gz_power.h"       /* battery / supply line (boards with a readout) */
 #include "gz_wake.h"        /* idle dim / wake on touch or motion (#88 §3.7) */
+#include "gz_rotate.h"      /* auto-rotate from the IMU (#98 §1.3) */
 #include "gz_ui_radar.h"
 #include "gz_ui_hunt.h"
 #include "gz_ui_watch.h"
@@ -53,6 +54,16 @@ static lv_display_t *s_disp = nullptr;
 static lv_indev_t   *s_touch = nullptr;
 static gz_touch_point_t s_touch_pt = {};   /* last report; LVGL task only */
 static volatile bool s_first_flush_done = false;
+
+/* Auto-rotate (gz_rotate.h): only on boards with an IMU, behind one constant.
+ * LVGL rotates touch points itself; the flush below rotates the pixels into
+ * s_rot_buf (one is enough: LVGL waits for flush_ready before the next flush). */
+#define GZ_UI_ROTATE (GZ_BOARD_HAS_IMU && GZ_UI_AUTO_ROTATE)
+#if GZ_UI_ROTATE
+static uint8_t *s_rot_buf = nullptr;     /* nullptr: rotation unavailable */
+static uint8_t  s_rot_cur = 0;           /* applied quarter-turn */
+static uint8_t  s_rot_imu = 0;           /* IMU orientation (hysteresis state) */
+#endif
 
 /* Idle dim / wake (gz_wake.h): every board. Touched by the touch read and
  * the motion sample, applied in the task loop; all on this (LVGL) task. */
@@ -88,10 +99,24 @@ static bool IRAM_ATTR on_flush_done(void *ctx)
 
 static void flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
-    (void)disp;
     uint32_t w = (uint32_t)lv_area_get_width(area);
     uint32_t h = (uint32_t)lv_area_get_height(area);
     lv_draw_sw_rgb565_swap(px_map, w * h);          /* panel wants big-endian */
+#if GZ_UI_ROTATE
+    lv_display_rotation_t rot = lv_display_get_rotation(disp);
+    if (rot != LV_DISPLAY_ROTATION_0 && s_rot_buf) {
+        /* Logical strip -> physical: rotate the area and the pixels. */
+        lv_area_t pa = *area;
+        lv_display_rotate_area(disp, &pa);
+        uint32_t dst_stride = (uint32_t)lv_area_get_width(&pa) * 2u;
+        lv_draw_sw_rotate(px_map, s_rot_buf, (int32_t)w, (int32_t)h, (int32_t)(w * 2u),
+                          (int32_t)dst_stride, rot, LV_COLOR_FORMAT_RGB565);
+        gz_display_draw(pa.x1, pa.y1, pa.x2 + 1, pa.y2 + 1, s_rot_buf);
+        return;
+    }
+#else
+    (void)disp;
+#endif
     gz_display_draw(area->x1, area->y1, area->x2 + 1, area->y2 + 1, px_map);
 }
 
@@ -367,12 +392,31 @@ static void ui_task(void *arg)
         }
         if ((uint32_t)(now - last_refresh) >= GZ_UI_REFRESH_MS) {
             last_refresh = now;
-#if GZ_BOARD_HAS_IMU && GZ_UI_WAKE_ON_MOTION
-            /* Wake on motion: one IMU sample per UI tick (4 Hz), only when
-             * the part answered at boot. */
+#if GZ_BOARD_HAS_IMU && (GZ_UI_WAKE_ON_MOTION || GZ_UI_AUTO_ROTATE)
+            /* One IMU sample per UI tick (4 Hz), only when the part answered
+             * at boot: wake on motion and/or auto-rotate. */
             if (gz_imu_chip_id() == GZ_IMU_WHOAMI_VALUE) {
                 gz_imu_sample_t m;
-                if (gz_imu_read(&m, 0) && m.moving) gz_wake_activity(&s_wake, now);
+#if GZ_UI_ROTATE
+                uint8_t prev = s_rot_imu;
+#else
+                uint8_t prev = 0;
+#endif
+                if (gz_imu_read(&m, prev)) {
+#if GZ_UI_WAKE_ON_MOTION
+                    if (m.moving) gz_wake_activity(&s_wake, now);
+#endif
+#if GZ_UI_ROTATE
+                    s_rot_imu = m.rotation;
+                    uint8_t want = gz_rotate_target(m.rotation, s_rot_cur, GZ_LCD_WIDTH,
+                                                    GZ_LCD_HEIGHT, GZ_UI_ROT_REVERSE != 0);
+                    if (s_rot_buf && want != s_rot_cur) {
+                        s_rot_cur = want;
+                        lv_display_set_rotation(s_disp, (lv_display_rotation_t)want);
+                        lv_obj_invalidate(lv_screen_active());
+                    }
+#endif
+                }
             }
 #endif
             /* Only the visible screen; the others catch up when shown. */
@@ -394,6 +438,12 @@ bool gz_ui_start(void)
     const size_t buf_bytes = (size_t)GZ_LCD_WIDTH * GZ_LCD_BUF_LINES * 2u;
     void *b1 = heap_caps_malloc(buf_bytes, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
     void *b2 = heap_caps_malloc(buf_bytes, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+#if GZ_UI_ROTATE
+    /* Rotation target buffer (same size, DMA-capable). Not fatal if missing:
+     * the UI just stays unrotated. */
+    s_rot_buf = (uint8_t *)heap_caps_malloc(buf_bytes, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+    if (!s_rot_buf) Serial.println("!! UI: no rotate buffer — auto-rotate off");
+#endif
     if (!b1 || !b2) {
         Serial.printf("!! UI: draw buffers (2 x %u B internal DMA) failed — headless\n",
                       (unsigned)buf_bytes);

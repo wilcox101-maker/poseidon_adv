@@ -165,6 +165,12 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   stacking column (a wrapped line pushes the next one down), and narrow panels
   use a compact wording (`-80..-52 dBm | 60`, `12s ago | hold: stop`). Wider
   boards keep the full text. Layout from `gz_geom.h`, native-tested at 240x320.
+- **GODZILLA node — screen auto-rotate from the IMU.** The UI turns to match how
+  the node is held: all four quarter-turns on the square 1.85B, upside-down
+  only on the 410x502 AMOLED-2.06 (its layout is fixed to portrait), none on
+  the IMU-less ES3C28P. Touch follows automatically. `GZ_UI_AUTO_ROTATE 0`
+  turns it off and `GZ_UI_ROT_REVERSE 1` flips the quarter-turn direction
+  (`godzilla_node/main/gz_rotate.h`, native-tested in `test/test_godzilla_rotate`).
 
 ## [0.9.2] - 2026-11-16
 
