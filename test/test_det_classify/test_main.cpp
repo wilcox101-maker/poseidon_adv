@@ -188,6 +188,20 @@ static void test_raven_custom_uuid_helper(void)
     TEST_ASSERT_FALSE(det_raven_custom_uuid(0xFEED));
 }
 
+/* Tracker screens: label only for tracker families (<= 11 chars, fits the
+ * 12-byte buffers in ble_extras/ble_finder). A Samsung phone is not one. */
+static void test_tracker_label(void)
+{
+    TEST_ASSERT_EQUAL_STRING("Find My",  det_tracker_label(DET_FAM_FINDMY));
+    TEST_ASSERT_EQUAL_STRING("AirTag",   det_tracker_label(DET_FAM_AIRTAG));
+    TEST_ASSERT_EQUAL_STRING("SmartTag", det_tracker_label(DET_FAM_SMARTTAG));
+    TEST_ASSERT_EQUAL_STRING("Tile",     det_tracker_label(DET_FAM_TILE));
+    TEST_ASSERT_NULL(det_tracker_label(DET_FAM_BLE_GENERIC));
+    TEST_ASSERT_NULL(det_tracker_label(DET_FAM_RAVEN));
+    const uint8_t phone[] = { 0x06, 0xFF, 0x75, 0x00, 0x01, 0x00, 0x02 };
+    TEST_ASSERT_NULL(det_tracker_label(CLS(phone)));
+}
+
 static void test_family_names(void)
 {
     TEST_ASSERT_EQUAL_STRING("Find My",  det_family_name(DET_FAM_FINDMY));
@@ -215,6 +229,7 @@ int main(void)
     RUN_TEST(test_malformed_ad);
     RUN_TEST(test_uuid_str_to16);
     RUN_TEST(test_raven_custom_uuid_helper);
+    RUN_TEST(test_tracker_label);
     RUN_TEST(test_family_names);
     return UNITY_END();
 }
