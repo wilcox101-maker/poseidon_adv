@@ -32,6 +32,8 @@
  * (case, crown, cap), ivory 0xF3E9D2 (dial), ink 0x1B2A3A (numerals, ticks,
  * hour + minute hands), oxblood 0xA63A2B (second hand, SET).
  */
+#include "gz_board.h"
+#if GZ_BOARD_HAS_RTC   /* the watch runs only where an RTC exists (#88 §4) */
 #include "gz_ui_watch.h"
 #include "gz_watch.h"
 #include "gz_stats.h"
@@ -370,3 +372,5 @@ bool gz_ui_watch_time(uint32_t now_ms, gz_datetime_t *out)
     gz_watch_now(&s_clock, now_ms, out);
     return true;
 }
+
+#endif /* GZ_BOARD_HAS_RTC */

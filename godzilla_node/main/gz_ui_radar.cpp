@@ -22,8 +22,10 @@
  */
 #include "gz_ui_radar.h"
 #include "gz_radar_store.h"
+#include "gz_board.h"   /* first: GZ_BOARD_HAS_SD gates the Recon include */
+#if GZ_BOARD_HAS_SD
 #include "gz_recon_task.h"
-#include "gz_board.h"
+#endif
 #include "gz_geom.h"   /* the one geometry source (#88 §3.2) */
 
 #include <stdio.h>
@@ -286,6 +288,7 @@ void gz_ui_radar_refresh(uint32_t now)
     if (live == 0) lv_label_set_text(s_footer, "listening...");
     else lv_label_set_text_fmt(s_footer, "%d seen | %d red | %d amber", live, red, amber);
 
+#if GZ_BOARD_HAS_SD
     /* Recon line: REC while a session runs, a short note if a start failed. */
     gz_recon_status_t rs;
     gz_recon_status(&rs);
@@ -304,6 +307,8 @@ void gz_ui_radar_refresh(uint32_t now)
         lv_label_set_text(s_rec, "");
     }
 
+#endif
+
     refresh_card(now);
 }
 
@@ -314,7 +319,9 @@ bool gz_ui_radar_long_press(void)
         lv_obj_add_flag(s_card, LV_OBJ_FLAG_HIDDEN);
         return gz_radar_store_hunt_select(s_card_kind, s_card_addr_key);
     }
+#if GZ_BOARD_HAS_SD
     gz_recon_toggle();
+#endif
     return false;
 }
 

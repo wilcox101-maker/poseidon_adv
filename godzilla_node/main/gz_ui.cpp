@@ -50,10 +50,26 @@ static lv_display_t *s_disp = nullptr;
 static lv_indev_t   *s_touch = nullptr;
 static gz_touch_point_t s_touch_pt = {};   /* last report; LVGL task only */
 static volatile bool s_first_flush_done = false;
+
+#if GZ_BOARD_DISPLAY == 2
+/* AMOLED care (design #84 §4): dim after a minute untouched, restore on touch.
+ * Static high-contrast pixels (radar rings, crosshair) are what burn in. */
+#define GZ_UI_DIM_AFTER_MS  60000u
+#define GZ_UI_DIM_PCT       8u
+static uint32_t s_last_touch_ms = 0;
+static bool     s_dimmed = false;
+#endif
 /* Swipe ring order. GZ_UI_HOME is the screen shown at boot — one line to
  * change after the bench. */
+#if GZ_BOARD_HAS_RTC
 enum { GZ_SCR_RADAR = 0, GZ_SCR_HUNT = 1, GZ_SCR_WATCH = 2, GZ_SCR_STATUS = 3,
        GZ_SCR_COUNT = 4 };
+#else
+/* No RTC (ES3C28P): the watch runs only where an RTC exists (#88 §4), so the
+ * ring is radar -> hunt -> status and GZ_SCR_WATCH never matches a screen. */
+enum { GZ_SCR_RADAR = 0, GZ_SCR_HUNT = 1, GZ_SCR_STATUS = 2, GZ_SCR_COUNT = 3,
+       GZ_SCR_WATCH = -1 };
+#endif
 #define GZ_UI_HOME GZ_SCR_RADAR
 
 static lv_obj_t *s_scr[GZ_SCR_COUNT];
@@ -98,6 +114,9 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 {
     (void)indev;
     gz_touch_poll(&s_touch_pt);
+#if GZ_BOARD_DISPLAY == 2
+    if (s_touch_pt.pressed) s_last_touch_ms = (uint32_t)millis();
+#endif
     data->point.x = (int32_t)s_touch_pt.x;
     data->point.y = (int32_t)s_touch_pt.y;
     data->state   = s_touch_pt.pressed ? LV_INDEV_STATE_PRESSED
@@ -167,12 +186,14 @@ static void refresh_status_screen(void)
     gz_fmt_pub_age(&st, now, age, sizeof age);
 
     lv_label_set_text(s_lbl_name, st.node_name[0] ? st.node_name : "GODZILLA");
+#if GZ_BOARD_HAS_RTC
     gz_datetime_t clk;
     if (gz_ui_watch_time(now, &clk))
         lv_label_set_text_fmt(s_lbl_sub, "POSEIDON node | %02u:%02u:%02u",
                               (unsigned)clk.hour, (unsigned)clk.minute,
                               (unsigned)clk.second);
     else
+#endif
         lv_label_set_text(s_lbl_sub, "POSEIDON detection node");
     lv_label_set_text_fmt(s_lbl_up, "up %s | ch %u", up, (unsigned)st.link_channel);
     lv_label_set_text_fmt(s_lbl_ble, "BLE  %lu sent | %u last",
@@ -183,8 +204,14 @@ static void refresh_status_screen(void)
     lv_label_set_text_fmt(s_lbl_mem, "heap %u KB | PSRAM %lu KB",
                           (unsigned)(ESP.getFreeHeap() / 1024u),
                           (unsigned long)st.psram_kb);
+#if GZ_BOARD_DISPLAY == 1
     lv_label_set_text_fmt(s_lbl_hw, "I2C %u dev | panel rev %d",
                           (unsigned)st.i2c_found, gz_display_panel_rev());
+#else
+    lv_label_set_text_fmt(s_lbl_hw, "I2C %u dev | %s",
+                          (unsigned)st.i2c_found,
+                          GZ_BOARD_DISPLAY == 2 ? "CO5300 AMOLED" : "ILI9341V");
+#endif
     /* Touch bench aid: chip, last controller gesture, last point. */
     if (!gz_touch_found()) {
         lv_label_set_text(s_lbl_touch, "touch: not found");
@@ -218,17 +245,24 @@ static void refresh_current(uint32_t now)
 {
     if (s_cur == GZ_SCR_RADAR)      gz_ui_radar_refresh(now);
     else if (s_cur == GZ_SCR_HUNT)  gz_ui_hunt_refresh(now);
+#if GZ_BOARD_HAS_RTC
     else if (s_cur == GZ_SCR_WATCH) gz_ui_watch_refresh(now);
+#endif
     else                            refresh_status_screen();
 }
 
 static void go_to(int idx)
 {
     uint32_t now = millis();
+#if GZ_BOARD_HAS_RTC
     if (s_cur == GZ_SCR_WATCH) gz_ui_watch_hide();     /* drops an unfinished set */
     s_cur = idx;
     if (s_cur == GZ_SCR_WATCH) gz_ui_watch_show(now);  /* resync before the first frame */
     else                       refresh_current(now);
+#else
+    s_cur = idx;
+    refresh_current(now);
+#endif
     lv_screen_load(s_scr[s_cur]);   /* no slide animation: QSPI full-screen moves are slow */
 }
 
@@ -247,15 +281,20 @@ static void screen_event_cb(lv_event_t *e)
     } else if (code == LV_EVENT_LONG_PRESSED) {
         if (s_cur == GZ_SCR_STATUS || s_suppress_click) return;
         s_suppress_click = true;       /* the release must not also count as a tap */
+#if GZ_BOARD_HAS_RTC
         if (s_cur == GZ_SCR_WATCH)     gz_ui_watch_long_press(millis());
-        else if (s_cur == GZ_SCR_HUNT) gz_ui_hunt_long_press();      /* stop hunting */
+        else
+#endif
+        if (s_cur == GZ_SCR_HUNT)      gz_ui_hunt_long_press();      /* stop hunting */
         else if (gz_ui_radar_long_press()) go_to(GZ_SCR_HUNT);       /* card: hunt it */
     } else if (code == LV_EVENT_CLICKED) {
         if (s_suppress_click) return;
         lv_point_t p;
         lv_indev_get_point(lv_indev_active(), &p);
         if (s_cur == GZ_SCR_RADAR)      gz_ui_radar_tap(p.x, p.y, millis());
+#if GZ_BOARD_HAS_RTC
         else if (s_cur == GZ_SCR_WATCH) gz_ui_watch_tap(p.y, millis());
+#endif
     }
 }
 
@@ -278,7 +317,9 @@ static void ui_task(void *arg)
     }
     gz_ui_radar_build(s_scr[GZ_SCR_RADAR]);
     gz_ui_hunt_build(s_scr[GZ_SCR_HUNT]);
+#if GZ_BOARD_HAS_RTC
     gz_ui_watch_build(s_scr[GZ_SCR_WATCH]);     /* first RTC read, on this task */
+#endif
     build_status_screen(s_scr[GZ_SCR_STATUS]);
     refresh_current(millis());
     lv_screen_load(s_scr[s_cur]);
@@ -293,6 +334,15 @@ static void ui_task(void *arg)
             backlight_on = true;
         }
         uint32_t now = millis();
+#if GZ_BOARD_DISPLAY == 2
+        if (backlight_on) {
+            bool idle = (uint32_t)(now - s_last_touch_ms) >= GZ_UI_DIM_AFTER_MS;
+            if (idle != s_dimmed) {
+                gz_display_backlight(idle ? GZ_UI_DIM_PCT : GZ_LCD_BL_DEFAULT_PCT);
+                s_dimmed = idle;
+            }
+        }
+#endif
         if ((uint32_t)(now - last_refresh) >= GZ_UI_REFRESH_MS) {
             last_refresh = now;
             /* Only the visible screen; the others catch up when shown. */
@@ -347,7 +397,11 @@ bool gz_ui_start(void)
         Serial.println("!! UI: task create failed — headless");
         return false;
     }
-    Serial.printf("  UI: LVGL %d.%d.%d, 2 x %u B draw buffers, radar + hunt + watch + status screens\n",
+    Serial.printf("  UI: LVGL %d.%d.%d, 2 x %u B draw buffers, radar + hunt + "
+#if GZ_BOARD_HAS_RTC
+                  "watch + "
+#endif
+                  "status screens\n",
                   LVGL_VERSION_MAJOR, LVGL_VERSION_MINOR, LVGL_VERSION_PATCH,
                   (unsigned)buf_bytes);
     return true;
