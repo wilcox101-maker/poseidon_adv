@@ -18,6 +18,7 @@
 #include "gz_stats.h"      /* P2a: counters behind the status screen */
 #include "gz_ui.h"         /* P2a: ST77916 display + LVGL status screen */
 #include "gz_rtc.h"        /* P2a: PCF85063 RTC read / build-time seed */
+#include "gz_imu.h"        /* P3: QMI8658 IMU bring-up (read-only) */
 #include "gz_recon_task.h" /* P3: microSD + Recon session writer */
 
 static constexpr uint32_t GZ_HELLO_PERIOD_MS = 5000;
@@ -51,6 +52,11 @@ void setup()
     bool rtc_seeded = false;
     bool rtc_ok = gz_rtc_begin(&gz_now, &rtc_seeded);
     gz_stats_set_rtc(rtc_ok, rtc_seeded);   /* watch face: "hold to set" hint */
+
+    /* P3: IMU bring-up on the same bus. Read-only — the part only reports;
+     * nothing is ever commanded to move. Used for the status screen and, later,
+     * screen orientation. The WHO_AM_I read is the hardware confirmation. */
+    gz_imu_begin();
 
     /* P2a: status screen. Identity first, then the panel + LVGL task. The
      * radios below start either way — headless is still a working node. */

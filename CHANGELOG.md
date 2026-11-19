@@ -15,6 +15,13 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   oscillator-stopped seed policy — `test/test_godzilla_rtc`) with the Wire I2C
   read/write on-target only. Boot bring-up seeds the clock from firmware build
   time when the oscillator stopped (cold boot / no backup cell). Passive.
+- **GODZILLA node — QMI8658 IMU bring-up (P3, read-only).** The 6-axis IMU on
+  the shared I2C bus (`godzilla_node/main/gz_imu.h`) is brought up read-only:
+  WHO_AM_I check, soft-reset, accel+gyro enabled, then sampled. Pure,
+  native-tested scaling / tilt / orientation-hysteresis / rest-vs-motion logic
+  (`test/test_godzilla_imu`), Wire I2C on-target only. The status screen gains a
+  live "IMU still|moving | rot N" line; the boot scan now labels 0x6B. Nothing
+  is ever commanded to move. Passive.
 - **GODZILLA node — boot I2C scan labels.** The scan now names the other parts
   on the 1.85B's bus (QMI8658 IMU 0x6B, BQ27220 gauge 0x55, and the audio parts
   at 0x18 / 0x40, the last two inferred) instead of "unknown". Labels only;
