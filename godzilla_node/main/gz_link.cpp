@@ -17,6 +17,23 @@
 
 static const uint8_t GZ_BROADCAST[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
+/* Upper bound on how long gz_link_send() waits for a publish to actually air
+ * before it moves the radio off the C5 link channel (task 3c hops). 10-20 ms
+ * per the P2a advice; bounded so a lost send-callback can never stall the loop. */
+#define GZ_SEND_WAIT_MS 15u
+
+/* Set false just before each esp_now_send(), set true by the send callback when
+ * the frame has left the air. Written by the Wi-Fi driver's send-cb context and
+ * polled by the main loop — volatile, single-writer, no lock needed. */
+static volatile bool s_send_done = false;
+
+static void gz_on_sent(const uint8_t *mac, esp_now_send_status_t status)
+{
+    (void)mac;
+    (void)status;
+    s_send_done = true;
+}
+
 /* Passive node: validate the fixed header and otherwise ignore. P1 is
  * fire-and-forget and takes no commands; detections flow node -> S3 only. A
  * callback is registered anyway so the stack has a home for inbound frames
@@ -39,6 +56,7 @@ void gz_link_init(void)
 
     esp_now_init();
     esp_now_register_recv_cb(gz_on_recv);
+    esp_now_register_send_cb(gz_on_sent);
 
     esp_now_peer_info_t peer = {};
     memcpy(peer.peer_addr, GZ_BROADCAST, 6);
@@ -62,8 +80,20 @@ bool gz_link_send(const posei_msg_t *m)
     bool off_channel = (prim != GZ_LINK_CHANNEL);
 
     if (off_channel) esp_wifi_set_channel(GZ_LINK_CHANNEL, WIFI_SECOND_CHAN_NONE);
+
+    s_send_done = false;                 /* arm before the send, not after */
     bool ok = esp_now_send(GZ_BROADCAST, (const uint8_t *)m, posei_wire_len(m)) == ESP_OK;
-    if (off_channel) esp_wifi_set_channel(prim, sec);
+
+    if (off_channel) {
+        /* esp_now_send() only queues the frame; restoring the scan channel
+         * immediately could move the radio before it airs. Wait for the send
+         * callback, bounded by GZ_SEND_WAIT_MS so a dropped callback can't
+         * stall the loop. Only needed when hopping — on ch1 we stay put. */
+        uint32_t t0 = millis();
+        while (!s_send_done && (uint32_t)(millis() - t0) < GZ_SEND_WAIT_MS)
+            delay(1);
+        esp_wifi_set_channel(prim, sec);
+    }
     return ok;
 }
 
