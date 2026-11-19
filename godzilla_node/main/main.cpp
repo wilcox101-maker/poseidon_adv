@@ -17,6 +17,7 @@
 #include "gz_i2c_scan.h"   /* P2a: boot-time I2C bus probe (touch + RTC) */
 #include "gz_stats.h"      /* P2a: counters behind the status screen */
 #include "gz_ui.h"         /* P2a: ST77916 display + LVGL status screen */
+#include "gz_rtc.h"        /* P2a: PCF85063 RTC read / build-time seed */
 
 static constexpr uint32_t GZ_HELLO_PERIOD_MS = 5000;
 
@@ -40,6 +41,13 @@ void setup()
         Serial.printf("  PSRAM: %u KB\n", (unsigned)(psram / 1024));
     }
     uint8_t i2c_found = gz_i2c_scan_report();
+
+    /* RTC bring-up on the same bus the scan just opened: read the PCF85063 and,
+     * if its oscillator stopped (cold boot / no backup cell), seed it from the
+     * firmware build time so the clock and the later pocket-watch face start
+     * sane. Passive — I2C to a soldered peripheral, no radio. */
+    gz_datetime_t gz_now;
+    gz_rtc_begin(&gz_now);
 
     /* P2a: status screen. Identity first, then the panel + LVGL task. The
      * radios below start either way — headless is still a working node. */
