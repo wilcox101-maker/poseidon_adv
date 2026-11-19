@@ -14,6 +14,7 @@
 #include "gz_hello.h"      /* GZ_HELLO_NAME / GZ_ROLE for the boot log */
 #include "gz_ble_scan.h"   /* task 3b: passive BLE scan → batch → publish */
 #include "gz_wifi_scan.h"  /* task 3c: passive Wi-Fi scan → batch → publish */
+#include "gz_i2c_scan.h"   /* P2a: boot-time I2C bus probe (touch + RTC) */
 
 static constexpr uint32_t GZ_HELLO_PERIOD_MS = 5000;
 
@@ -25,6 +26,18 @@ void setup()
 {
     Serial.begin(115200);
     delay(200);
+
+    /* P2a board bring-up, before the radios: confirm PSRAM is mapped (the UI
+     * framebuffer will live there) and probe the I2C bus so Dale's first flash
+     * settles the still-unconfirmed touch/RTC pins. Fail loudly on no PSRAM. */
+    size_t psram = ESP.getPsramSize();
+    if (psram == 0) {
+        Serial.println("!! PSRAM NOT DETECTED (ESP.getPsramSize()==0) — check "
+                       "board_build.arduino.memory_type=qio_opi + -DBOARD_HAS_PSRAM");
+    } else {
+        Serial.printf("  PSRAM: %u KB\n", (unsigned)(psram / 1024));
+    }
+    gz_i2c_scan_report();
 
     gz_link_init();
     gz_link_send_hello();        /* announce immediately, like c5_node */
