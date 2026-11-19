@@ -126,3 +126,20 @@ static inline int gz_det_ingest(gz_det_table_t *t, uint8_t kind,
     }
     return applied;
 }
+
+/* Bench/UI helper: order rows newest first by age at `now_ms` (unsigned age,
+ * so millis() wrap is safe). Insertion sort: stable, n <= 64, no allocation. */
+static inline void gz_det_sort_recent(gz_det_t *rows, int n, uint32_t now_ms)
+{
+    if (!rows) return;
+    for (int i = 1; i < n; ++i) {
+        gz_det_t key = rows[i];
+        uint32_t age = now_ms - key.last_seen_ms;
+        int j = i - 1;
+        while (j >= 0 && (now_ms - rows[j].last_seen_ms) > age) {
+            rows[j + 1] = rows[j];
+            --j;
+        }
+        rows[j + 1] = key;
+    }
+}
