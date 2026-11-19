@@ -8,6 +8,13 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **GODZILLA node — three-board bench runbook (#98 §3.6).**
+  `docs/godzilla-bench-runbook.md`: per board, the flash and monitor commands,
+  the expected boot I2C scan and boot lines, display, touch and SD bring-up
+  checks, and what the status screen should read. The ES3C28P is marked
+  bench-ready; the 1.85B and AMOLED-2.06 are desk-only until in hand. Also a
+  table of standing confirmations: FocalTech 0x38 (Dale-confirmed on the
+  ES3C28P), the ES8311 address, the PMIC address, and RTC backup per board.
 - **GODZILLA node — BLE Lab screen (#98 §2.4, part b).** A new screen in the
   swipe ring after Hunt (`godzilla_node/main/gz_ui_lab.cpp`): recently heard BLE
   devices, strongest first (re-sorted once a second so rows hold still), one
