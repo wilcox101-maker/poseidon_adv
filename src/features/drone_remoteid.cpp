@@ -29,20 +29,13 @@
 #include "sfx.h"
 #include "../sd_helper.h"
 #include "../sigdb_bt.h"
+#include "../odid_decode.h"
 #include <NimBLEDevice.h>
 #include <SD.h>
 #include <math.h>
 
 #define ASTM_SVC_UUID16   0xFFFA
 
-enum {
-    ASTM_MSG_BASIC_ID    = 0x0,
-    ASTM_MSG_LOC_VECTOR  = 0x1,
-    ASTM_MSG_AUTH        = 0x2,
-    ASTM_MSG_SELF_ID     = 0x3,
-    ASTM_MSG_SYSTEM      = 0x4,
-    ASTM_MSG_OPERATOR_ID = 0x5,
-};
 
 struct drone_t {
     char     uas_id[21];     /* CAA / ANSI/CTA-2063 */
@@ -67,20 +60,6 @@ static int     s_drone_count = 0;
 static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
 static File    s_log;
 static char    s_log_path[64] = {0};
-
-/* Quick decoder helpers — ASTM uses little-endian + fixed scaling. */
-static inline int32_t le_i32(const uint8_t *p)
-{
-    return (int32_t)((uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-                     ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24));
-}
-static inline int16_t le_i16(const uint8_t *p)
-{
-    return (int16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8));
-}
-
-/* Latitude/longitude scaled by 1e7 (degrees). */
-static inline double astm_latlon(int32_t v) { return (double)v / 1e7; }
 
 static int find_or_add_drone(const uint8_t src[6], bool *is_new)
 {
@@ -124,68 +103,43 @@ static void log_event(const drone_t &d, uint8_t msg_type)
     s_log.flush();
 }
 
-static void decode_astm(const uint8_t *data, size_t len, const uint8_t src[6], int8_t rssi)
+/* `sd` is the 0xFFFA service-data body after the UUID: app code 0x0D, counter,
+ * then one message or a pack. Decoding lives in odid_decode.h (native-tested);
+ * this only merges the result into the drone table and logs it. */
+static void decode_astm(const uint8_t *sd, size_t len, const uint8_t src[6], int8_t rssi)
 {
-    /* ASTM frame inside Service Data 0xFFFA: first byte is message-type
-     * (high nibble) + protocol-version (low nibble). Then a 24-byte
-     * type-specific payload. Frame may carry multiple messages back to
-     * back (Message Pack — type 0xF wraps up to 9 messages). */
-    if (len < 1) return;
+    odid_info_t info = {};
+    if (odid_decode_ble_svc(sd, len, &info) <= 0) return;
+    uint8_t msg_type = (uint8_t)(sd[2] >> 4);       /* 0xF for a pack */
 
-    /* Multi-pack: type 0xF, version 0x2 -> count at offset 1, then 25-byte chunks. */
-    if ((data[0] >> 4) == 0xF) {
-        if (len < 2) return;
-        int n = data[1];
-        if (n > 9) n = 9;
-        const uint8_t *m = data + 2;
-        for (int i = 0; i < n; i++) {
-            if ((size_t)(m + 25 - data) > len) break;
-            decode_astm(m, 25, src, rssi);
-            m += 25;
-        }
-        return;
-    }
-
-    uint8_t msg_type = data[0] >> 4;
-    /* uint8_t proto_ver = data[0] & 0xF; */
     bool newly_added = false;
     portENTER_CRITICAL(&s_mux);
     int idx = find_or_add_drone(src, &newly_added);
     drone_t &dr = s_drones[idx];
     dr.rssi    = rssi;
     dr.last_ms = millis();
-
-    if (msg_type == ASTM_MSG_BASIC_ID && len >= 25) {
-        dr.ua_type = data[1] & 0x0F;
-        /* UAS ID at bytes 2..21 (20 bytes), ASCII / CAA-format. */
-        memcpy(dr.uas_id, data + 2, 20);
-        dr.uas_id[20] = '\0';
-        /* Trim trailing spaces / nulls. */
-        for (int i = 19; i >= 0; i--) {
-            if (dr.uas_id[i] == ' ' || dr.uas_id[i] == 0) dr.uas_id[i] = '\0';
-            else break;
-        }
+    if (info.have_id) {
+        memcpy(dr.uas_id, info.uas_id, sizeof(dr.uas_id));
+        dr.ua_type = info.ua_type;
     }
-    else if (msg_type == ASTM_MSG_LOC_VECTOR && len >= 25) {
-        dr.track_deg = (float)data[2];
-        dr.speed_ms  = (float)data[3] * 0.25f;
-        dr.lat_deg   = astm_latlon(le_i32(data + 5));
-        dr.lon_deg   = astm_latlon(le_i32(data + 9));
-        /* Geodetic altitude: stored as (alt + 1000) * 2 (meters). */
-        uint16_t alt_raw = (uint16_t)le_i16(data + 15);
-        dr.alt_m = ((float)alt_raw * 0.5f) - 1000.0f;
-        dr.have_loc = true;
+    if (info.have_loc) {
+        dr.track_deg = info.track_deg;
+        dr.speed_ms  = info.speed_ms;
+        dr.lat_deg   = info.lat_deg;
+        dr.lon_deg   = info.lon_deg;
+        dr.alt_m     = info.alt_geo_m;
+        dr.have_loc  = true;
     }
-    else if (msg_type == ASTM_MSG_SYSTEM && len >= 25) {
-        /* System message — operator (pilot) location at bytes 1..8 (after flags byte). */
-        dr.op_lat_deg = astm_latlon(le_i32(data + 2));
-        dr.op_lon_deg = astm_latlon(le_i32(data + 6));
-        dr.have_op = true;
+    if (info.have_op) {
+        dr.op_lat_deg = info.op_lat_deg;
+        dr.op_lon_deg = info.op_lon_deg;
+        dr.have_op    = true;
     }
+    drone_t snap = dr;
     portEXIT_CRITICAL(&s_mux);
 
     if (newly_added) sfx_scan_hit();
-    log_event(dr, msg_type);
+    log_event(snap, msg_type);
 }
 
 class DroneScanCb : public NimBLEScanCallbacks {
