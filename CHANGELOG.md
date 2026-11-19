@@ -53,6 +53,16 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   hit count. A writer task owns the card; nothing is written outside a
   session and the card is never formatted. The radar shows `REC n` while
   recording. Model native-tested (`test/test_godzilla_recon`). Passive.
+- **GODZILLA node — Hunt view (P3).** A signal meter for one contact: tap a
+  dot on the radar, then hold its card, and the new Hunt screen shows that
+  device's family, address and radio, its latest RSSI in large type, a
+  stronger / weaker / steady trend (newest 5 readings against the 5 before,
+  3 dB threshold), and a trace of the last 60 published readings (about a
+  minute). It turns "lost" after the radar's 60 s TTL; hold the Hunt screen to
+  stop. Fed from the same published batches as the radar, in the same critical
+  section. Swipe ring is now radar, hunt, watch, status. Model native-tested
+  (`test/test_godzilla_hunt`). Passive; one omni antenna, so it is a strength
+  meter, not a direction finder.
 
 ## [0.9.2] - 2026-11-16
 
