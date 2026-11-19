@@ -16,7 +16,9 @@
  *     an empty-SSID probe from a listed prefix is SURV_FLOCK_PROBE; an SSID
  *     pattern upgrades UNKNOWN or T2 to SURV_FLOCK_SSID.
  *
- * Wire family (flock_frame_family): FLOCK for T1, SSID and PROBE. A tier-2
+ * Wire family (flock_frame_family): REMOTEID if a beacon/probe response
+ * carries the ASTM Remote ID vendor IE (odid_decode.h); else FLOCK for T1,
+ * SSID and PROBE. A tier-2
  * prefix alone is reported as a plain AP/STA: per sigdb_surveillance.h those
  * are contract manufacturers that need corroboration, and the list includes
  * common module vendors.
@@ -28,12 +30,14 @@
 #include <string.h>
 #include "sigdb_surveillance.h"
 #include "det_classify.h"
+#include "odid_decode.h"
 
 typedef struct {
     uint8_t addr[6];
     char    ssid[33];
     uint8_t subtype;     /* 4 probe req, 5 probe resp, 8 beacon */
     uint8_t cls;         /* surv_class_t */
+    bool    odid;        /* beacon/probe resp carries an ASTM Remote ID IE */
 } flock_frame_t;
 
 /* Returns the surv_class_t (SURV_UNKNOWN for an ordinary frame), or -1 if
@@ -60,6 +64,8 @@ static inline int flock_frame_classify(const uint8_t *p, int len, flock_frame_t 
         r->ssid[tags[1]] = '\0';
     }
 
+    if (subtype != 0x4) r->odid = odid_wifi_has_ie(tags, tag_len > 0 ? (size_t)tag_len : 0);
+
     surv_class_t cls = flock_classify_oui(r->addr);
     if (subtype == 0x4 && r->ssid[0] == '\0' && cls != SURV_UNKNOWN)
         cls = SURV_FLOCK_PROBE;
@@ -74,6 +80,7 @@ static inline int flock_frame_classify(const uint8_t *p, int len, flock_frame_t 
 /* Wire family for a classified frame (see header note on tier 2). */
 static inline uint8_t flock_frame_family(const flock_frame_t *r)
 {
+    if (r->odid) return DET_FAM_REMOTEID;    /* drone broadcasting Remote ID */
     if (r->cls == SURV_FLOCK_T1 || r->cls == SURV_FLOCK_SSID || r->cls == SURV_FLOCK_PROBE)
         return DET_FAM_FLOCK;
     return (r->subtype == 0x4) ? DET_FAM_WIFI_STA : DET_FAM_WIFI_AP;

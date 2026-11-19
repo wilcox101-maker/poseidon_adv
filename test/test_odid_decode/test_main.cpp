@@ -191,6 +191,79 @@ static void test_pack_no_nesting(void)
     TEST_ASSERT_EQUAL_INT(0, odid_decode_ble_svc(sd, sizeof(sd), &d));
 }
 
+/* ---- Wi-Fi beacon Remote ID (ASTM F3411 Wi-Fi Beacon / ASD-STAN) ----
+ * Beacon: 24B header + 12B fixed, then IEs. ODID rides in vendor IE 221:
+ * [DD][len][FA 0B BC][0D][counter][message pack]  (opendroneid-core-c wifi.c,
+ * receiver-android WiFiBeaconScanner). len_incl_fcs counts the 4-byte FCS. */
+static int mk_odid_beacon(uint8_t *f, int n_msgs, bool good_oui)
+{
+    memset(f, 0, 512);
+    f[0] = 0x80;                                  /* beacon */
+    int n = 36;
+    f[n++] = 0; f[n++] = 4; memcpy(f + n, "UAS1", 4); n += 4;          /* SSID */
+    f[n++] = 1; f[n++] = 1; f[n++] = 0x82;                               /* rates */
+    int ie = n;
+    f[n++] = 221; f[n++] = 0;                                            /* len later */
+    f[n++] = 0xFA; f[n++] = good_oui ? 0x0B : 0x0C; f[n++] = 0xBC; f[n++] = 0x0D;
+    f[n++] = 42;                                                          /* counter */
+    f[n++] = (ODID_MSG_PACK << 4) | 0x2; f[n++] = 25; f[n++] = (uint8_t)n_msgs;
+    if (n_msgs >= 1) { basic_id(f + n, "WIFIDRONE01", 1, 2); n += 25; }
+    if (n_msgs >= 2) { location(f + n, 425000000, -830000000, 0, false, 4, false, 0, 2400); n += 25; }
+    f[ie + 1] = (uint8_t)(n - ie - 2);
+    return n + 4;                                                         /* + FCS */
+}
+
+static void test_wifi_beacon_decode(void)
+{
+    uint8_t f[512]; odid_info_t d = {};
+    int len = mk_odid_beacon(f, 2, true);
+    TEST_ASSERT_EQUAL_INT(2, odid_decode_wifi_beacon(f, len, &d));
+    TEST_ASSERT_EQUAL_STRING("WIFIDRONE01", d.uas_id);
+    TEST_ASSERT_TRUE(d.have_loc);
+    ASSERT_DBL(1e-7, 42.5, d.lat_deg);
+}
+
+static void test_wifi_beacon_absent_or_wrong(void)
+{
+    uint8_t f[512]; odid_info_t d = {};
+    int len = mk_odid_beacon(f, 1, false);        /* wrong OUI */
+    TEST_ASSERT_EQUAL_INT(0, odid_decode_wifi_beacon(f, len, &d));
+    TEST_ASSERT_FALSE(d.have_id);
+    len = mk_odid_beacon(f, 1, true);
+    f[0] = 0x40;                                  /* probe request: not a beacon */
+    TEST_ASSERT_EQUAL_INT(-1, odid_decode_wifi_beacon(f, len, &d));
+    TEST_ASSERT_EQUAL_INT(-1, odid_decode_wifi_beacon(f, 39, &d));
+    TEST_ASSERT_EQUAL_INT(-1, odid_decode_wifi_beacon(nullptr, len, &d));
+}
+
+/* IE length running past the frame: stop, never read past it. */
+static void test_wifi_beacon_ie_overrun(void)
+{
+    uint8_t f[512]; odid_info_t d = {};
+    int len = mk_odid_beacon(f, 2, true);
+    TEST_ASSERT_EQUAL_INT(0, odid_decode_wifi_beacon(f, len - 30, &d));   /* IE truncated */
+    TEST_ASSERT_FALSE(d.have_id);
+}
+
+/* Pack claims more messages than the IE carries: rejected whole. */
+static void test_wifi_beacon_bad_pack(void)
+{
+    uint8_t f[512]; odid_info_t d = {};
+    int len = mk_odid_beacon(f, 1, true);
+    f[36 + 6 + 3 + 2 + 4 + 1 + 2] = 3;            /* count byte: claims 3, carries 1 */
+    TEST_ASSERT_EQUAL_INT(-1, odid_decode_wifi_beacon(f, len, &d));
+    TEST_ASSERT_FALSE(d.have_id);
+}
+
+static void test_wifi_has_odid_ie(void)
+{
+    uint8_t f[512];
+    int len = mk_odid_beacon(f, 1, true);
+    TEST_ASSERT_TRUE(odid_wifi_has_ie(f + 36, (size_t)(len - 36 - 4)));
+    len = mk_odid_beacon(f, 1, false);
+    TEST_ASSERT_FALSE(odid_wifi_has_ie(f + 36, (size_t)(len - 36 - 4)));
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -205,5 +278,10 @@ int main(void)
     RUN_TEST(test_ble_pack);
     RUN_TEST(test_pack_rejects);
     RUN_TEST(test_pack_no_nesting);
+    RUN_TEST(test_wifi_beacon_decode);
+    RUN_TEST(test_wifi_beacon_absent_or_wrong);
+    RUN_TEST(test_wifi_beacon_ie_overrun);
+    RUN_TEST(test_wifi_beacon_bad_pack);
+    RUN_TEST(test_wifi_has_odid_ie);
     return UNITY_END();
 }
