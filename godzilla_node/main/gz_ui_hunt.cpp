@@ -19,6 +19,7 @@
 #include "gz_ui_hunt.h"
 #include "gz_radar_store.h"
 #include "gz_board.h"
+#include "gz_geom.h"   /* the one geometry source (#88 §3.2) */
 
 #include <stdio.h>
 #include <string.h>
@@ -33,16 +34,18 @@
 #define COL_TRACKER  0xFFB020
 #define COL_NEUTRAL  0x7FD1DE
 
-/* Plot box, kept inside the round glass (inscribed radius 180 px). */
-#define PLOT_X   60
-#define PLOT_Y   192
-#define PLOT_W   240
+/* Layout designed on the 360 canvas; gz_geom.h fits it to the panel: widths
+ * clamp, y positions shift by GZ_UI_DY so the block sits centred. */
+#define PLOT_X   gz_geom_hunt_plot_x(GZ_UI_W, GZ_UI_ROUND)   /* 60 on the 1.85B  */
+#define PLOT_Y   (192 + GZ_UI_DY)
+#define PLOT_W   gz_geom_hunt_plot_w(GZ_UI_W, GZ_UI_ROUND)   /* 240 on the 1.85B */
 #define PLOT_H   76
+#define LABEL_W  gz_geom_col_w(260, GZ_UI_W)                 /* 260 on the 1.85B */
 #define PLOT_PAD 4              /* keep the 2 px line off the frame */
 
 static lv_obj_t *s_fam, *s_addr, *s_radio, *s_rssi, *s_trend;
 static lv_obj_t *s_plot, *s_trace, *s_stats, *s_age, *s_empty;
-static lv_point_precise_t s_pts[GZ_HUNT_SAMPLES];
+static lv_point_precise_t s_pts[GZ_HUNT_SAMPLES];   /* plot-local */
 static gz_hunt_t s_h;           /* snapshot this refresh drew */
 
 static uint32_t sev_colour(uint8_t sev)
@@ -57,9 +60,9 @@ static lv_obj_t *label(lv_obj_t *scr, const lv_font_t *font, uint32_t rgb, int y
     lv_obj_set_style_text_font(l, font, 0);
     lv_obj_set_style_text_color(l, lv_color_hex(rgb), 0);
     lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_width(l, 260);
+    lv_obj_set_width(l, LABEL_W);
     lv_label_set_text(l, "");
-    lv_obj_align(l, LV_ALIGN_TOP_MID, 0, y);
+    lv_obj_align(l, LV_ALIGN_TOP_MID, 0, y + GZ_UI_DY);
     lv_obj_remove_flag(l, LV_OBJ_FLAG_CLICKABLE);
     return l;
 }
@@ -116,8 +119,8 @@ void gz_ui_hunt_build(lv_obj_t *scr)
     lv_obj_set_style_line_rounded(s_trace, true, 0);
     lv_obj_remove_flag(s_trace, LV_OBJ_FLAG_CLICKABLE);
 
-    s_stats = label(scr, &lv_font_montserrat_14, COL_DIM, PLOT_Y + PLOT_H + 8);
-    s_age   = label(scr, &lv_font_montserrat_14, COL_DIM, PLOT_Y + PLOT_H + 28);
+    s_stats = label(scr, &lv_font_montserrat_14, COL_DIM, 192 + PLOT_H + 8);    /* design y */
+    s_age   = label(scr, &lv_font_montserrat_14, COL_DIM, 192 + PLOT_H + 28);
 
     s_empty = label(scr, &lv_font_montserrat_16, COL_DIM, 0);
     lv_label_set_text(s_empty, "HUNT\n\nno contact picked\n\n"

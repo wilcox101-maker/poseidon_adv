@@ -27,6 +27,7 @@ Wire contract: [`docs/godzilla-detection-publish-contract.md`](../docs/godzilla-
 | Second board — AMOLED-2.06 (`main/gz_board.h`, `main/gz_board_amoled206.h`, `[env:godzilla-amoled206]`) | Port unit 1 — board chosen at build time (`-DGZ_BOARD_AMOLED206`); 1.85B map unchanged in `gz_board_185b.h`. The 2.06 builds headless in CI (radios, link, publish, RTC); CO5300 display, FT3168 touch and the SPI TF slot follow in units 2-5 per `docs/proposals/2026-11-19-godzilla-amoled206-port.md`. HELLO name `GODZILLA206`. Map native-tested (`test/test_godzilla_board_amoled206`) |
 | Third board — ES3C28P (`main/gz_board_es3c28p.h`, `[env:godzilla-es3c28p]`) | 2.8" ESP32-S3 Display (lcdwiki), `-DGZ_BOARD_ES3C28P`. SDMMC TF + Recon on; UI headless until the ILI9341V / FT6336G units. No RTC / IMU / PMIC — compiled out by `GZ_BOARD_HAS_*`; amp held off at boot. HELLO `GODZILLA28`. Map native-tested (`test/test_godzilla_board_es3c28p`) |
 | FocalTech touch (`main/gz_touch_ft.h`) | FT3168 (2.06) + FT6336G (ES3C28P): one read-only parser + INT-gated driver behind `gz_touch.h`, selected by `GZ_BOARD_TOUCH_FT`; non-fatal if the controller is missing. Native-tested (`test/test_godzilla_touch_ft`) |
+| UI geometry (`main/gz_geom.h`) | One source for every screen size: radial parts scale with `min(W,H)/2`, top-anchored layouts centre with clamped widths. Identical values on the 1.85B; fits the 2.06 and ES3C28P. Native-tested (`test/test_godzilla_geom`) |
 
 ## Board
 

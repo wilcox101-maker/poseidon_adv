@@ -28,6 +28,7 @@
 #include "gz_ui_radar.h"
 #include "gz_ui_hunt.h"
 #include "gz_ui_watch.h"
+#include "gz_geom.h"         /* the one geometry source (#88 §3.2) */
 
 #include <Arduino.h>
 #include <esp_heap_caps.h>
@@ -129,7 +130,7 @@ static void build_status_screen(lv_obj_t *scr)
     lv_obj_remove_style_all(col);
     lv_obj_remove_flag(col, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_remove_flag(col, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_size(col, 250, LV_SIZE_CONTENT);
+    lv_obj_set_size(col, gz_geom_col_w(250, GZ_UI_W), LV_SIZE_CONTENT);   /* 250 on the 1.85B */
     lv_obj_center(col);
     lv_obj_set_flex_flow(col, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(col, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
