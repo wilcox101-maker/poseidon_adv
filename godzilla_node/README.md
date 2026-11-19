@@ -14,7 +14,9 @@ Wire contract: [`docs/godzilla-detection-publish-contract.md`](../docs/godzilla-
 |---|---|
 | `main/gz_batch.h` — detection batching core | done, native-tested (`test/test_godzilla_batch`) |
 | `[env:godzilla]` + `main/main.cpp` skeleton | done, builds in CI (`build.yml` matrix) |
-| Passive BLE / Wi-Fi scan loop + ESP-NOW publish | not started |
+| ESP-NOW link + HELLO (`main/gz_link.*`, `main/gz_hello.h`) | task 3a — STA ch1, broadcast peer, HELLO every 5 s; HELLO builder native-tested (`test/test_godzilla_hello`) |
+| Passive BLE scan → batch → publish | task 3b — not started |
+| Passive Wi-Fi scan → batch → publish | task 3c — not started |
 
 Nothing here has run on hardware yet.
 
