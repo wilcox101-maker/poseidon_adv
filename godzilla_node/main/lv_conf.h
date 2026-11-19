@@ -24,14 +24,17 @@
 /* Release: no LVGL logging, no asserts that print. */
 #define LV_USE_LOG 0
 
-/* Fonts the status screen uses — nothing else. */
+/* Fonts the status + radar screens use — nothing else. 12/20 are the radar
+ * detail card (P2b). */
+#define LV_FONT_MONTSERRAT_12 1
 #define LV_FONT_MONTSERRAT_14 1
 #define LV_FONT_MONTSERRAT_16 1
+#define LV_FONT_MONTSERRAT_20 1
 #define LV_FONT_MONTSERRAT_28 1
 #define LV_FONT_DEFAULT &lv_font_montserrat_16
 
-/* Text-only status screen for P2a; heavier widgets arrive with the radar
- * (P2b). Keep examples/demos out of the image. */
+/* Widgets: label, line, base obj (all on by default). Keep examples/demos out
+ * of the image. */
 #define LV_BUILD_EXAMPLES 0
 
 #endif /* LV_CONF_H */

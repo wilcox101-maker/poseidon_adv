@@ -25,6 +25,7 @@
 #include "gz_batch.h"
 #include "gz_link.h"
 #include "gz_stats.h"
+#include "gz_radar_store.h"  /* P2b: radar of what was published */
 
 #include <Arduino.h>
 #include <NimBLEDevice.h>
@@ -107,6 +108,7 @@ void gz_ble_scan_tick(void)
     if (n) {
         gz_link_send(&msg);         /* empty window → nothing on the wire */
         gz_stats_note_publish(GZ_RADIO_BLE, snap.count);   /* status screen (P2a) */
+        gz_radar_feed(GZ_RADAR_BLE, (const uint8_t *)snap.det, snap.count, now);  /* P2b radar */
     }
     s_last_pub_ms = now;
 }

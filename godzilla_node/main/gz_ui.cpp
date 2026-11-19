@@ -12,8 +12,11 @@
  * SPI "color transfer done" ISR calls lv_display_flush_ready(). The backlight
  * comes on only after that first flush completes — no white flash at boot.
  *
- * Look: "deepwater" palette, text only (radar is P2b). Original layout; no
- * third-party artwork.
+ * Screens (P2b): the radar (gz_ui_radar.cpp) is home; a left or right swipe
+ * flips between radar and status. Swipes come from LVGL's own gesture
+ * detection on the touch pointer; a swipe never also counts as a tap.
+ *
+ * Look: "deepwater" palette. Original layout; no third-party artwork.
  */
 #include "gz_ui.h"
 #include "gz_display.h"
@@ -21,6 +24,7 @@
 #include "gz_stats.h"
 #include "gz_st77916_rev.h"
 #include "gz_touch.h"       /* sole ARDUINO user of the touch driver */
+#include "gz_ui_radar.h"
 
 #include <Arduino.h>
 #include <esp_heap_caps.h>
@@ -41,6 +45,8 @@ static lv_display_t *s_disp = nullptr;
 static lv_indev_t   *s_touch = nullptr;
 static gz_touch_point_t s_touch_pt = {};   /* last report; LVGL task only */
 static volatile bool s_first_flush_done = false;
+static lv_obj_t *s_scr_radar = nullptr, *s_scr_status = nullptr;
+static bool      s_gesture_seen = false;     /* suppress the tap that ends a swipe */
 
 /* ---- display glue -------------------------------------------------------- */
 
@@ -101,16 +107,18 @@ static lv_obj_t *add_label(lv_obj_t *parent, const lv_font_t *font, uint32_t rgb
     return l;
 }
 
-static void build_status_screen(void)
+static void build_status_screen(lv_obj_t *scr)
 {
-    lv_obj_t *scr = lv_screen_active();
     lv_obj_set_style_bg_color(scr, lv_color_hex(GZ_COL_ABYSS), 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
+    lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
 
     /* Column kept inside the round glass: inscribed radius 180 px, so a
      * ~250 px-wide column centred on the screen stays clear of the edge. */
     lv_obj_t *col = lv_obj_create(scr);
     lv_obj_remove_style_all(col);
+    lv_obj_remove_flag(col, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_remove_flag(col, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_size(col, 250, LV_SIZE_CONTENT);
     lv_obj_center(col);
     lv_obj_set_flex_flow(col, LV_FLEX_FLOW_COLUMN);
@@ -151,7 +159,7 @@ static void refresh_status_screen(void)
                           (unsigned long)st.psram_kb);
     lv_label_set_text_fmt(s_lbl_hw, "I2C %u dev | panel rev %d",
                           (unsigned)st.i2c_found, gz_display_panel_rev());
-    /* Bench aid until P2b/P2c give touch a job: chip, last gesture, last point. */
+    /* Touch bench aid: chip, last controller gesture, last point. */
     if (gz_touch_chip_id() == 0) {
         lv_label_set_text(s_lbl_touch, "touch: not found");
     } else {
@@ -162,13 +170,50 @@ static void refresh_status_screen(void)
     }
 }
 
+/* ---- navigation ---------------------------------------------------------- */
+
+static void screen_event_cb(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_PRESSED) {
+        s_gesture_seen = false;
+    } else if (code == LV_EVENT_GESTURE) {
+        lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_active());
+        if (dir == LV_DIR_LEFT || dir == LV_DIR_RIGHT) {
+            s_gesture_seen = true;
+            lv_obj_t *next = (lv_screen_active() == s_scr_radar) ? s_scr_status
+                                                                 : s_scr_radar;
+            lv_screen_load(next);      /* no slide animation: QSPI full-screen moves are slow */
+        }
+    } else if (code == LV_EVENT_CLICKED) {
+        if (s_gesture_seen || lv_screen_active() != s_scr_radar) return;
+        lv_point_t p;
+        lv_indev_get_point(lv_indev_active(), &p);
+        gz_ui_radar_tap(p.x, p.y, millis());
+    }
+}
+
+static void wire_screen(lv_obj_t *scr)
+{
+    lv_obj_add_event_cb(scr, screen_event_cb, LV_EVENT_PRESSED, nullptr);
+    lv_obj_add_event_cb(scr, screen_event_cb, LV_EVENT_GESTURE, nullptr);
+    lv_obj_add_event_cb(scr, screen_event_cb, LV_EVENT_CLICKED, nullptr);
+}
+
 /* ---- task ---------------------------------------------------------------- */
 
 static void ui_task(void *arg)
 {
     (void)arg;
-    build_status_screen();
+    s_scr_radar  = lv_obj_create(nullptr);
+    s_scr_status = lv_obj_create(nullptr);
+    gz_ui_radar_build(s_scr_radar);
+    build_status_screen(s_scr_status);
+    wire_screen(s_scr_radar);
+    wire_screen(s_scr_status);
+    gz_ui_radar_refresh(millis());
     refresh_status_screen();
+    lv_screen_load(s_scr_radar);        /* radar is home */
 
     bool     backlight_on = false;
     uint32_t last_refresh = 0;
@@ -182,7 +227,9 @@ static void ui_task(void *arg)
         uint32_t now = millis();
         if ((uint32_t)(now - last_refresh) >= GZ_UI_REFRESH_MS) {
             last_refresh = now;
-            refresh_status_screen();
+            /* Only the visible screen; the other catches up when shown. */
+            if (lv_screen_active() == s_scr_radar) gz_ui_radar_refresh(now);
+            else                                   refresh_status_screen();
         }
         if (wait < 5)  wait = 5;
         if (wait > 10) wait = 10;
@@ -233,7 +280,7 @@ bool gz_ui_start(void)
         Serial.println("!! UI: task create failed — headless");
         return false;
     }
-    Serial.printf("  UI: LVGL %d.%d.%d, 2 x %u B draw buffers, status screen up\n",
+    Serial.printf("  UI: LVGL %d.%d.%d, 2 x %u B draw buffers, radar + status screens\n",
                   LVGL_VERSION_MAJOR, LVGL_VERSION_MINOR, LVGL_VERSION_PATCH,
                   (unsigned)buf_bytes);
     return true;
