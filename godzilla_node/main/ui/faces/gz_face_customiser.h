@@ -19,7 +19,7 @@
 #pragma once
 
 #include <lvgl.h>
-#include "../gz_faces.h"        /* gz_ui_settings_t */
+#include "gz_faces.h"           /* gz_ui_settings_t (same dir: ui/faces/) */
 
 /* Build the customiser onto `parent`, loading the saved settings. */
 void gz_face_customiser_build(lv_obj_t *parent);
