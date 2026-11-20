@@ -25,6 +25,7 @@
 #include "gz_link.h"
 #include "gz_stats.h"
 #include "gz_radar_store.h"  /* P2b: radar of what was published */
+#include "gz_camera.h"       /* §4 unit 2: camera-maker Wi-Fi OUI table */
 
 #include <Arduino.h>
 #include <esp_wifi.h>
@@ -52,6 +53,15 @@ static void promisc_cb(void *buf, wifi_promiscuous_pkt_type_t type)
     uint8_t ch   = (uint8_t)pkt->rx_ctrl.channel;
     int8_t  rssi = (int8_t)pkt->rx_ctrl.rssi;
     uint8_t fam  = flock_frame_family(&fr);
+
+    /* §4 unit 2: refine a still-generic Wi-Fi contact to CAMERA when its source
+     * OUI belongs to a dedicated camera / surveillance maker (IEEE registry,
+     * gz_camera.h). Only a HIGH match is promoted; a randomized MAC is never
+     * attributed. A surveillance family flock_frame already found is untouched. */
+    if (fam == POSEI_DET_FAM_WIFI_AP || fam == POSEI_DET_FAM_WIFI_STA) {
+        if (gz_camera_classify_mac(fr.addr) == GZ_CAMERA_HIGH)
+            fam = POSEI_DET_FAM_CAMERA;
+    }
 
     portENTER_CRITICAL_ISR(&s_mux);
     if (gz_wifi_batch_add(&s_stage, fr.addr, ch, rssi, fam) == GZ_ADD_FULL)
