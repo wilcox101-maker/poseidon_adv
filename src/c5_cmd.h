@@ -81,6 +81,11 @@ enum {
     C5_DET_FAM_RAVEN       = 9,   /* Raven / ShotSpotter (BLE)     */
     C5_DET_FAM_TILE        = 10,  /* Tile tracker (BLE)            */
     C5_DET_FAM_SMARTTAG    = 11,  /* Samsung SmartTag (BLE)        */
+    C5_DET_FAM_SKIMMER   = 12,  /* Bluetooth card skimmer (BLE/SPP)*/
+    C5_DET_FAM_CAMERA    = 13,  /* covert / IP camera (Wi-Fi OUI) */
+    C5_DET_FAM_LE_EQUIP  = 14,  /* LE body-cam / equipment (low-conf.)*/
+    C5_DET_FAM_ALPR      = 15,  /* non-Flock ALPR (low-conf.)     */
+    C5_DET_FAM_SMARTGLASS= 16,  /* recording smart glasses (BLE)  */
 };
 
 /* ---- existing request/response structs (unchanged shape) ---- */

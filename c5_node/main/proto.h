@@ -94,6 +94,11 @@ enum {
     POSEI_DET_FAM_RAVEN       = 9,   /* Raven / ShotSpotter (BLE)     */
     POSEI_DET_FAM_TILE        = 10,  /* Tile tracker (BLE)            */
     POSEI_DET_FAM_SMARTTAG    = 11,  /* Samsung SmartTag (BLE)        */
+    POSEI_DET_FAM_SKIMMER   = 12,  /* Bluetooth card skimmer (BLE/SPP)*/
+    POSEI_DET_FAM_CAMERA    = 13,  /* covert / IP camera (Wi-Fi OUI) */
+    POSEI_DET_FAM_LE_EQUIP  = 14,  /* LE body-cam / equipment (low-conf.)*/
+    POSEI_DET_FAM_ALPR      = 15,  /* non-Flock ALPR (low-conf.)     */
+    POSEI_DET_FAM_SMARTGLASS= 16,  /* recording smart glasses (BLE)  */
 };
 
 /* v5: 1024 (was 230). The whole frame (POSEI_HEADER_SZ + this) must stay

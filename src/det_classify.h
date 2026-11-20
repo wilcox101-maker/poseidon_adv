@@ -49,6 +49,11 @@ enum {
     DET_FAM_RAVEN       = 9,
     DET_FAM_TILE        = 10,
     DET_FAM_SMARTTAG    = 11,
+    DET_FAM_SKIMMER     = 12,
+    DET_FAM_CAMERA      = 13,
+    DET_FAM_LE_EQUIP    = 14,
+    DET_FAM_ALPR        = 15,
+    DET_FAM_SMARTGLASS  = 16,
 };
 
 /* AD types used here (Bluetooth Core Supplement, part A). */
@@ -73,6 +78,11 @@ static inline const char *det_family_name(uint8_t fam)
     case DET_FAM_RAVEN:       return "Raven";
     case DET_FAM_TILE:        return "Tile";
     case DET_FAM_SMARTTAG:    return "SmartTag";
+    case DET_FAM_SKIMMER:     return "BT skimmer";
+    case DET_FAM_CAMERA:      return "IP camera";
+    case DET_FAM_LE_EQUIP:    return "LE gear";
+    case DET_FAM_ALPR:        return "ALPR";
+    case DET_FAM_SMARTGLASS:  return "Smart glasses";
     default:                  return "Unknown";
     }
 }
