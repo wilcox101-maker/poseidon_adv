@@ -11,6 +11,18 @@
 
 #include <stdbool.h>
 
+#include "ui/faces/gz_faces.h"   /* gz_ui_settings_t */
+
 /* Bring up the panel and start the UI task. Returns false if the display did
  * not come up (the radios still run — the node is useful headless). */
 bool gz_ui_start(void);
+
+/* Apply a just-saved customiser settings blob to its live consumers WITHOUT a
+ * reboot (watch-faces item I): the alert overlay's per-family mask + always-on
+ * update at once, and a changed Classic case finish rebuilds the watch face.
+ * A no-op for fields with no live consumer, and for the finish on an RTC-less
+ * board. The customiser calls this on the UI task after each gz_face_store_save
+ * (which is also the only task that may touch LVGL). Safe to call before the UI
+ * task has built its screens — the finish then simply applies on the next
+ * build. */
+void gz_ui_apply_settings(const gz_ui_settings_t *s);
