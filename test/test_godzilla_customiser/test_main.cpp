@@ -124,12 +124,24 @@ static void test_pod_cycler_skips_unavailable(void)
 
 static void test_face_and_scalar_cyclers(void)
 {
-    /* Every face fits every board, so the face cycler walks all four and wraps. */
+    /* On an RTC board all four faces fit, so the face cycler walks all four and
+     * wraps (CLASSIC -> COMMAND -> MODULAR -> MINIMAL -> CLASSIC by id order). */
     gz_face_id_t opt[GZ_FACE_COUNT];
-    int n = gz_cust_face_options(CAPS_ES3, opt);
-    TEST_ASSERT_EQUAL_INT(GZ_FACE_COUNT, n);
+    int nr = gz_cust_face_options(CAPS_185B, opt);
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_COUNT, nr);
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_COMMAND, gz_cust_cycle_face(GZ_FACE_CLASSIC, +1, CAPS_185B));
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_MINIMAL, gz_cust_cycle_face(GZ_FACE_CLASSIC, -1, CAPS_185B));
+
+    /* Dale 2026-11-20 "no RTC no clock faces": on the RTC-less ES3C28P the face
+     * row offers only Command, so cycling in either direction stays on Command
+     * (the only selectable face) — never a clock face. */
+    int ne = gz_cust_face_options(CAPS_ES3, opt);
+    TEST_ASSERT_EQUAL_INT(1, ne);
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_COMMAND, opt[0]);
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_COMMAND, gz_cust_cycle_face(GZ_FACE_COMMAND, +1, CAPS_ES3));
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_COMMAND, gz_cust_cycle_face(GZ_FACE_COMMAND, -1, CAPS_ES3));
+    /* Even starting from a stale stored clock face, the cycler lands on Command. */
     TEST_ASSERT_EQUAL_INT(GZ_FACE_COMMAND, gz_cust_cycle_face(GZ_FACE_CLASSIC, +1, CAPS_ES3));
-    TEST_ASSERT_EQUAL_INT(GZ_FACE_MINIMAL, gz_cust_cycle_face(GZ_FACE_CLASSIC, -1, CAPS_ES3));
     /* accent / background scalar cyclers wrap in range */
     TEST_ASSERT_EQUAL_INT(0, gz_cust_cycle(GZ_ACCENT_COUNT - 1, +1, GZ_ACCENT_COUNT));
     TEST_ASSERT_EQUAL_INT(GZ_ACCENT_COUNT - 1, gz_cust_cycle(0, -1, GZ_ACCENT_COUNT));

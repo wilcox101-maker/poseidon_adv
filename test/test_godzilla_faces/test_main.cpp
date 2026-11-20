@@ -24,34 +24,74 @@ static const uint8_t CAPS_ES3  = GZ_CAP_BATT | GZ_CAP_SD;   /* no RTC, no IMU */
 /* ---- 1. registry selection ---------------------------------------------- */
 static void test_select_requested_when_available(void)
 {
-    /* Every face is available on every board, so a valid request is honoured. */
+    /* On an RTC board every face fits, so a valid request is honoured. */
     TEST_ASSERT_EQUAL_INT(GZ_FACE_COMMAND, gz_face_select(GZ_FACE_COMMAND, CAPS_185B));
-    TEST_ASSERT_EQUAL_INT(GZ_FACE_MINIMAL, gz_face_select(GZ_FACE_MINIMAL, CAPS_ES3));
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_CLASSIC, gz_face_select(GZ_FACE_CLASSIC, CAPS_185B));
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_MINIMAL, gz_face_select(GZ_FACE_MINIMAL, CAPS_206));
     TEST_ASSERT_EQUAL_INT(GZ_FACE_MODULAR, gz_face_select(GZ_FACE_MODULAR, CAPS_206));
+    /* On a no-RTC board only COMMAND fits, so only it is honoured as requested. */
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_COMMAND, gz_face_select(GZ_FACE_COMMAND, CAPS_ES3));
 }
 
 static void test_select_out_of_range_falls_back_to_first_fit(void)
 {
-    /* Garbage / old face ids fall back to the first registered face (CLASSIC). */
-    TEST_ASSERT_EQUAL_INT(GZ_FACE_CLASSIC, gz_face_select(-1,  CAPS_ES3));
-    TEST_ASSERT_EQUAL_INT(GZ_FACE_CLASSIC, gz_face_select(99,  CAPS_ES3));
+    /* Garbage / old face ids fall back to the first registered face that fits.
+     * On an RTC board that is CLASSIC; on a no-RTC board CLASSIC is a clock and
+     * no longer fits, so the walk lands on COMMAND (caps 0). */
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_CLASSIC, gz_face_select(-1,  CAPS_185B));
     TEST_ASSERT_EQUAL_INT(GZ_FACE_CLASSIC, gz_face_select(GZ_FACE_COUNT, CAPS_185B));
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_COMMAND, gz_face_select(-1,  CAPS_ES3));
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_COMMAND, gz_face_select(99,  CAPS_ES3));
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_COMMAND, gz_face_select(GZ_FACE_COUNT, CAPS_ES3));
 }
 
 static void test_caps_filter_primitive(void)
 {
     /* The filter underneath selection: a face/complication is allowed iff the
-     * board sources every cap it needs. Every shipping face is cap-0, so each
-     * is available on even a capability-less board — selection therefore never
-     * drops a real face, and the fallback walk is reached only by an
-     * out-of-range request (covered above). Prove the primitive directly so a
-     * future cap-gated face is filtered correctly. */
+     * board sources every cap it needs. Prove the primitive directly. */
     TEST_ASSERT_TRUE (gz_caps_ok(0, 0));
     TEST_ASSERT_TRUE (gz_caps_ok(GZ_CAP_RTC, GZ_CAP_RTC | GZ_CAP_IMU));
     TEST_ASSERT_FALSE(gz_caps_ok(GZ_CAP_RTC, GZ_CAP_IMU));
     TEST_ASSERT_FALSE(gz_caps_ok(GZ_CAP_RTC | GZ_CAP_IMU, GZ_CAP_RTC));
-    for (int f = 0; f < GZ_FACE_COUNT; ++f)
-        TEST_ASSERT_TRUE(gz_face_available((gz_face_id_t)f, 0));
+    /* On a capability-less board only COMMAND (caps 0) is available; the three
+     * clock faces need GZ_CAP_RTC and are filtered out. */
+    TEST_ASSERT_TRUE (gz_face_available(GZ_FACE_COMMAND, 0));
+    TEST_ASSERT_FALSE(gz_face_available(GZ_FACE_CLASSIC, 0));
+    TEST_ASSERT_FALSE(gz_face_available(GZ_FACE_MODULAR, 0));
+    TEST_ASSERT_FALSE(gz_face_available(GZ_FACE_MINIMAL, 0));
+}
+
+/* ---- 1b. no-RTC-no-clock-faces (Dale 2026-11-20) ------------------------- */
+static void test_clock_faces_gated_out_without_rtc(void)
+{
+    /* On the RTC-less ES3C28P the three clock faces are unavailable whole and
+     * COMMAND is the only available face. */
+    TEST_ASSERT_FALSE(gz_face_available(GZ_FACE_CLASSIC, CAPS_ES3));
+    TEST_ASSERT_FALSE(gz_face_available(GZ_FACE_MODULAR, CAPS_ES3));
+    TEST_ASSERT_FALSE(gz_face_available(GZ_FACE_MINIMAL, CAPS_ES3));
+    TEST_ASSERT_TRUE (gz_face_available(GZ_FACE_COMMAND, CAPS_ES3));
+
+    /* Requesting any clock face on a no-RTC board resolves to COMMAND, never a
+     * blank screen. */
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_COMMAND, gz_face_select(GZ_FACE_CLASSIC, CAPS_ES3));
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_COMMAND, gz_face_select(GZ_FACE_MODULAR, CAPS_ES3));
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_COMMAND, gz_face_select(GZ_FACE_MINIMAL, CAPS_ES3));
+    /* The factory default (CLASSIC) stored on a no-RTC board resolves the same. */
+    gz_ui_settings_t s;
+    gz_ui_settings_defaults(&s);              /* face = CLASSIC */
+    gz_ui_settings_sanitise(&s, CAPS_ES3);
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_COMMAND, s.face);
+}
+
+static void test_all_faces_available_on_rtc_boards(void)
+{
+    /* Both RTC boards keep all four faces, and each request is honoured. */
+    const uint8_t rtc_boards[] = { CAPS_185B, CAPS_206 };
+    for (unsigned b = 0; b < sizeof rtc_boards / sizeof rtc_boards[0]; ++b)
+        for (int f = 0; f < GZ_FACE_COUNT; ++f) {
+            TEST_ASSERT_TRUE(gz_face_available((gz_face_id_t)f, rtc_boards[b]));
+            TEST_ASSERT_EQUAL_INT(f, gz_face_select(f, rtc_boards[b]));
+        }
 }
 
 /* ---- 2. capability filter ------------------------------------------------ */
@@ -180,6 +220,8 @@ int main(int, char **)
     RUN_TEST(test_select_requested_when_available);
     RUN_TEST(test_select_out_of_range_falls_back_to_first_fit);
     RUN_TEST(test_caps_filter_primitive);
+    RUN_TEST(test_clock_faces_gated_out_without_rtc);
+    RUN_TEST(test_all_faces_available_on_rtc_boards);
     RUN_TEST(test_all_board_complications_show_everywhere);
     RUN_TEST(test_gated_complications_follow_the_hardware);
     RUN_TEST(test_sanitise_drops_unsourceable_slots);
