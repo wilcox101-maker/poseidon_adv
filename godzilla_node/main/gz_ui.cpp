@@ -35,6 +35,7 @@
 #include "gz_ui_watch.h"
 #include "gz_ui_alert.h"     /* §4 item 6: priority ALERT overlay (top layer) */
 #include "ui/faces/gz_face_store.h" /* persisted face settings (finish, alert mask) */
+#include "gz_ui_apply.h"     /* which live consumers a settings save touches (item I) */
 #include "gz_link.h"         /* CMD_TIMESET latch drained on this (RTC) task */
 #include "gz_geom.h"         /* the one geometry source (#88 §3.2) */
 
@@ -90,10 +91,14 @@ static lv_obj_t *s_scr[GZ_SCR_COUNT];
 static int       s_cur = GZ_UI_HOME;
 static bool      s_suppress_click = false;   /* the tap that ends a swipe / long-press */
 
-/* Persisted alert-overlay settings, read once at boot (like the case finish);
- * customiser changes apply on the next boot. */
+/* Persisted alert-overlay settings. Read once at boot, then kept live by
+ * gz_ui_apply_settings when the customiser saves (item I). */
 static uint8_t   s_alert_mask = GZ_FACE_ALERT_MASK_ALL;
 static bool      s_alert_always_on = false;
+
+/* The settings currently applied to the live consumers, so a customiser save
+ * can diff against them (gz_ui_apply.h) and re-apply only what changed. */
+static gz_ui_settings_t s_face_applied;
 
 /* ---- display glue -------------------------------------------------------- */
 
@@ -393,6 +398,7 @@ static void ui_task(void *arg)
 #if GZ_BOARD_HAS_RTC
         gz_ui_watch_set_finish(fs.finish);
 #endif
+        s_face_applied = fs;                    /* baseline for live re-apply (item I) */
     }
 #if GZ_BOARD_HAS_RTC
     gz_ui_watch_build(s_scr[GZ_SCR_WATCH]);     /* first RTC read, on this task */
@@ -474,6 +480,43 @@ static void ui_task(void *arg)
         if (wait > 10) wait = 10;
         vTaskDelay(pdMS_TO_TICKS(wait));
     }
+}
+
+/* ---- live settings apply (item I) ---------------------------------------- */
+/* Called on the UI task after the customiser persists a change. Diffs the save
+ * against what is currently applied (gz_ui_apply.h) and re-applies only the
+ * consumers that moved: the alert overlay statics always cheaply, the Classic
+ * watch only on a real finish change (a full rebuild). */
+void gz_ui_apply_settings(const gz_ui_settings_t *s)
+{
+    if (!s) return;
+    gz_ui_consumers_t c = gz_ui_consumers_diff(&s_face_applied, s);
+    if (!gz_ui_consumers_any(c)) { s_face_applied = *s; return; }
+
+    if (c.alert) {
+        /* The overlay tick reads these statics each pass (<=250 ms), so a new
+         * mask / always-on takes hold on the next poll — no rebuild needed. */
+        s_alert_mask      = s->alert_mask;
+        s_alert_always_on = s->always_on != 0;
+    }
+#if GZ_BOARD_HAS_RTC
+    if (c.finish) {
+        gz_ui_watch_set_finish(s->finish);
+        lv_obj_t *w = s_scr[GZ_SCR_WATCH];
+        if (w) {
+            /* Rebuild the dial in the new case metal. lv_obj_clean deletes and
+             * frees the old children (no LVGL leak); gz_ui_watch_build re-lays
+             * them, and the screen's own event callbacks live on the screen,
+             * not its children, so they survive. Resync if it is on screen. */
+            lv_obj_clean(w);
+            gz_ui_watch_build(w);
+            if (s_cur == GZ_SCR_WATCH) gz_ui_watch_show(millis());
+        }
+        /* No screen yet (apply before the UI task built them): set_finish above
+         * already makes it take effect on the first build. */
+    }
+#endif
+    s_face_applied = *s;
 }
 
 bool gz_ui_start(void)
