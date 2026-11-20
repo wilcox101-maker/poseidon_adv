@@ -27,6 +27,7 @@
 #include "gz_link.h"
 #include "gz_stats.h"
 #include "gz_radar_store.h"  /* P2b: radar of what was published */
+#include "gz_skimmer.h"      /* §4 unit 1: passive BT card-skimmer signature */
 
 #include <Arduino.h>
 #include <NimBLEDevice.h>
@@ -54,6 +55,15 @@ class GzBleScanCb : public NimBLEScanCallbacks {
          * det_classify_ble is pure and allocation-free. */
         const std::vector<uint8_t> &pl = dev->getPayload();
         uint8_t fam = det_classify_ble(pl.data(), pl.size());
+        /* §4 unit 1: refine a still-generic BLE classification with the node's
+         * passive card-skimmer signature. Only a HIGH-confidence match (a stock
+         * serial-module default name agreeing with the 0xFFE0 serial service)
+         * is promoted onto the wire, so a bare 0xFFE0 (LOW) never false-alarms.
+         * Never overrides a specific family det_classify_ble already found. */
+        if (fam == POSEI_DET_FAM_BLE_GENERIC || fam == POSEI_DET_FAM_UNKNOWN) {
+            if (gz_skimmer_classify_payload(pl.data(), (int)pl.size()) == GZ_SKIMMER_HIGH)
+                fam = POSEI_DET_FAM_SKIMMER;
+        }
         /* BLE Lab (#98 §2.4): keep this device's latest raw advert for the
          * passive decoder. Its own spinlock; a 31-byte copy at most. */
         gz_ble_lab_feed(addr, atype, rssi, pl.data(), (int)pl.size(), (uint32_t)millis());

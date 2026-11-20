@@ -146,11 +146,18 @@ static inline uint8_t gz_radar_severity(uint8_t family)
     switch (family) {
     case POSEI_DET_FAM_FLOCK:
     case POSEI_DET_FAM_RAVEN:
-    case POSEI_DET_FAM_REMOTEID:  return GZ_SEV_SURVEIL;
+    case POSEI_DET_FAM_REMOTEID:
+    case POSEI_DET_FAM_SKIMMER:    /* §4: card skimmer     */
+    case POSEI_DET_FAM_LE_EQUIP:   /* §4: body-cam / LE gear */
+    case POSEI_DET_FAM_ALPR:       /* §4: non-Flock ALPR   */
+                                  return GZ_SEV_SURVEIL;   /* surveillance-red */
     case POSEI_DET_FAM_FINDMY:
     case POSEI_DET_FAM_AIRTAG:
     case POSEI_DET_FAM_TILE:
-    case POSEI_DET_FAM_SMARTTAG:  return GZ_SEV_TRACKER;
+    case POSEI_DET_FAM_SMARTTAG:
+    case POSEI_DET_FAM_CAMERA:     /* §4: covert / IP camera */
+    case POSEI_DET_FAM_SMARTGLASS: /* §4: recording glasses  */
+                                  return GZ_SEV_TRACKER;   /* amber tier       */
     default:                      return GZ_SEV_NEUTRAL;
     }
 }
@@ -170,6 +177,11 @@ static inline const char *gz_radar_family_name(uint8_t family)
     case POSEI_DET_FAM_RAVEN:       return "Raven";
     case POSEI_DET_FAM_TILE:        return "Tile";
     case POSEI_DET_FAM_SMARTTAG:    return "SmartTag";
+    case POSEI_DET_FAM_SKIMMER:     return "BT skimmer";
+    case POSEI_DET_FAM_CAMERA:      return "IP camera";
+    case POSEI_DET_FAM_LE_EQUIP:    return "LE gear";
+    case POSEI_DET_FAM_ALPR:        return "ALPR";
+    case POSEI_DET_FAM_SMARTGLASS:  return "Smart glasses";
     default:                        return "Unknown";
     }
 }
