@@ -33,7 +33,8 @@
 #include "gz_ui_hunt.h"
 #include "gz_ui_lab.h"       /* BLE Lab, passive (#98 §2.4) */
 #include "gz_ui_watch.h"
-#include "ui/faces/gz_face_store.h" /* persisted face settings (case finish) */
+#include "gz_ui_alert.h"     /* §4 item 6: priority ALERT overlay (top layer) */
+#include "ui/faces/gz_face_store.h" /* persisted face settings (finish, alert mask) */
 #include "gz_link.h"         /* CMD_TIMESET latch drained on this (RTC) task */
 #include "gz_geom.h"         /* the one geometry source (#88 §3.2) */
 
@@ -88,6 +89,11 @@ enum { GZ_SCR_RADAR = 0, GZ_SCR_HUNT = 1, GZ_SCR_LAB = 2, GZ_SCR_STATUS = 3,
 static lv_obj_t *s_scr[GZ_SCR_COUNT];
 static int       s_cur = GZ_UI_HOME;
 static bool      s_suppress_click = false;   /* the tap that ends a swipe / long-press */
+
+/* Persisted alert-overlay settings, read once at boot (like the case finish);
+ * customiser changes apply on the next boot. */
+static uint8_t   s_alert_mask = GZ_FACE_ALERT_MASK_ALL;
+static bool      s_alert_always_on = false;
 
 /* ---- display glue -------------------------------------------------------- */
 
@@ -345,6 +351,9 @@ static void screen_event_cb(lv_event_t *e)
         else if (gz_ui_radar_long_press()) go_to(GZ_SCR_HUNT);       /* card: hunt it */
     } else if (code == LV_EVENT_CLICKED) {
         if (s_suppress_click) return;
+        /* A tap dismisses the priority alert overlay first, and never also
+         * reaches the screen beneath it. */
+        if (gz_ui_alert_tap()) return;
         lv_point_t p;
         lv_indev_get_point(lv_indev_active(), &p);
         if (s_cur == GZ_SCR_RADAR)      gz_ui_radar_tap(p.x, p.y, millis());
@@ -375,15 +384,21 @@ static void ui_task(void *arg)
     gz_ui_radar_build(s_scr[GZ_SCR_RADAR]);
     gz_ui_hunt_build(s_scr[GZ_SCR_HUNT]);
     gz_ui_lab_build(s_scr[GZ_SCR_LAB]);
-#if GZ_BOARD_HAS_RTC
-    {   /* Apply the persisted, customiser-selectable case finish before build. */
+    {   /* Persisted face settings: the case finish (RTC boards) and the alert
+         * overlay's per-family mask + always-on, all read once here. */
         gz_ui_settings_t fs;
         gz_face_store_load(&fs);                /* defaults + sanitised for this board */
+        s_alert_mask      = fs.alert_mask;
+        s_alert_always_on = fs.always_on != 0;
+#if GZ_BOARD_HAS_RTC
         gz_ui_watch_set_finish(fs.finish);
+#endif
     }
+#if GZ_BOARD_HAS_RTC
     gz_ui_watch_build(s_scr[GZ_SCR_WATCH]);     /* first RTC read, on this task */
 #endif
     build_status_screen(s_scr[GZ_SCR_STATUS]);
+    gz_ui_alert_build();                        /* §4 item 6: overlay on the top layer */
     refresh_current(millis());
     lv_screen_load(s_scr[s_cur]);
 
@@ -446,6 +461,14 @@ static void ui_task(void *arg)
 #endif
             /* Only the visible screen; the others catch up when shown. */
             refresh_current(now);
+
+            /* Priority ALERT overlay (§4 item 6): polls the radar table on every
+             * screen. A freshly raised alert counts as activity so the backlight
+             * wakes. */
+            bool was_alert = gz_ui_alert_active();
+            gz_ui_alert_tick(s_alert_mask, s_alert_always_on, now);
+            if (!was_alert && gz_ui_alert_active())
+                gz_wake_activity(&s_wake, now);
         }
         if (wait < 5)  wait = 5;
         if (wait > 10) wait = 10;

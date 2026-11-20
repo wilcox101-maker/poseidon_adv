@@ -112,6 +112,13 @@ typedef enum {
     GZ_FINISH_COUNT  = 2,
 } gz_finish_t;
 
+/* ---- alert overlay enable mask ------------------------------------------- */
+/* One bit per alerting detection family (detection §4 item 6), persisted so the
+ * wearer can silence families in the customiser. The bit meanings live in
+ * gz_alert.h (GZ_ALERT_BIT_*); this header keeps only the width and the all-on
+ * default so it stays pure and proto-free. Seven bits are defined today. */
+#define GZ_FACE_ALERT_MASK_ALL 0x7Fu
+
 /* ---- persisted settings -------------------------------------------------- */
 #define GZ_FACE_SLOTS 4       /* four complication pods on the slotted faces */
 
@@ -122,12 +129,16 @@ typedef struct {
     uint8_t always_on;            /* 0 / 1                                  */
     uint8_t slots[GZ_FACE_SLOTS]; /* gz_comp_id_t per pod                   */
     uint8_t finish;               /* gz_finish_t (Classic case metal)       */
+    uint8_t alert_mask;           /* GZ_ALERT_BIT_* enable bits (gz_alert.h) */
 } gz_ui_settings_t;
 
 /* Factory defaults: the Classic face, first accent, black ground, always-on
- * off, the four all-board complications in the pods, and a gold case. */
+ * off, the four all-board complications in the pods, a gold case, and every
+ * alert family enabled. Zeroed first so struct padding is deterministic (the
+ * codec round-trip tests compare by memory). */
 static inline void gz_ui_settings_defaults(gz_ui_settings_t *s)
 {
+    memset(s, 0, sizeof *s);
     s->face       = GZ_FACE_CLASSIC;
     s->accent     = 0;
     s->background  = GZ_BG_BLACK;
@@ -137,6 +148,7 @@ static inline void gz_ui_settings_defaults(gz_ui_settings_t *s)
     s->slots[2]   = GZ_COMP_PUBLISH;
     s->slots[3]   = GZ_COMP_CHANNEL;
     s->finish     = GZ_FINISH_GOLD;
+    s->alert_mask = GZ_FACE_ALERT_MASK_ALL;
 }
 
 /* ---- capability filter --------------------------------------------------- */
@@ -186,6 +198,7 @@ static inline void gz_ui_settings_sanitise(gz_ui_settings_t *s, uint8_t board_ca
     if (s->background >= GZ_BG_COUNT) s->background = GZ_BG_BLACK;
     s->always_on = s->always_on ? 1 : 0;
     if (s->finish >= GZ_FINISH_COUNT) s->finish = GZ_FINISH_GOLD;
+    s->alert_mask &= GZ_FACE_ALERT_MASK_ALL;   /* drop any bit we don't define */
     for (int i = 0; i < GZ_FACE_SLOTS; ++i)
         if (!gz_comp_available((gz_comp_id_t)s->slots[i], board_caps))
             s->slots[i] = GZ_COMP_NONE;
@@ -196,13 +209,14 @@ static inline void gz_ui_settings_sanitise(gz_ui_settings_t *s, uint8_t board_ca
  * it fixed-length lets deserialise reject anything that isn't exactly this
  * shape and fall back to defaults, so an old or corrupt blob never half-loads. */
 #define GZ_SETTINGS_MAGIC   0x47u   /* 'G' */
-#define GZ_SETTINGS_VERSION 2u      /* v2 appends the case finish byte */
+#define GZ_SETTINGS_VERSION 3u      /* v2 added finish; v3 adds the alert mask */
 
-/* Layout (11 bytes): [0]=magic [1]=version [2]=face [3]=accent [4]=background
- * [5]=always_on [6..9]=slots[0..3] [10]=finish. v1 (10 bytes, no finish) differs
- * in both version byte and length, so an old blob is rejected to defaults by
- * gz_ui_settings_decode below — exactly the existing fall-back path. */
-#define GZ_SETTINGS_WIRE_LEN (6 + GZ_FACE_SLOTS + 1)
+/* Layout (12 bytes): [0]=magic [1]=version [2]=face [3]=accent [4]=background
+ * [5]=always_on [6..9]=slots[0..3] [10]=finish [11]=alert_mask. An older blob
+ * (v1 10 bytes / v2 11 bytes) differs in both version byte and length, so it is
+ * rejected to defaults by gz_ui_settings_decode below — the existing fall-back
+ * path, unchanged. */
+#define GZ_SETTINGS_WIRE_LEN (6 + GZ_FACE_SLOTS + 2)
 
 /* Serialise into out[GZ_SETTINGS_WIRE_LEN]. Returns the byte count written. */
 static inline int gz_ui_settings_encode(const gz_ui_settings_t *s, uint8_t *out)
@@ -214,7 +228,8 @@ static inline int gz_ui_settings_encode(const gz_ui_settings_t *s, uint8_t *out)
     out[4] = s->background;
     out[5] = s->always_on ? 1u : 0u;
     for (int i = 0; i < GZ_FACE_SLOTS; ++i) out[6 + i] = s->slots[i];
-    out[6 + GZ_FACE_SLOTS] = s->finish;
+    out[6 + GZ_FACE_SLOTS]     = s->finish;
+    out[6 + GZ_FACE_SLOTS + 1] = s->alert_mask;
     return GZ_SETTINGS_WIRE_LEN;
 }
 
@@ -229,12 +244,14 @@ static inline bool gz_ui_settings_decode(const uint8_t *in, int len, gz_ui_setti
         gz_ui_settings_defaults(s);
         return false;
     }
+    memset(s, 0, sizeof *s);               /* deterministic padding for memcmp */
     s->face       = in[2];
     s->accent     = in[3];
     s->background = in[4];
     s->always_on  = in[5] ? 1u : 0u;
     for (int i = 0; i < GZ_FACE_SLOTS; ++i) s->slots[i] = in[6 + i];
     s->finish     = in[6 + GZ_FACE_SLOTS];
+    s->alert_mask = in[6 + GZ_FACE_SLOTS + 1];
     return true;
 }
 
