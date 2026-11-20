@@ -114,6 +114,44 @@ static void test_pod_layout_is_symmetric(void)
     }
 }
 
+static void test_pod_footprints_inside_screen_all_boards(void)
+{
+    /* B1 (render fix): the real clip on the 240 px ES3C28P was the pod TITLE
+     * labels ("CONTACT"/"PUBLISH") drawn in an unscaled font, wider than the
+     * scaled disc. Size the pods exactly as the render does — footprint
+     * half-width gz_cmd_pod_hw, scaled margin gz_cmd_pod_margin — and assert
+     * each pod's whole bounding box lies within [0,w] x [0,h] on every board. */
+    for (unsigned b = 0; b < 3; ++b) {
+        const board_t bd = ALL[b];
+        const int hw  = gz_cmd_pod_hw(bd.w, bd.h);
+        const int mgn = gz_cmd_pod_margin(bd.w, bd.h);
+        for (int i = 0; i < 4; ++i) {
+            int x, y;
+            gz_cmd_pod_pos(i, bd.w, bd.h, bd.round, hw, mgn, &x, &y);
+            char msg[64];
+            snprintf(msg, sizeof msg, "%s pod %d footprint clips screen", bd.name, i);
+            TEST_ASSERT_TRUE_MESSAGE(x - hw >= 0 && x + hw <= bd.w &&
+                                     y - hw >= 0 && y + hw <= bd.h, msg);
+        }
+    }
+}
+
+static void test_narrow_board_footprint_wider_than_disc(void)
+{
+    /* On the narrow ES3C28P the unscaled title label is the keep-out: the
+     * footprint half-width exceeds the scaled disc radius, so the pods are
+     * inset further than the disc alone would — this is the B1 fix. On the
+     * round 1.85B and the AMOLED-2.06 the scaled disc already covers the label,
+     * so the footprint equals the disc and nothing there moves. */
+    const int es3_disc = gz_geom_scale(GZ_CMD_POD_R_DESIGN, BES3.w, BES3.h);
+    TEST_ASSERT_TRUE(gz_cmd_pod_hw(BES3.w, BES3.h) > es3_disc);
+
+    const int r185 = gz_geom_scale(GZ_CMD_POD_R_DESIGN, B185.w, B185.h);
+    TEST_ASSERT_EQUAL_INT(r185, gz_cmd_pod_hw(B185.w, B185.h));
+    const int r206 = gz_geom_scale(GZ_CMD_POD_R_DESIGN, B206.w, B206.h);
+    TEST_ASSERT_EQUAL_INT(r206, gz_cmd_pod_hw(B206.w, B206.h));
+}
+
 static void test_tiny_pod_still_fits(void)
 {
     /* A pod larger than the safe half collapses to the centre, never negative
@@ -150,6 +188,8 @@ int main(void)
     RUN_TEST(test_every_pod_is_sourceable_and_in_range);
     RUN_TEST(test_no_gps_or_bearing_field);
     RUN_TEST(test_pods_inside_safe_area_all_boards);
+    RUN_TEST(test_pod_footprints_inside_screen_all_boards);
+    RUN_TEST(test_narrow_board_footprint_wider_than_disc);
     RUN_TEST(test_pod_layout_is_symmetric);
     RUN_TEST(test_tiny_pod_still_fits);
     RUN_TEST(test_quadrant_maps_each_corner);

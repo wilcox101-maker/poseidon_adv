@@ -83,6 +83,8 @@ static inline int gz_geom_hunt_plot_x(int w, bool round)
  * even a wrapped line pushes the next one down instead of overlapping it. */
 #define GZ_GEOM_LINE_H_14      17    /* Montserrat 14 line height              */
 #define GZ_GEOM_CHAR_W_14       7    /* Montserrat 14 average advance (estimate) */
+#define GZ_GEOM_CHAR_W_12       7    /* Montserrat 12 average advance (estimate,
+                                      * conservative — upper-case caps titles)  */
 #define GZ_GEOM_HUNT_FOOT_GAP   4
 static inline bool gz_geom_hunt_compact(int w) { return w < 300; }
 static inline int  gz_geom_hunt_footer_y(int h) { return 192 + 76 + 8 + gz_geom_content_dy(h); }
