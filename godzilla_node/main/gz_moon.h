@@ -126,3 +126,40 @@ static inline int32_t gz_date_angle_tenths(int day, int days_in_month)
 {
     return gz_ring_angle_tenths(day - 1, days_in_month);
 }
+
+/* ---- printed sub-scale captions (unit 2 render, B2) ---------------------- */
+/* The month and day-of-week rings print the division's name; the date ring
+ * prints a numeral every fifth day plus the month's last day. These give the
+ * printed text the render stamps on each sub-dial, so the scale and its blued
+ * pointer agree. Pure string/predicate helpers — native-tested in
+ * test_godzilla_moon. */
+
+/* Three-letter month name for month 1..12 (uppercase); "" out of range. */
+static inline const char *gz_month_abbrev(int month)
+{
+    static const char *const m[13] = { "", "JAN", "FEB", "MAR", "APR", "MAY",
+                                       "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC" };
+    return (month >= 1 && month <= 12) ? m[month] : "";
+}
+
+/* Three-letter weekday name for weekday 0..6 (0 = Sunday, matching gz_rtc.h);
+ * "" out of range. */
+static inline const char *gz_weekday_abbrev(int weekday)
+{
+    static const char *const d[7] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
+    return (weekday >= 0 && weekday <= 6) ? d[weekday] : "";
+}
+
+/* The date ring is too fine to number every day, so it prints a numeral every
+ * fifth day (5, 10, 15, 20, 25) and always on the month's last day (its length),
+ * dropping a fifth-day numeral that would crowd the last-day one. True iff day
+ * `d` of a `dim`-day month gets a printed numeral:
+ *   - 31-day month: 5, 10, 15, 20, 25, 31  (30 is dropped, abutting 31);
+ *   - 30-day month: 5, 10, 15, 20, 25, 30;
+ *   - 28-day month: 5, 10, 15, 20, 25, 28. */
+static inline bool gz_date_label_shown(int day, int days_in_month)
+{
+    if (day < 1 || day > days_in_month) return false;
+    if (day == days_in_month) return true;                 /* always the last day */
+    return (day % 5) == 0 && day <= days_in_month - 2;      /* 5s, clear of the last */
+}
