@@ -50,12 +50,41 @@ Grouped by what hardware they need:
 - **NFC/RFID card-type identification** via a PN532 — identify a card's type/standard when one is
   presented to the reader. Identify only; no emulation, no cloning, no key cracking.
 
-**c. Reserved for Dale / explicitly NOT folded (out of the passive, authorized-use scope):**
-- Anything that transmits, pairs, injects, clones or emulates: WhisperPair-style pairing, BLE
-  Predator loot, Chameleon NFC cloning, any jamming **transmit**.
-- Active network intrusion: IoT-Recon-style joining a Wi-Fi network and scanning the subnet,
-  credential capture.
-- GPS wardriving (no GPS; already Dale-reserved).
+**c. Offensive — see §3.5 (Dale: include offensive tools).** Routed through the existing TX-arm gate.
+GPS wardriving stays out (no GPS; already Dale-reserved).
+
+## 3.5 Offensive tools — behind the existing TX-arm SAFE/ARMED gate
+Poseidon already ships a gated offensive arsenal; the **TX-arm master gate** (audited this session,
+F2–F6) is exactly the mechanism to fold the offensive side onto the nodes. Invariants:
+- **GODZILLA stays passive.** The S3 detection node never transmits beyond its ESP-NOW publish/HELLO.
+  Offensive TX lives on the **Cardputer hub** and, if Dale builds it, **Trident** — never on GODZILLA.
+- **Every offensive op is TX-arm gated.** Master **SAFE by default** (NVS); each op calls
+  `tx_arm_require()` at launch; nothing self-arms. A node never arms itself — the **hub arms and
+  commands** it (a new gated downlink, SAFE-default, mirrors CMD_TIMESET's additive style).
+- **Authorized-use, logged.** Each armed op writes a recon-log line (op, time, target) for an audit
+  trail; AGENTS.md "hardware and networks Dale owns or has written permission to test" governs.
+- **Already in the tree** (organize under node control, no new capability): deauth + deauth-detect,
+  beacon spam, probe/PMKID + handshake capture, AP clone / KARMA, the nRF52 MITM trio, IR, LoRa
+  beacon, WhisperPair — standard Wi-Fi/BLE pentest primitives, all gated.
+- **New, foldable behind the gate:**
+  - **Network recon** — join a Wi-Fi Dale controls, enumerate the subnet (hub app).
+  - **NFC/RFID read + clone + emulate** (PN532 / Chameleon-style) — physical-red-team, Proxmark/
+    Flipper territory, used on badges/cards in an engagement's authorized scope.
+  - **RF jamming / broadband interference** (Wi-Fi continuous-TX and/or an NRF24 carrier emitter) —
+    for **RF research and durability / resilience testing** (how equipment behaves under a saturated
+    band). Full-power transmit by nature.
+
+### Offensive governance (Dale: SAFE/ARMED + per-op logging)
+Every offensive op — the Wi-Fi/BLE primitives above, NFC, network recon, and RF jamming — sits
+behind the master **TX-arm gate**: **SAFE by default** (NVS), `tx_arm_require()` at launch,
+**hub-armed** (a node never self-arms), and **each armed op writes an audit line** (op, time,
+target/band, power, duration) to the recon log. Jamming is a broadband emitter, so the firmware
+**labels it as such** and keeps it behind the same gate so it's never armed by accident; the gate,
+the log, and the operator's authorization are what bound it — the same framework as every other
+transmitter, scaled for higher energy. We also keep jamming **detection** (§3a) alongside it.
+
+GODZILLA staying passive is a **role split** (it's the sensor), not a limit on the project — the
+full arsenal lives on the hub and, if built, Trident.
 
 ## 4. Licensing / sourcing caveat
 HaleHound's license was **not visible on the page** — confirm it before any closer reference, and
