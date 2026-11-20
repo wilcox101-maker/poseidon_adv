@@ -26,6 +26,7 @@
 #include "gz_stats.h"
 #include "gz_radar_store.h"  /* P2b: radar of what was published */
 #include "gz_camera.h"       /* §4 unit 2: camera-maker Wi-Fi OUI table */
+#include "gz_le_equip.h"     /* §4 unit 3: LE-equipment Wi-Fi OUI table */
 
 #include <Arduino.h>
 #include <esp_wifi.h>
@@ -61,6 +62,11 @@ static void promisc_cb(void *buf, wifi_promiscuous_pkt_type_t type)
     if (fam == POSEI_DET_FAM_WIFI_AP || fam == POSEI_DET_FAM_WIFI_STA) {
         if (gz_camera_classify_mac(fr.addr) == GZ_CAMERA_HIGH)
             fam = POSEI_DET_FAM_CAMERA;
+        /* §4 unit 3: an OUI IEEE-assigned to an LE-equipment maker (Axon) tags
+         * LE_EQUIP. The family is low-confidence by definition (gz_le_equip.h),
+         * so it informs the radar but the alert overlay (§4 unit 6) gates on it. */
+        else if (gz_le_equip_classify_mac(fr.addr) == GZ_LE_EQUIP_LOW)
+            fam = POSEI_DET_FAM_LE_EQUIP;
     }
 
     portENTER_CRITICAL_ISR(&s_mux);
