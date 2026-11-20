@@ -27,6 +27,7 @@
 #include "gz_radar_store.h"  /* P2b: radar of what was published */
 #include "gz_camera.h"       /* §4 unit 2: camera-maker Wi-Fi OUI table */
 #include "gz_le_equip.h"     /* §4 unit 3: LE-equipment Wi-Fi OUI table */
+#include "gz_alpr.h"         /* §4 unit 4: non-Flock ALPR Wi-Fi OUI table */
 
 #include <Arduino.h>
 #include <esp_wifi.h>
@@ -67,6 +68,11 @@ static void promisc_cb(void *buf, wifi_promiscuous_pkt_type_t type)
          * so it informs the radar but the alert overlay (§4 unit 6) gates on it. */
         else if (gz_le_equip_classify_mac(fr.addr) == GZ_LE_EQUIP_LOW)
             fam = POSEI_DET_FAM_LE_EQUIP;
+        /* §4 unit 4: an OUI assigned to a non-Flock ALPR maker (Genetec) tags
+         * ALPR — low-confidence (gz_alpr.h); informs the radar, overlay gates
+         * on it (§4 unit 6). Flock's own cameras classify as FLOCK upstream. */
+        else if (gz_alpr_classify_mac(fr.addr) == GZ_ALPR_LOW)
+            fam = POSEI_DET_FAM_ALPR;
     }
 
     portENTER_CRITICAL_ISR(&s_mux);
