@@ -8,6 +8,41 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **GODZILLA node — priority ALERT overlay (detection §4 item 6) (#147; render
+  fixes #150).** A full-screen priority alert raised from the node-local radar
+  table: HIGH surveillance / recording families (Flock, Raven, Remote ID, card
+  skimmer, covert camera, recording smart glasses) raise on first sighting;
+  trackers raise only when seen repeatedly; LOW-confidence families never raise
+  on their own. Per-device rate-limit and a 60 s auto-clear; a persisted
+  per-family enable mask (`gz_alert.h`) silences families. Pure gate
+  native-tested (`test/test_godzilla_alert`); overlay UI render-verified on the
+  three boards. #150 fixed the overlay glyph, wording and ES3C28P line stacking.
+  Passive: reads the radar table only, transmits nothing.
+- **GODZILLA node — §4 surveillance / recording classifiers (#141, #142, #144,
+  #145, #149).** Passive classifiers, each keyed to a primary-sourced ID table
+  with the verbatim registrant confirmed and a HIGH/LOW confidence (LOW never
+  alerts alone): card skimmer by Bluetooth signature (#141), covert / IP camera
+  by Wi-Fi OUI (#142), law-enforcement equipment by Wi-Fi OUI (#144, radar-only),
+  non-Flock ALPR by Wi-Fi OUI (#145, radar-only), and recording smart glasses by
+  Bluetooth SIG company identifier (#149). Each is a pure header with a native
+  test. Passive: classification only, nothing transmitted or connected.
+- **GODZILLA node — customiser-selectable case finish (#146).** The Classic
+  watch's case metal (gold or silver) is a persisted, customiser-selectable
+  setting (`gz_ui_settings_t.finish`, NVS settings v2), read into the dial
+  colours at build. Board-agnostic; geometry unchanged.
+- **GODZILLA node — Classic watch face redesign (#143; watch-face text-overlap
+  fixes #140).** The Classic face was redrawn dial-only (gold/silver case,
+  trident second hand, clipped moon aperture); #140 corrected watch-face text
+  overlaps (order B3).
+- **GODZILLA node — CMD_TIMESET consumer (#139).** The node applies a time-sync
+  pushed by the Cardputer: it sets the hardware PCF85063 RTC and restarts the
+  software clock from it, drained on the RTC-owning UI task so a sync lands even
+  when the watch face is not visible (RTC boards only). Receive-only: a downlink
+  is consumed, nothing new is sent.
+- **GODZILLA node — RX fuzz coverage extended (#148).** The native RX fuzz
+  harness now also feeds malformed input to the §4 classifiers and the
+  CMD_TIMESET decode path, pinning their bounds-safety on the host alongside the
+  existing decoders. Test-only.
 - **GODZILLA node — three-board bench runbook (#98 §3.6).**
   `docs/godzilla-bench-runbook.md`: per board, the flash and monitor commands,
   the expected boot I2C scan and boot lines, display, touch and SD bring-up
