@@ -102,6 +102,45 @@ static inline int gz_cmd_safe_half(int w, int h, bool round, int margin)
     return half - margin;
 }
 
+/* ---- pod footprint (disc + fixed-font labels) ---------------------------- */
+/* A pod draws a disc of radius pod_r plus a title and a value label centred on
+ * it. The titles are drawn in a FIXED font (montserrat-12, never scaled, #88
+ * keeps text legible rather than shrinking it), so on a narrow panel the widest
+ * title ("CONTACT" / "PUBLISH", 7 glyphs) is wider than the scaled disc and is
+ * the real keep-out — that is what clipped the glass edge on the 240 px ES3C28P.
+ * Placement and the clip test inset by the FOOTPRINT half-width (the wider of
+ * the disc radius and half the widest title), so no label runs off the screen.
+ * The design disc / margin and the board scaling are the one geometry source. */
+#define GZ_CMD_POD_R_DESIGN     30   /* pod disc radius on the 360 px design canvas */
+#define GZ_CMD_POD_MGN_DESIGN    6   /* pod edge keep-out on the design canvas      */
+#define GZ_CMD_POD_LABEL_GLYPHS  7   /* widest pod title: "CONTACT" / "PUBLISH"     */
+
+/* Half-width of a pod's bounding box: the wider of the disc radius and half the
+ * widest fixed-font title. */
+static inline int gz_cmd_pod_footprint_hw(int pod_r, int label_glyphs, int glyph_w)
+{
+    int label_hw = (label_glyphs * glyph_w + 1) / 2;   /* half the label width */
+    return label_hw > pod_r ? label_hw : pod_r;
+}
+
+/* The footprint half-width a Command pod needs on a (w, h) panel: the scaled
+ * disc radius vs the UNSCALED title label (the font does not scale), whichever
+ * is wider. Render and native test both size the pods from this, so they agree.
+ * Identity-to-the-disc on the round 1.85B and the AMOLED-2.06 (their scaled
+ * discs already exceed the label), wider than the disc only on the narrow
+ * ES3C28P — so only that board's pods move inward. */
+static inline int gz_cmd_pod_hw(int w, int h)
+{
+    int pod_r = gz_geom_scale(GZ_CMD_POD_R_DESIGN, w, h);
+    return gz_cmd_pod_footprint_hw(pod_r, GZ_CMD_POD_LABEL_GLYPHS, GZ_GEOM_CHAR_W_12);
+}
+
+/* The scaled pod edge keep-out on a (w, h) panel. */
+static inline int gz_cmd_pod_margin(int w, int h)
+{
+    return gz_geom_scale(GZ_CMD_POD_MGN_DESIGN, w, h);
+}
+
 /* Centre of pod `i` (0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right),
  * inset so a pod of radius `pod_r` stays inside the safe area. The pods share
  * the dial centre (w/2, h/2). `margin` is the edge keep-out on a rect panel. */

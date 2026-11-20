@@ -35,8 +35,11 @@
 #define CCX       GZ_UI_CX
 #define CCY       GZ_UI_CY
 #define R_MAX     gz_geom_radar_r_max(GZ_UI_W, GZ_UI_H)   /* 158 on the 1.85B */
-#define POD_R     GZ_UI_S(30)
-#define POD_MGN   GZ_UI_S(6)
+#define POD_R     GZ_UI_S(GZ_CMD_POD_R_DESIGN)             /* disc radius (scaled) */
+#define POD_MGN   gz_cmd_pod_margin(GZ_UI_W, GZ_UI_H)       /* edge keep-out (scaled) */
+/* Pods are PLACED by their footprint (disc + unscaled title label), not the bare
+ * disc, so a wide title never clips the glass on the narrow ES3C28P (B1). */
+#define POD_HW    gz_cmd_pod_hw(GZ_UI_W, GZ_UI_H)
 #define SWEEP_STEP_DEG 9
 #define LEN_HOUR  GZ_UI_S(52)
 #define LEN_MIN   GZ_UI_S(78)
@@ -183,7 +186,7 @@ void gz_face_command_build(lv_obj_t *scr)
     /* Four complication pods at round-safe corners (gz_cmdface.h). */
     for (int i = 0; i < GZ_FACE_SLOTS; ++i) {
         int px, py;
-        gz_cmd_pod_pos(i, GZ_UI_W, GZ_UI_H, GZ_UI_ROUND, POD_R, POD_MGN, &px, &py);
+        gz_cmd_pod_pos(i, GZ_UI_W, GZ_UI_H, GZ_UI_ROUND, POD_HW, POD_MGN, &px, &py);
         gz_comp_id_t c = gz_cmd_pod_comp(i, GZ_FACE_BOARD_CAPS);
         s_pod_field[i] = gz_comp_subject(c);
         disc(scr, px, py, POD_R, 1, COL_DIM, true, COL_RING);
