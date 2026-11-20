@@ -182,6 +182,7 @@ struct __attribute__((packed)) c5_hello_t {
     uint8_t  role;
     uint8_t  has_5g;
     uint8_t  has_ieee802154;
+    uint8_t  caps;    /* POSEI_CAP_* bitfield (0 = legacy node) */
 };
 
 /* Phase A diagnostics snapshot (S3-local; not a wire struct). Filled by

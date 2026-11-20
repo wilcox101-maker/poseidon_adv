@@ -88,6 +88,7 @@ static void send_hello(void)
     h->role           = 1;  /* c5 node */
     h->has_5g         = 1;
     h->has_ieee802154 = 1;
+    h->caps           = POSEI_CAP_WIFI24 | POSEI_CAP_WIFI5 | POSEI_CAP_BLE | POSEI_CAP_154;
     msg.payload_len = sizeof(posei_hello_t);
 
     /* v5: send header + used payload only (not the full 1 KB struct). */
