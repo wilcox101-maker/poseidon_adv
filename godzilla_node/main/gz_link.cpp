@@ -9,8 +9,10 @@
  */
 #include "gz_link.h"
 #include "gz_hello.h"
+#include "gz_timeset.h"   /* CMD_TIMESET epoch validation (pure) */
 
 #include <Arduino.h>
+#include <string.h>
 #include <WiFi.h>
 #include <esp_now.h>
 #include <esp_wifi.h>
@@ -26,6 +28,14 @@ static const uint8_t GZ_BROADCAST[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
  * the frame has left the air. Written by the Wi-Fi driver's send-cb context and
  * polled by the main loop — volatile, single-writer, no lock needed. */
 static volatile bool s_send_done = false;
+
+/* CMD_TIMESET latch: the receive callback validates and stores the pushed epoch
+ * + tz here; the UI task drains it via gz_link_take_timeset() and sets the RTC.
+ * No I2C in the callback context. Written in the Wi-Fi recv-cb context, read on
+ * the UI task — volatile; last write wins (a newer time-set simply supersedes). */
+static volatile bool     s_timeset_pending = false;
+static volatile uint32_t s_timeset_epoch   = 0;
+static volatile int16_t  s_timeset_tz       = 0;
 
 /* IDF >= 5.5 signature: the send callback gets wifi_tx_info_t, not the peer
  * MAC (esp_now_send_cb_t in esp_now.h). We only need "it aired". */
@@ -48,7 +58,22 @@ static void gz_on_recv(const esp_now_recv_info_t *info,
     const posei_msg_t *m = (const posei_msg_t *)data;
     if (m->magic != POSEI_MAGIC || m->version != POSEI_VERSION) return;
     if (m->payload_len > POSEI_PAYLOAD_MAX) return;
-    /* No command handling in P1. */
+    if (len < (int)POSEI_HEADER_SZ + (int)m->payload_len) return;  /* full payload present */
+
+    /* CMD_TIMESET (v5, additive): the Cardputer pushes this node's wall clock.
+     * Receive-only — nothing transmits, the passive rule holds. Validate the
+     * payload length and the epoch floor (reject a bogus / unset clock, the same
+     * floor the sender uses), then latch it for the UI task to apply to the RTC.
+     * Any other command is ignored: this node is fire-and-forget. */
+    if (m->type == POSEI_TYPE_CMD_TIMESET) {
+        if (m->payload_len < sizeof(posei_timeset_t)) return;
+        posei_timeset_t ts;
+        memcpy(&ts, m->payload, sizeof ts);           /* unaligned-safe copy */
+        if (!gz_timeset_valid(ts.epoch)) return;      /* bogus / unset clock */
+        s_timeset_epoch   = ts.epoch;
+        s_timeset_tz      = ts.tz_offset_min;
+        s_timeset_pending = true;                      /* drained by the UI task */
+    }
 }
 
 void gz_link_init(void)
@@ -109,4 +134,13 @@ void gz_link_send_hello(void)
     gz_build_hello((posei_hello_t *)msg.payload, ESP.getFreeHeap() / 1024);
     msg.payload_len = sizeof(posei_hello_t);
     gz_link_send(&msg);
+}
+
+bool gz_link_take_timeset(uint32_t *epoch, int16_t *tz_offset_min)
+{
+    if (!s_timeset_pending) return false;
+    s_timeset_pending = false;                 /* consume before reading the values */
+    if (epoch)         *epoch = s_timeset_epoch;
+    if (tz_offset_min) *tz_offset_min = s_timeset_tz;
+    return true;
 }

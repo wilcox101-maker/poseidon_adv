@@ -33,3 +33,10 @@ void gz_ui_watch_long_press(uint32_t now_ms);
 /* Current time from the software clock (for the status screen). False if the
  * clock has never had a time to run from. */
 bool gz_ui_watch_time(uint32_t now_ms, gz_datetime_t *out);
+
+/* Apply a CMD_TIMESET pushed by the Cardputer: convert the epoch (+ display-
+ * only tz) to civil time, set the hardware RTC, restart the software clock from
+ * it (so the UI and Recon read real time), and clear the "hold to set"
+ * placeholder. On the UI task, which owns the RTC. RTC boards only — the whole
+ * watch unit compiles only where GZ_BOARD_HAS_RTC. */
+void gz_ui_watch_apply_timeset(uint32_t epoch, int16_t tz_offset_min, uint32_t now_ms);

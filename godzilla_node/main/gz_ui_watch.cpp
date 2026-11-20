@@ -41,6 +41,7 @@
 #include "gz_board.h"
 #include "gz_geom.h"   /* the one geometry source (#88 §3.2) */
 #include "gz_moon.h"   /* pure moon-phase + printed sub-scale math (unit 2) */
+#include "gz_timeset.h"/* pure epoch -> civil time for CMD_TIMESET (step 3) */
 
 #include <Arduino.h>
 #include <stdio.h>
@@ -79,7 +80,10 @@
  * numeral ring. Each sub-dial has its own centre, a printed scale and a short
  * blued pointer placed by its ring angle (gz_moon.h). The moon window shows the
  * lit fraction for the date. All gate with the file (GZ_BOARD_HAS_RTC); a board
- * without an RTC compiles none of this and shows "set via Cardputer" elsewhere. */
+ * without an RTC has no clock faces at all (no-RTC-no-clock-faces), so none of
+ * this compiles there. Until the clock has been set — by hand or by a
+ * CMD_TIMESET from the Cardputer (gz_ui_watch_apply_timeset) — the dial shows
+ * the "hold to set" hint; after a sync it shows the real time/date/moon. */
 #define SUB_R        GZ_UI_S(30)                    /* sub-dial scale radius     */
 #define SUB_PTR      GZ_UI_S(24)                    /* sub-dial pointer length   */
 #define SUB_OFF      GZ_UI_S(52)                    /* sub-dial centre offset    */
@@ -546,6 +550,23 @@ bool gz_ui_watch_time(uint32_t now_ms, gz_datetime_t *out)
     if (!s_clock.synced) return false;
     gz_watch_now(&s_clock, now_ms, out);
     return true;
+}
+
+void gz_ui_watch_apply_timeset(uint32_t epoch, int16_t tz_offset_min, uint32_t now_ms)
+{
+    gz_datetime_t t;
+    gz_timeset_to_datetime(epoch, tz_offset_min, &t);
+    if (!gz_rtc_valid(&t)) return;             /* defensive: never set a bad time */
+
+    bool ok = gz_rtc_write(&t);                /* set the hardware RTC */
+    set_clock(&t, now_ms);                     /* software clock + gz_clock_publish */
+    s_rtc_fault  = !ok;
+    s_needs_set  = false;                      /* synced: drop the "hold to set" note */
+    s_force_draw = true;                       /* redraw hands + calendar next refresh */
+    update_note();
+    Serial.printf("  watch: CMD_TIMESET -> %04u-%02u-%02u %02u:%02u:%02u RTC %s\n",
+                  t.year, t.month, t.day, t.hour, t.minute, t.second,
+                  ok ? "written" : "WRITE FAILED");
 }
 
 #endif /* GZ_BOARD_HAS_RTC */
