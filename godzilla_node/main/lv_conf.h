@@ -26,6 +26,7 @@
 
 /* Fonts the status + radar screens use — nothing else. 12/20 are the radar
  * detail card (P2b). */
+#define LV_FONT_MONTSERRAT_10 1   /* engraved Classic sub-scale labels (unit 2, B2) */
 #define LV_FONT_MONTSERRAT_12 1
 #define LV_FONT_MONTSERRAT_14 1
 #define LV_FONT_MONTSERRAT_16 1

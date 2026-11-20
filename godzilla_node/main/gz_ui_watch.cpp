@@ -92,6 +92,9 @@
 #define MOON_CX      WCX                            /* moon aperture: below centre */
 #define MOON_CY      (WCY + SUB_OFF)
 #define MOON_R       GZ_UI_S(15)
+#define MOON_STAR_R  GZ_UI_S(1)                      /* gold star dot in the night sky */
+#define SUB_TICK_R   SUB_R                           /* division ticks sit on the rim  */
+#define SUB_LBL_R    (SUB_R - GZ_UI_S(9))            /* printed numeral / abbrev radius */
 
 static gz_watch_clock_t s_clock;
 static gz_watch_set_t   s_set;
@@ -110,6 +113,8 @@ static lv_obj_t *s_ptr_mon, *s_ptr_dow, *s_ptr_date;
 static lv_point_precise_t s_pts_mon[2], s_pts_dow[2], s_pts_date[2];
 static lv_obj_t *s_moon_lit;                 /* the lit disc inside the aperture */
 static uint8_t  s_drawn_day = 0;             /* last date whose scales were drawn */
+static lv_obj_t *s_date_ring;                /* date ticks+numerals (rebuilt monthly) */
+static uint8_t  s_drawn_month = 0;           /* last month whose date ring was drawn */
 
 /* ---- helpers ------------------------------------------------------------- */
 
@@ -195,14 +200,31 @@ static void place_sub_ptr(lv_obj_t *l, lv_point_precise_t pts[2], int32_t angle,
     place_line(l, pts, cx, cy, x1, y1);
 }
 
-/* Build one printed calendar sub-dial: a thin ring, a hub, and `n` marks with a
- * few captions, centred at (cx, cy). The pointer is created by the caller. */
-static void build_subdial(lv_obj_t *scr, int cx, int cy, const char *caption)
+/* Build one printed calendar sub-dial base: an ivory disc in a dark-brass ring
+ * and a blued hub, centred at (cx, cy). The printed scale (ticks + numerals /
+ * abbreviations) and the pointer are added by the caller. */
+static void build_subdial(lv_obj_t *scr, int cx, int cy)
 {
     disc(scr, cx, cy, SUB_R + GZ_UI_S(3), 1, COL_BRASS_D, true, COL_IVORY);
-    if (caption && caption[0])
-        dial_label(scr, &lv_font_montserrat_12, COL_BRASS_D, cx, cy - SUB_R + GZ_UI_S(8), caption);
     disc(scr, cx, cy, 3, 1, COL_BRASS_D, true, COL_BLUE);
+}
+
+/* A small ink tick on a sub-dial rim, at ring angle `angle` (tenths, 0 = up). */
+static void sub_tick(lv_obj_t *parent, int cx, int cy, int32_t angle, uint32_t rgb)
+{
+    int x, y;
+    gz_watch_polar(angle, SUB_TICK_R, cx, cy, &x, &y);
+    disc(parent, x, y, GZ_UI_S(2), 0, 0, true, rgb);
+}
+
+/* A printed sub-scale label (month / weekday abbrev, or a date numeral) inside
+ * the rim at ring angle `angle`, in the small engraved font. */
+static void sub_label(lv_obj_t *parent, int cx, int cy, int32_t angle, const char *txt)
+{
+    if (!txt || !txt[0]) return;
+    int x, y;
+    gz_watch_polar(angle, SUB_LBL_R, cx, cy, &x, &y);
+    dial_label(parent, &lv_font_montserrat_10, COL_INK, x, y, txt);
 }
 
 /* Every change to the software clock goes through here, so other tasks (the
@@ -265,6 +287,23 @@ static void draw_hands(const gz_datetime_t *t)
  * most once a day, so this only redraws when the date rolls. */
 static void draw_calendar(const gz_datetime_t *t)
 {
+    /* Date ring: its divisions are the month's real length, so (re)print the
+     * ticks + numerals when the month rolls. The numerals and the date pointer
+     * share gz_date_angle_tenths(day, dim), so they read the same scale. */
+    if (t->month != s_drawn_month) {
+        lv_obj_clean(s_date_ring);
+        int dim = gz_rtc_days_in_month(t->year, t->month);
+        for (int d = 1; d <= dim; ++d) {
+            if (!gz_date_label_shown(d, dim)) continue;
+            int32_t a = gz_date_angle_tenths(d, dim);
+            sub_tick(s_date_ring, SUB_DATE_CX, SUB_DATE_CY, a, COL_INK);
+            char num[3];
+            snprintf(num, sizeof num, "%d", d);
+            sub_label(s_date_ring, SUB_DATE_CX, SUB_DATE_CY, a, num);
+        }
+        s_drawn_month = t->month;
+    }
+
     place_sub_ptr(s_ptr_mon,  s_pts_mon,  gz_month_angle_tenths(t->month),
                   SUB_MON_CX, SUB_MON_CY, SUB_PTR);
     place_sub_ptr(s_ptr_dow,  s_pts_dow,  gz_weekday_angle_tenths(t->weekday),
@@ -351,12 +390,46 @@ void gz_ui_watch_build(lv_obj_t *scr)
 
     /* Three printed calendar sub-dials (month / day-of-week / date) and the
      * twin-aperture moon window, all read from the RTC via gz_moon.h. */
-    build_subdial(scr, SUB_DOW_CX,  SUB_DOW_CY,  "DAY");
-    build_subdial(scr, SUB_MON_CX,  SUB_MON_CY,  "MON");
-    build_subdial(scr, SUB_DATE_CX, SUB_DATE_CY, "DATE");
-    disc(scr, MOON_CX, MOON_CY, MOON_R + GZ_UI_S(2), 1, COL_BRASS_D, true, COL_NIGHT);
+    build_subdial(scr, SUB_DOW_CX,  SUB_DOW_CY);
+    build_subdial(scr, SUB_MON_CX,  SUB_MON_CY);
+    build_subdial(scr, SUB_DATE_CX, SUB_DATE_CY);
+
+    /* Day-of-week ring: SUN..SAT printed at all seven divisions. */
+    for (int i = 0; i < 7; ++i) {
+        int32_t a = gz_weekday_angle_tenths(i);
+        sub_tick(scr, SUB_DOW_CX, SUB_DOW_CY, a, COL_INK);
+        sub_label(scr, SUB_DOW_CX, SUB_DOW_CY, a, gz_weekday_abbrev(i));
+    }
+    /* Month ring: twelve ticks; abbreviations are printed at the quarter months
+     * (JAN/APR/JUL/OCT) so the names stay legible on the small sub-dial — the
+     * pointer still reads the exact month against all twelve ticks. (Visual
+     * density of a fuller month ring is a re-render call for Claudius.) */
+    for (int i = 0; i < 12; ++i) {
+        int32_t a = gz_month_angle_tenths(i + 1);
+        sub_tick(scr, SUB_MON_CX, SUB_MON_CY, a, COL_INK);
+        if ((i % 3) == 0)
+            sub_label(scr, SUB_MON_CX, SUB_MON_CY, a, gz_month_abbrev(i + 1));
+    }
+    /* Date ring: ticks + numerals at 5/10/15/20/25/last. Its division count is
+     * the month's real length, so it is (re)built when the month rolls; the
+     * container keeps those objects below the date pointer created after it. */
+    s_date_ring = plain_obj(scr);
+    lv_obj_set_size(s_date_ring, GZ_LCD_WIDTH, GZ_LCD_HEIGHT);
+    lv_obj_set_pos(s_date_ring, 0, 0);
+
+    /* Twin-aperture moon window: a cream scalloped mask ring, a night-blue sky
+     * with a few gold stars, and the lit disc (its radius encodes the
+     * illuminated fraction, 0 at new .. full at full moon). */
+    disc(scr, MOON_CX, MOON_CY, MOON_R + GZ_UI_S(3), 1, COL_BRASS_D, true, COL_IVORY); /* cream mask */
+    disc(scr, MOON_CX, MOON_CY, MOON_R + GZ_UI_S(1), 0, 0, true, COL_NIGHT);           /* night sky  */
+    static const int star_dx[5] = { -8,  6, -3,  9, -9 };
+    static const int star_dy[5] = { -6, -8,  7,  4,  2 };
+    for (int s = 0; s < 5; ++s)
+        disc(scr, MOON_CX + GZ_UI_S(star_dx[s]), MOON_CY + GZ_UI_S(star_dy[s]),
+             MOON_STAR_R, 0, 0, true, COL_BRASS);                                       /* gold stars */
     s_moon_lit = disc(scr, MOON_CX, MOON_CY, MOON_R, 0, 0, true, COL_SILVER);
-    dial_label(scr, &lv_font_montserrat_12, COL_BRASS_D, MOON_CX, MOON_CY + MOON_R + GZ_UI_S(7), "MOON");
+    dial_label(scr, &lv_font_montserrat_12, COL_BRASS_D, MOON_CX, MOON_CY + MOON_R + GZ_UI_S(10), "MOON");
+
     s_ptr_mon  = new_line(scr, COL_BLUE, 2);
     s_ptr_dow  = new_line(scr, COL_BLUE, 2);
     s_ptr_date = new_line(scr, COL_BLUE, 2);

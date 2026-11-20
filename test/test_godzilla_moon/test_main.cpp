@@ -114,6 +114,44 @@ static void test_month_weekday_date_rings(void)
     TEST_ASSERT_EQUAL_INT32(0, gz_ring_angle_tenths(3, 0));
 }
 
+/* ---- 3. printed sub-scale captions (B2) ---------------------------------- */
+static void test_month_and_weekday_abbrevs(void)
+{
+    TEST_ASSERT_EQUAL_STRING("JAN", gz_month_abbrev(1));
+    TEST_ASSERT_EQUAL_STRING("DEC", gz_month_abbrev(12));
+    TEST_ASSERT_EQUAL_STRING("",    gz_month_abbrev(0));
+    TEST_ASSERT_EQUAL_STRING("",    gz_month_abbrev(13));
+    TEST_ASSERT_EQUAL_STRING("SUN", gz_weekday_abbrev(0));
+    TEST_ASSERT_EQUAL_STRING("SAT", gz_weekday_abbrev(6));
+    TEST_ASSERT_EQUAL_STRING("",    gz_weekday_abbrev(7));
+    TEST_ASSERT_EQUAL_STRING("",    gz_weekday_abbrev(-1));
+}
+
+static void test_date_label_positions(void)
+{
+    /* 31-day month: 5,10,15,20,25 and 31 — 30 is dropped (it abuts 31). */
+    const int dim31 = 31;
+    int want31[] = { 5, 10, 15, 20, 25, 31 };
+    for (int d = 1; d <= dim31; ++d) {
+        bool exp = false;
+        for (unsigned k = 0; k < sizeof want31 / sizeof want31[0]; ++k)
+            if (want31[k] == d) exp = true;
+        char msg[40]; snprintf(msg, sizeof msg, "31-day d=%d", d);
+        TEST_ASSERT_EQUAL_INT_MESSAGE(exp ? 1 : 0, gz_date_label_shown(d, dim31) ? 1 : 0, msg);
+    }
+    /* 30-day month: 5,10,15,20,25,30. */
+    TEST_ASSERT_TRUE(gz_date_label_shown(30, 30));
+    TEST_ASSERT_TRUE(gz_date_label_shown(25, 30));
+    TEST_ASSERT_FALSE(gz_date_label_shown(31, 30));   /* out of range */
+    /* 28-day month: the 25th shows and the last day (28) shows, 27 does not. */
+    TEST_ASSERT_TRUE(gz_date_label_shown(25, 28));
+    TEST_ASSERT_TRUE(gz_date_label_shown(28, 28));
+    TEST_ASSERT_FALSE(gz_date_label_shown(27, 28));
+    /* Never labels day 0 or a day past the month. */
+    TEST_ASSERT_FALSE(gz_date_label_shown(0, 31));
+    TEST_ASSERT_FALSE(gz_date_label_shown(32, 31));
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -126,5 +164,7 @@ int main(void)
     RUN_TEST(test_ring_first_division_at_top);
     RUN_TEST(test_ring_even_steps_and_wrap);
     RUN_TEST(test_month_weekday_date_rings);
+    RUN_TEST(test_month_and_weekday_abbrevs);
+    RUN_TEST(test_date_label_positions);
     return UNITY_END();
 }
