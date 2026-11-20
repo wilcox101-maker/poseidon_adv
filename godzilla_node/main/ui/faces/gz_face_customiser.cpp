@@ -16,6 +16,7 @@
 #include "../../gz_geom.h"
 #include "../../gz_accent.h"   /* the one accent palette (unit 6) */
 #include "../../gz_alerts_page.h"  /* Alerts subpage pure model (row<->bit, count) */
+#include "../../gz_ui.h"           /* gz_ui_apply_settings — live apply (item I) */
 
 #include <stdio.h>
 
@@ -251,6 +252,7 @@ static void alerts_tap(int x, int y)
     if (gz_alerts_row_is_family(row)) {
         s_set.alert_mask = gz_alerts_toggle(s_set.alert_mask, row);
         gz_face_store_save(&s_set);     /* same NVS writer as the main rows */
+        gz_ui_apply_settings(&s_set);   /* alert overlay picks up the new mask live */
         alerts_refresh();
     }
 }
@@ -364,6 +366,7 @@ void gz_face_customiser_tap(int x, int y)
     }
     }
     gz_face_store_save(&s_set);     /* persist every change (unit-1 writer) */
+    gz_ui_apply_settings(&s_set);   /* finish rebuild / overlay update, no reboot (item I) */
     refresh_rows();
 }
 
