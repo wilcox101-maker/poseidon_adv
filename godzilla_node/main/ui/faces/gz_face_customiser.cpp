@@ -14,6 +14,7 @@
 #include "gz_face_store.h"     /* NVS load / save (unit 1) */
 #include "../../gz_customiser.h"
 #include "../../gz_geom.h"
+#include "../../gz_accent.h"   /* the one accent palette (unit 6) */
 
 #include <stdio.h>
 
@@ -23,11 +24,8 @@
 #define COL_VALUE   0xBDEBEB
 #define COL_TITLE   0x2EC4B6
 
-/* Nine accent swatches shown in the customiser (accent index 0..8). */
-static const uint32_t ACCENT_RGB[GZ_ACCENT_COUNT] = {
-    0x2EC4B6, 0xFFB020, 0xFF4D5A, 0x8A6DF0, 0x3FA7FF,
-    0x58D68D, 0xF06292, 0xC9A227, 0xBDEBEB,
-};
+/* Accent swatches come from the one shared palette, gz_accent_rgb (unit 6), so
+ * the customiser and every face show the same nine colours. */
 
 enum { ROW_FACE = 0, ROW_ACCENT, ROW_BG, ROW_AON,
        ROW_SLOT0, ROW_SLOT1, ROW_SLOT2, ROW_SLOT3, ROW_COUNT };
@@ -106,7 +104,7 @@ static void refresh_rows(void)
         row_value(r, buf, sizeof buf);
         lv_label_set_text(s_val[r], buf);
     }
-    lv_obj_set_style_bg_color(s_accent_sw, lv_color_hex(ACCENT_RGB[s_set.accent % GZ_ACCENT_COUNT]), 0);
+    lv_obj_set_style_bg_color(s_accent_sw, lv_color_hex(gz_accent_rgb(s_set.accent)), 0);
 }
 
 /* ---- build --------------------------------------------------------------- */
