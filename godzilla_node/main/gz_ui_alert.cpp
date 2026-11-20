@@ -229,9 +229,13 @@ void gz_ui_alert_tick(uint16_t alert_mask, bool always_on, uint32_t now_ms)
         return;
     }
 
+    /* Don't re-pop a device still inside its cool-down (e.g. just dismissed),
+     * but don't let it mask a different eligible device either: skip cooling
+     * rows and take the next best. */
+    static uint8_t skip[GZ_RADAR_MAX];
+    for (int i = 0; i < n; ++i) skip[i] = rl_recent(rows[i].kind, rows[i].addr, now_ms) ? 1u : 0u;
+    sel = gz_alert_select_skip(rows, n, alert_mask, now_ms, skip);
     if (sel < 0) return;
-    /* Don't re-pop a device still inside its cool-down (e.g. just dismissed). */
-    if (rl_recent(rows[sel].kind, rows[sel].addr, now_ms)) return;
     rl_record(rows[sel].kind, rows[sel].addr, now_ms);
     show(&rows[sel], always_on, now_ms);
 }

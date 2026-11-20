@@ -104,6 +104,25 @@ static void test_select_prefers_surveillance_then_rssi(void)
     TEST_ASSERT_EQUAL_INT(POSEI_DET_FAM_FLOCK, rows[sel].family);
 }
 
+/* A device in its re-alert cool-down must not mask a different eligible one:
+ * with the strongest row skipped, the next best eligible row wins; with every
+ * eligible row skipped, nothing is selected. NULL skip == gz_alert_select. */
+static void test_select_skip_cooling_device(void)
+{
+    const uint32_t now = 100000u;
+    gz_radar_row_t rows[] = {
+        row(POSEI_DET_FAM_FLOCK,  -40, 1, now - 1000),   /* strongest: cooling down */
+        row(POSEI_DET_FAM_CAMERA, -70, 1, now - 1000),   /* next best surveillance  */
+        row(POSEI_DET_FAM_ALPR,   -30, 99, now - 1000),  /* LOW: never eligible     */
+    };
+    int n = (int)(sizeof rows / sizeof rows[0]);
+    TEST_ASSERT_EQUAL_INT(0, gz_alert_select_skip(rows, n, GZ_ALERT_MASK_ALL, now, NULL));
+    uint8_t skip[3] = { 1, 0, 0 };
+    TEST_ASSERT_EQUAL_INT(1, gz_alert_select_skip(rows, n, GZ_ALERT_MASK_ALL, now, skip));
+    uint8_t skip_all[3] = { 1, 1, 0 };
+    TEST_ASSERT_EQUAL_INT(-1, gz_alert_select_skip(rows, n, GZ_ALERT_MASK_ALL, now, skip_all));
+}
+
 static void test_select_skips_dead_and_masked(void)
 {
     const uint32_t now = 100000u;
@@ -143,6 +162,7 @@ int main(int, char **)
     RUN_TEST(test_trackers_need_repeats);
     RUN_TEST(test_select_prefers_surveillance_then_rssi);
     RUN_TEST(test_select_skips_dead_and_masked);
+    RUN_TEST(test_select_skip_cooling_device);
     RUN_TEST(test_rate_limit_and_ttl);
     return UNITY_END();
 }

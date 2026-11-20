@@ -115,13 +115,29 @@ static inline long gz_alert_rank(const gz_radar_row_t *r)
 /* Pick the highest-priority radar row that is alert-eligible under `mask` AND
  * still live (seen within the radar TTL), or -1 if none. Pure over a snapshot;
  * the owner applies the per-device rate-limit and the overlay TTL on top. */
+static inline int gz_alert_select_skip(const gz_radar_row_t *rows, int n,
+                                       uint16_t mask, uint32_t now_ms,
+                                       const uint8_t *skip);
+
 static inline int gz_alert_select(const gz_radar_row_t *rows, int n,
                                   uint16_t mask, uint32_t now_ms)
+{
+    return gz_alert_select_skip(rows, n, mask, now_ms, (const uint8_t *)0);
+}
+
+/* As gz_alert_select, but rows with skip[i] != 0 are passed over (skip may be
+ * NULL). The overlay owner marks devices still inside their re-alert cool-down
+ * here, so a dismissed device never masks a different eligible one: the next
+ * best eligible, live, not-cooling-down row wins instead. */
+static inline int gz_alert_select_skip(const gz_radar_row_t *rows, int n,
+                                       uint16_t mask, uint32_t now_ms,
+                                       const uint8_t *skip)
 {
     int best = -1;
     long best_rank = -1;
     for (int i = 0; i < n; ++i) {
         const gz_radar_row_t *r = &rows[i];
+        if (skip && skip[i]) continue;
         if (!gz_radar_live(r, now_ms)) continue;
         if (!gz_alert_row_eligible(r->family, r->hits, mask)) continue;
         long rk = gz_alert_rank(r);
