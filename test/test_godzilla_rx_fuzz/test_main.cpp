@@ -1,12 +1,16 @@
 /*
  * test_godzilla_rx_fuzz — receive-path robustness (detection-breadth §3 item 6).
  *
- * One consolidated fuzz/boundary sweep over every pure decoder the node owns,
- * the node-side detection ENCODE path (gz_batch.h), and the shared pure
+ * One consolidated fuzz/boundary sweep over every pure decoder the node owns —
+ * the BLE advert decoders, the Wi-Fi MAC/family classifiers, the §4
+ * surveillance classifiers (skimmer / camera / LE-equipment / ALPR) and the
+ * BLE vendor labeller — plus the node-side detection ENCODE path (gz_batch.h),
+ * the TIMESET downlink consumer decode path (gz_timeset.h), and the shared pure
  * S3-side merge helper (src/godzilla_det.h). We feed truncated, oversized,
  * zero-length and garbage buffers and assert: no crash, a clean reject (not a
- * half-decode), output bounds are respected, and counters increment on the
- * accepted path.
+ * half-decode), output bounds are respected, confidence stays within the
+ * defined levels (LOW-only families never reach HIGH), and counters increment
+ * on the accepted path.
  *
  * NO src/* is edited — src/godzilla_det.h is included read-only (the #98 §2.4a
  * pattern). The POSEIDON-side c5_dets receive path stays Claudius's lane; this
@@ -32,6 +36,12 @@
 #include "../../godzilla_node/main/gz_wifi_mac.h"
 #include "../../godzilla_node/main/gz_wifi_family.h"
 #include "../../godzilla_node/main/gz_batch.h"
+#include "../../godzilla_node/main/gz_skimmer.h"
+#include "../../godzilla_node/main/gz_camera.h"
+#include "../../godzilla_node/main/gz_le_equip.h"
+#include "../../godzilla_node/main/gz_alpr.h"
+#include "../../godzilla_node/main/gz_timeset.h"
+#include "../../godzilla_node/main/gz_rtc.h"
 #include "../../src/godzilla_det.h"
 
 void setUp(void) {}
@@ -71,6 +81,25 @@ static void decode_all(const uint8_t *buf, int len)
     TEST_ASSERT_TRUE(tk >= GZ_TRACKER_NONE && tk <= GZ_TRACKER_SMARTTAG);
     gz_wifi_family_t fam = gz_wifi_family_classify(buf, len);
     TEST_ASSERT_TRUE(fam >= GZ_FAM_UNKNOWN && fam <= GZ_FAM_IOT);
+
+    /* §4 surveillance skimmer classifier runs off the same raw payload; its
+     * confidence is always one of the three defined levels and a malformed
+     * walk can never flag (HIGH requires both the serial service and a known
+     * name). */
+    int sk = gz_skimmer_classify_payload(buf, len);
+    TEST_ASSERT_TRUE(sk == GZ_SKIMMER_NONE || sk == GZ_SKIMMER_LOW ||
+                     sk == GZ_SKIMMER_HIGH);
+    if (a.malformed) TEST_ASSERT_EQUAL_INT(GZ_SKIMMER_NONE, sk);
+
+    /* The BLE vendor labeller takes an arbitrary 16-bit company id and an
+     * arbitrary type string drawn from the fuzz buffer; it must always stay
+     * inside its output buffer and NUL-terminate. */
+    char vl[40];
+    char ty[8] = {0};
+    for (int i = 0; i < 7 && i < len; ++i) ty[i] = (char)(buf[i] | 0x20);
+    uint16_t company = (uint16_t)(len >= 2 ? (buf[0] | (buf[1] << 8)) : (uint32_t)len);
+    gz_ble_vendor_label(company, ty, vl, sizeof vl);
+    TEST_ASSERT_TRUE(strlen(vl) < sizeof vl);
 
     /* Summary formatters must stay inside their output buffers on any input. */
     char s[80];
@@ -127,6 +156,73 @@ static void test_mac_label_fuzz(void)
         TEST_ASSERT_TRUE(strlen(s) < sizeof s);
         /* A locally-administered address always reads "randomized". */
         if (mac[0] & GZ_MAC_LOCAL) TEST_ASSERT_EQUAL_STRING("randomized", s);
+
+        /* The §4 OUI-based surveillance classifiers run off the same random
+         * address. Each returns only its defined levels, and the two LOW-only
+         * families (LE-equipment and ALPR) can NEVER reach a HIGH level — that
+         * is the corroboration contract the §4 alert overlay relies on. */
+        int cam = gz_camera_classify_mac(mac);
+        TEST_ASSERT_TRUE(cam == GZ_CAMERA_NONE || cam == GZ_CAMERA_LOW ||
+                         cam == GZ_CAMERA_HIGH);
+        int le = gz_le_equip_classify_mac(mac);
+        TEST_ASSERT_TRUE(le == GZ_LE_EQUIP_NONE || le == GZ_LE_EQUIP_LOW);
+        int alpr = gz_alpr_classify_mac(mac);
+        TEST_ASSERT_TRUE(alpr == GZ_ALPR_NONE || alpr == GZ_ALPR_LOW);
+    }
+}
+
+/* ---- TIMESET consumer decode path (gz_timeset.h) boundary/fuzz ---- *
+ *
+ * The node validates every CMD_TIMESET downlink with gz_timeset_valid() and
+ * converts the epoch with gz_timeset_to_datetime(). We sweep boundary epochs
+ * and a large random space of (epoch, tz) pairs and assert: the validity floor
+ * is exact; the civil conversion ALWAYS yields real calendar fields (the
+ * Hinnant algorithm is correct for any epoch, including the extreme tz roll and
+ * the full uint32 range); and when the result lands inside the RTC's supported
+ * window it passes the strict gz_rtc_valid() the UI task applies before it sets
+ * the hardware clock. */
+static void check_datetime_fields(const gz_datetime_t *dt)
+{
+    TEST_ASSERT_TRUE(dt->month >= 1 && dt->month <= 12);
+    uint8_t dmax = gz_rtc_days_in_month(dt->year, dt->month);
+    TEST_ASSERT_TRUE(dt->day >= 1 && dt->day <= dmax);
+    TEST_ASSERT_TRUE(dt->hour <= 23);
+    TEST_ASSERT_TRUE(dt->minute <= 59);
+    TEST_ASSERT_TRUE(dt->second <= 59);
+    TEST_ASSERT_TRUE(dt->weekday <= 6);
+    TEST_ASSERT_FALSE(dt->osc_stopped);
+}
+
+static void test_timeset_decode_fuzz(void)
+{
+    /* Exact validity floor. */
+    TEST_ASSERT_FALSE(gz_timeset_valid(0));
+    TEST_ASSERT_FALSE(gz_timeset_valid(GZ_TIMESET_EPOCH_MIN - 1u));
+    TEST_ASSERT_TRUE(gz_timeset_valid(GZ_TIMESET_EPOCH_MIN));
+    TEST_ASSERT_TRUE(gz_timeset_valid(0xFFFFFFFFu));
+
+    /* Boundary epochs: 0, the floor, a known good wall clock, and uint32 max,
+     * each with extreme tz offsets (±24h+ in minutes, clamped by the codec). */
+    const uint32_t eps[] = { 0u, 1u, GZ_TIMESET_EPOCH_MIN - 1u,
+                             GZ_TIMESET_EPOCH_MIN, 1763600000u, 0xFFFFFFFFu };
+    const int16_t tzs[] = { 0, 60, -60, 840, -720, 1439, -1439, 32767, -32768 };
+    gz_datetime_t dt;
+    for (unsigned i = 0; i < sizeof eps / sizeof eps[0]; ++i)
+        for (unsigned j = 0; j < sizeof tzs / sizeof tzs[0]; ++j) {
+            gz_timeset_to_datetime(eps[i], tzs[j], &dt);
+            check_datetime_fields(&dt);
+        }
+
+    /* Large random (epoch, tz) sweep — never crash, always real fields. */
+    for (int iter = 0; iter < 20000; ++iter) {
+        uint32_t epoch = rnd();
+        int16_t tz = (int16_t)rnd();
+        gz_timeset_to_datetime(epoch, tz, &dt);
+        check_datetime_fields(&dt);
+        /* A real epoch inside the RTC window must satisfy the strict check the
+         * UI applies before writing the clock. */
+        if (gz_timeset_valid(epoch) && dt.year >= 2000 && dt.year <= 2099)
+            TEST_ASSERT_TRUE(gz_rtc_valid(&dt));
     }
 }
 
@@ -257,6 +353,7 @@ int main(void)
     RUN_TEST(test_decoder_fuzz_sweep);
     RUN_TEST(test_lab_store_fuzz);
     RUN_TEST(test_mac_label_fuzz);
+    RUN_TEST(test_timeset_decode_fuzz);
     RUN_TEST(test_ble_batch_overflow);
     RUN_TEST(test_wifi_batch_dedup_fuzz);
     RUN_TEST(test_det_ingest_malformed);
