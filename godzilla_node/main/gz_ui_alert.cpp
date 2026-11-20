@@ -127,23 +127,32 @@ void gz_ui_alert_build(void)
     lv_label_set_text(s_bar_lbl, "PRIORITY ALERT");
     lv_obj_center(s_bar_lbl);
 
-    /* Family + severity word, centred. */
+    /* Text block, stacked by FONT line height (fonts do not scale with the
+     * panel, so scaled offsets collided on the 240x320 ES3C28P — render
+     * review). Each line starts below the previous one plus a scaled gap,
+     * floored at 2 px. */
+    int gap = GZ_UI_S(6); if (gap < 2) gap = 2;
+    int y = band_y + GZ_UI_S(26) + GZ_UI_S(34) + 2 * gap;   /* below the bar */
     s_fam = mk_label(s_panel, &lv_font_montserrat_18, COL_FOAM);
-    lv_obj_align(s_fam, LV_ALIGN_TOP_MID, 0, band_y + GZ_UI_S(74));
+    lv_obj_align(s_fam, LV_ALIGN_TOP_MID, 0, y);
+    y += lv_font_get_line_height(&lv_font_montserrat_18) + gap / 2;
     s_sev = mk_label(s_panel, &lv_font_montserrat_14, COL_SURVEIL);
-    lv_obj_align(s_sev, LV_ALIGN_TOP_MID, 0, band_y + GZ_UI_S(100));
+    lv_obj_align(s_sev, LV_ALIGN_TOP_MID, 0, y);
+    y += lv_font_get_line_height(&lv_font_montserrat_14) + gap;
 
     /* Identity lines. */
     s_addr = mk_label(s_panel, &lv_font_montserrat_14, COL_FOAM);
-    lv_obj_align(s_addr, LV_ALIGN_TOP_MID, 0, band_y + GZ_UI_S(128));
+    lv_obj_align(s_addr, LV_ALIGN_TOP_MID, 0, y);
+    y += lv_font_get_line_height(&lv_font_montserrat_14) + gap / 2;
     s_sig = mk_label(s_panel, &lv_font_montserrat_12, COL_DIM);
-    lv_obj_align(s_sig, LV_ALIGN_TOP_MID, 0, band_y + GZ_UI_S(150));
+    lv_obj_align(s_sig, LV_ALIGN_TOP_MID, 0, y);
+    y += lv_font_get_line_height(&lv_font_montserrat_12) + 2 * gap;
 
     /* Mini radar: a ring with one dot for the device's hashed bearing. */
     int mr = GZ_UI_S(34);
     s_mini = plain_obj(s_panel);
     lv_obj_set_size(s_mini, 2 * mr, 2 * mr);
-    lv_obj_align(s_mini, LV_ALIGN_TOP_MID, 0, band_y + GZ_UI_S(180));
+    lv_obj_align(s_mini, LV_ALIGN_TOP_MID, 0, y);
     lv_obj_set_style_radius(s_mini, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_border_width(s_mini, 2, 0);
     lv_obj_set_style_border_color(s_mini, lv_color_hex(COL_DIM), 0);
@@ -166,8 +175,13 @@ static void populate(const gz_radar_row_t *r)
     lv_obj_set_style_text_color(s_sev, lv_color_hex(col), 0);
 
     lv_label_set_text(s_fam, gz_radar_family_name(r->family));
-    lv_label_set_text(s_sev, gz_radar_severity(r->family) == GZ_SEV_SURVEIL
-                                 ? "SURVEILLANCE" : "TRACKER NEARBY");
+    /* Wording follows what the device IS, not its colour tier: the amber tier
+     * also holds cameras and smart glasses, which are not trackers. */
+    const char *what = gz_alert_is_tracker(r->family)        ? "TRACKER NEARBY"
+                     : (r->family == POSEI_DET_FAM_CAMERA ||
+                        r->family == POSEI_DET_FAM_SMARTGLASS) ? "RECORDING DEVICE"
+                     :                                          "SURVEILLANCE";
+    lv_label_set_text(s_sev, what);
 
     char buf[32];
     snprintf(buf, sizeof buf, "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -175,9 +189,9 @@ static void populate(const gz_radar_row_t *r)
     lv_label_set_text(s_addr, buf);
 
     if (r->kind == GZ_RADAR_WIFI)
-        snprintf(buf, sizeof buf, "%d dBm  ·  CH %u", (int)r->rssi, (unsigned)r->aux);
+        snprintf(buf, sizeof buf, "%d dBm  |  CH %u", (int)r->rssi, (unsigned)r->aux);
     else
-        snprintf(buf, sizeof buf, "%d dBm  ·  BLE", (int)r->rssi);
+        snprintf(buf, sizeof buf, "%d dBm  |  BLE", (int)r->rssi);
     lv_label_set_text(s_sig, buf);
 
     /* Place the mini-radar dot by the device's stable bearing + RSSI radius. */
