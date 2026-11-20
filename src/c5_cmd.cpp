@@ -11,11 +11,13 @@
  * Auto-adds any new sender to esp_now peer list so we can reply.
  */
 #include "c5_cmd.h"
+#include "c5_timesync.h"
 #include <WiFi.h>
 #include <esp_wifi.h>
 #include <esp_now.h>
 #include <esp_system.h>
 #include <string.h>
+#include <time.h>
 
 #define MAX_PEERS 4
 #define MAX_APS   32
@@ -42,6 +44,11 @@ struct c5_peer_t {
     int8_t   rssi;
     uint32_t rtt_ms;
     uint32_t ping_sent_ms;
+    /* Time-sync (CMD_TIMESET): when we last pushed the wall clock to this peer,
+     * so we send on its first HELLO after our clock is valid, then re-sync only
+     * once per C5_TIMESET_RESYNC_MS. See c5_timesync.h. */
+    uint32_t timeset_ms;
+    bool     timeset_sent;
 };
 
 static c5_peer_t s_peers[MAX_PEERS];
@@ -114,6 +121,46 @@ static void ensure_peer(const uint8_t *mac)
     }
 }
 
+/* ---- Time-sync (CMD_TIMESET) --------------------------------------------- */
+/* Our own wall clock, if real. The S3 seeds its system clock from GPS UTC
+ * (gps.cpp sets TZ=UTC0), so time(nullptr) is the honest source; tz is 0
+ * because the Cardputer runs UTC and the field is display-only. Returns false
+ * until the clock has actually been set. */
+static bool c5_wallclock(uint32_t *epoch, int16_t *tz)
+{
+    time_t t = time(nullptr);
+    if (t < 0 || !c5_time_is_valid((uint32_t)t)) return false;
+    if (epoch) *epoch = (uint32_t)t;
+    if (tz)    *tz    = 0;
+    return true;
+}
+
+/* Unicast one CMD_TIMESET to a specific node. Unlike send_simple_cmd this does
+ * NOT skip detection nodes (role C5_ROLE_DETECT_NODE): a GODZILLA detection
+ * node is exactly who needs the time. Additive/passive — the node only
+ * receives it. Returns the frame's seq. */
+static uint16_t send_timeset_unicast(const uint8_t mac[6], uint32_t epoch, int16_t tz)
+{
+    c5_timeset_t ts;
+    ts.epoch         = epoch;
+    ts.tz_offset_min = tz;
+
+    uint16_t seq = s_next_seq;
+    s_next_seq   = seq + 1;
+
+    c5_msg_t m = {};
+    m.magic   = C5_MAGIC;
+    m.version = C5_VERSION;
+    m.type    = C5_TYPE_CMD_TIMESET;
+    m.seq     = seq;
+    memcpy(m.payload, &ts, sizeof ts);
+    m.payload_len = sizeof ts;
+
+    if (!esp_now_is_peer_exist(mac)) ensure_peer(mac);
+    esp_now_send(mac, (const uint8_t *)&m, c5_wire_len(&m));
+    return seq;
+}
+
 static void handle_hello(const uint8_t *mac, const c5_msg_t *m)
 {
     if (m->payload_len < (int)sizeof(c5_hello_t)) return;
@@ -152,6 +199,26 @@ static void handle_hello(const uint8_t *mac, const c5_msg_t *m)
     portEXIT_CRITICAL(&s_mux);
 
     if (idx >= 0 && !esp_now_is_peer_exist(mac)) ensure_peer(mac);
+
+    /* Time-sync: once our wall clock is real, push CMD_TIMESET to this peer on
+     * its first HELLO and then at most once per resync window. Covers a fresh
+     * pairing and a node that joined before the GPS fix, without a timer. */
+    if (idx >= 0) {
+        uint32_t epoch; int16_t tz;
+        if (c5_wallclock(&epoch, &tz)) {
+            portENTER_CRITICAL(&s_mux);
+            bool     ever = s_peers[idx].timeset_sent;
+            uint32_t last = s_peers[idx].timeset_ms;
+            portEXIT_CRITICAL(&s_mux);
+            if (c5_timeset_due(true, millis(), last, ever, C5_TIMESET_RESYNC_MS)) {
+                send_timeset_unicast(mac, epoch, tz);
+                portENTER_CRITICAL(&s_mux);
+                s_peers[idx].timeset_ms   = millis();
+                s_peers[idx].timeset_sent = true;
+                portEXIT_CRITICAL(&s_mux);
+            }
+        }
+    }
 }
 
 static void handle_resp_ap(const c5_msg_t *m)
@@ -730,6 +797,41 @@ uint16_t c5_cmd_hs(const uint8_t bssid[6], uint8_t channel, uint16_t duration_ms
     r.duration_ms = duration_ms;
     s_last_status_channel = channel;
     return send_simple_cmd(C5_TYPE_CMD_HS, (uint8_t *)&r, sizeof(r));
+}
+
+/* Manual time-sync. The HELLO path keeps nodes in time automatically; these let
+ * a menu action or a clock-set hook push immediately. Both no-op (return 0)
+ * until our own wall clock is valid. */
+uint16_t c5_cmd_timeset_peer(const uint8_t mac[6])
+{
+    uint32_t epoch; int16_t tz;
+    if (!c5_wallclock(&epoch, &tz)) return 0;
+    uint16_t seq = send_timeset_unicast(mac, epoch, tz);
+    portENTER_CRITICAL(&s_mux);
+    int idx = find_peer(mac);
+    if (idx >= 0) { s_peers[idx].timeset_ms = millis(); s_peers[idx].timeset_sent = true; }
+    portEXIT_CRITICAL(&s_mux);
+    return seq;
+}
+
+int c5_cmd_timeset_all(void)
+{
+    uint32_t epoch; int16_t tz;
+    if (!c5_wallclock(&epoch, &tz)) return 0;
+
+    uint8_t macs[MAX_PEERS][6];
+    int count = 0;
+    portENTER_CRITICAL(&s_mux);
+    for (int i = 0; i < s_peer_n; ++i) memcpy(macs[count++], s_peers[i].mac, 6);
+    portEXIT_CRITICAL(&s_mux);
+
+    for (int i = 0; i < count; ++i) send_timeset_unicast(macs[i], epoch, tz);
+
+    uint32_t now = millis();
+    portENTER_CRITICAL(&s_mux);
+    for (int i = 0; i < s_peer_n; ++i) { s_peers[i].timeset_ms = now; s_peers[i].timeset_sent = true; }
+    portEXIT_CRITICAL(&s_mux);
+    return count;
 }
 
 uint32_t c5_status_frames(void)  { return s_last_status_frames; }

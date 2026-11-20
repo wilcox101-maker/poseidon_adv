@@ -388,6 +388,14 @@ uint16_t c5_cmd_deauth(const uint8_t bssid[6], uint8_t channel,
 uint16_t c5_cmd_pmkid(const uint8_t bssid[6], uint8_t channel, uint16_t duration_ms);
 uint16_t c5_cmd_hs(const uint8_t bssid[6], uint8_t channel, uint16_t duration_ms);
 
+/* Time-sync (CMD_TIMESET). The S3 pushes its GPS-seeded wall clock to nodes
+ * automatically on their HELLOs (see c5_cmd.cpp / c5_timesync.h); these force
+ * an immediate push and no-op (return 0) until that clock is valid.
+ *   _peer → one node by MAC (returns the frame seq);
+ *   _all  → every known peer, detection nodes included (returns peer count). */
+uint16_t c5_cmd_timeset_peer(const uint8_t mac[6]);
+int      c5_cmd_timeset_all(void);
+
 /* New v3 command senders. */
 uint16_t c5_cmd_clients_hunt(uint16_t duration_ms);
 uint16_t c5_cmd_clients_ap(const uint8_t bssid[6], uint8_t channel, uint16_t duration_ms);
