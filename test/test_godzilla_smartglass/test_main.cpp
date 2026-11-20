@@ -3,9 +3,9 @@
  * (detection §4 unit 5). Captured-style advert bytes drive every path:
  *   - a manufacturer advert whose SIG company ID is a dedicated smart-glasses
  *     maker (Vuzix 0x060C) -> HIGH;
- *   - the LOW family is deferred (no entries verified yet), so the conglomerate
- *     company IDs that reads disagreed on (0x01AB Meta Watch Ltd, 0x00B6 Meta
- *     Platforms Technologies, 0x058E Meta Platforms Inc, 0x03C2) -> NONE;
+ *   - a company ID of a maker that also ships non-glasses products
+ *     (Meta Platforms 0x01AB, Snapchat 0x03C2, Luxottica 0x0D53) -> LOW;
+ *     0x00B6 (Meso), 0x00A3 (Meta Watch), 0x07DF (Snap-on) -> NONE;
  *   - an unrelated company ID (Apple 0x004C), a name-only advert, no
  *     manufacturer data, and a malformed/empty advert -> NONE.
  * Pure host TU, same style as test_godzilla_skimmer. */
@@ -20,7 +20,8 @@ void tearDown(void) {}
 #define FLAGS            0x02, 0x01, 0x06
 /* Manufacturer-specific AD: len, 0xFF, company-LE[, extra payload]. */
 #define MFR_VUZIX        0x03, 0xFF, 0x0C, 0x06                 /* 0x060C */
-#define MFR_METAWATCH    0x03, 0xFF, 0xAB, 0x01                 /* 0x01AB (Meta Watch Ltd) */
+#define MFR_META_RL      0x03, 0xFF, 0xAB, 0x01                 /* 0x01AB */
+#define MFR_SNAP         0x03, 0xFF, 0xC2, 0x03                 /* 0x03C2 */
 #define MFR_APPLE        0x03, 0xFF, 0x4C, 0x00                 /* 0x004C */
 #define NAME_GLASS       0x06, 0x09, 'G','l','a','s','s'
 
@@ -36,13 +37,16 @@ static void test_dedicated_maker_company_id_is_high(void)
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_HIGH, classify(vuzix_ext, sizeof vuzix_ext));
 }
 
-static void test_deferred_low_family_is_none(void)
+static void test_shared_parent_company_id_is_low(void)
 {
-    /* The LOW family is deferred (no entries verified). 0x01AB is in fact
-     * "Meta Watch Ltd." (a defunct Fossil smartwatch brand) — NOT Facebook —
-     * and must not be flagged. */
-    const uint8_t metawatch[] = { FLAGS, MFR_METAWATCH };
-    TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_NONE, classify(metawatch, sizeof metawatch));
+    /* Meta Platforms, Inc. (0x01AB, formerly Facebook, Inc.) — Ray-Ban Meta
+     * advertise under it, but so do many other Meta products, so LOW. */
+    const uint8_t meta[] = { FLAGS, MFR_META_RL };
+    TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_LOW, classify(meta, sizeof meta));
+    /* Snapchat Inc (0x03C2) — Snap Spectacles, but the ID also ships app
+     * beacons etc., so LOW. */
+    const uint8_t snap[] = { FLAGS, MFR_SNAP };
+    TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_LOW, classify(snap, sizeof snap));
 }
 
 static void test_unrelated_company_is_none(void)
@@ -81,15 +85,18 @@ static void test_classify_struct_direct(void)
     TEST_ASSERT_TRUE(a.has_mfr);
     TEST_ASSERT_EQUAL_HEX16(0x060C, a.company);
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_HIGH, gz_smartglass_classify(&a));
-    /* A bare company-id lookup: only the verified Vuzix HIGH matches. The LOW
-     * family is deferred, so every conglomerate ID the reads disagreed on is
-     * NONE (0x01AB = Meta Watch Ltd, 0x00B6 = Meta Platforms Technologies,
-     * 0x058E = Meta Platforms Inc, 0x03C2). */
+    /* A bare company-id lookup. */
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_HIGH, gz_smartglass_cid_conf(0x060C));
-    TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_NONE, gz_smartglass_cid_conf(0x01AB));
+    TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_LOW,  gz_smartglass_cid_conf(0x01AB));
+    TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_LOW,  gz_smartglass_cid_conf(0x0D53)); /* Luxottica */
+    /* Look-alikes that must never match. */
+    TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_NONE, gz_smartglass_cid_conf(0x00A3)); /* Meta Watch Ltd. */
+    TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_NONE, gz_smartglass_cid_conf(0x07DF)); /* Snap-on Inc.    */
+    /* 0x00B6 is "Meso international" — unrelated, must never match. */
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_NONE, gz_smartglass_cid_conf(0x00B6));
+    /* 0x058E "Meta Platforms Technologies, LLC" (Quest VR) is not listed. */
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_NONE, gz_smartglass_cid_conf(0x058E));
-    TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_NONE, gz_smartglass_cid_conf(0x03C2));
+    TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_LOW,  gz_smartglass_cid_conf(0x03C2));
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_NONE, gz_smartglass_cid_conf(0x004C));
 }
 
@@ -97,7 +104,7 @@ int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_dedicated_maker_company_id_is_high);
-    RUN_TEST(test_deferred_low_family_is_none);
+    RUN_TEST(test_shared_parent_company_id_is_low);
     RUN_TEST(test_unrelated_company_is_none);
     RUN_TEST(test_no_manufacturer_data_is_none);
     RUN_TEST(test_malformed_and_empty_are_none);
