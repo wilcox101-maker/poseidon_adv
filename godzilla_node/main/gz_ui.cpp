@@ -33,6 +33,7 @@
 #include "gz_ui_hunt.h"
 #include "gz_ui_lab.h"       /* BLE Lab, passive (#98 §2.4) */
 #include "gz_ui_watch.h"
+#include "gz_link.h"         /* CMD_TIMESET latch drained on this (RTC) task */
 #include "gz_geom.h"         /* the one geometry source (#88 §3.2) */
 
 #include <Arduino.h>
@@ -423,6 +424,18 @@ static void ui_task(void *arg)
                     }
 #endif
                 }
+            }
+#endif
+#if GZ_BOARD_HAS_RTC
+            /* Apply a time-set pushed by the Cardputer (CMD_TIMESET). Drained
+             * here, on the RTC-owning UI task, whatever screen is showing, so a
+             * sync sets the clock even when the watch face isn't visible. RTC
+             * boards only — an RTC-less board has no clock to seed. */
+            {
+                uint32_t ts_epoch;
+                int16_t  ts_tz;
+                if (gz_link_take_timeset(&ts_epoch, &ts_tz))
+                    gz_ui_watch_apply_timeset(ts_epoch, ts_tz, now);
             }
 #endif
             /* Only the visible screen; the others catch up when shown. */

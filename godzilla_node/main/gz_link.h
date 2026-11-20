@@ -27,3 +27,10 @@ bool gz_link_send(const posei_msg_t *m);
 
 /* Build this node's HELLO (gz_hello.h) and broadcast it. */
 void gz_link_send_hello(void);
+
+/* Take a pending CMD_TIMESET pushed by the Cardputer, if one arrived since the
+ * last call. The receive callback only latches the (already validated) epoch +
+ * tz; the UI task — which owns the RTC — calls this and applies it, so no I2C
+ * runs in the callback context. Returns true once per received frame, writing
+ * *epoch (UTC seconds) and *tz (minutes east of UTC, display only). */
+bool gz_link_take_timeset(uint32_t *epoch, int16_t *tz_offset_min);
