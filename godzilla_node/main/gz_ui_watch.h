@@ -11,6 +11,11 @@
 
 #include "gz_rtc.h"   /* gz_datetime_t */
 
+/* Set the persisted case finish (gz_finish_t: 0 gold, 1 silver) before the face
+ * is built. gz_ui_watch_build reads it into the case colours; call it from the
+ * UI layer with the value loaded from NVS. Takes effect on the next build. */
+void gz_ui_watch_set_finish(uint8_t finish);
+
 /* Build the face into `scr` and take the first RTC reading. */
 void gz_ui_watch_build(lv_obj_t *scr);
 

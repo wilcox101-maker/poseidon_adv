@@ -33,6 +33,7 @@
 #include "gz_ui_hunt.h"
 #include "gz_ui_lab.h"       /* BLE Lab, passive (#98 §2.4) */
 #include "gz_ui_watch.h"
+#include "ui/faces/gz_face_store.h" /* persisted face settings (case finish) */
 #include "gz_link.h"         /* CMD_TIMESET latch drained on this (RTC) task */
 #include "gz_geom.h"         /* the one geometry source (#88 §3.2) */
 
@@ -375,6 +376,11 @@ static void ui_task(void *arg)
     gz_ui_hunt_build(s_scr[GZ_SCR_HUNT]);
     gz_ui_lab_build(s_scr[GZ_SCR_LAB]);
 #if GZ_BOARD_HAS_RTC
+    {   /* Apply the persisted, customiser-selectable case finish before build. */
+        gz_ui_settings_t fs;
+        gz_face_store_load(&fs);                /* defaults + sanitised for this board */
+        gz_ui_watch_set_finish(fs.finish);
+    }
     gz_ui_watch_build(s_scr[GZ_SCR_WATCH]);     /* first RTC read, on this task */
 #endif
     build_status_screen(s_scr[GZ_SCR_STATUS]);

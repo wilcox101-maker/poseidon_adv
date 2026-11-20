@@ -148,6 +148,16 @@ static void test_face_and_scalar_cyclers(void)
     TEST_ASSERT_EQUAL_INT(GZ_BG_BLACK, gz_cust_cycle(GZ_BG_TEXTURE, +1, GZ_BG_COUNT));
 }
 
+static void test_finish_cycle(void)
+{
+    /* The FINISH row cycles the two-value case finish with gz_cust_cycle: gold
+     * -> silver -> gold, and -1 wraps the other way. Board-agnostic. */
+    TEST_ASSERT_EQUAL_INT(2, GZ_FINISH_COUNT);
+    TEST_ASSERT_EQUAL_INT(GZ_FINISH_SILVER, gz_cust_cycle(GZ_FINISH_GOLD,   +1, GZ_FINISH_COUNT));
+    TEST_ASSERT_EQUAL_INT(GZ_FINISH_GOLD,   gz_cust_cycle(GZ_FINISH_SILVER, +1, GZ_FINISH_COUNT));
+    TEST_ASSERT_EQUAL_INT(GZ_FINISH_SILVER, gz_cust_cycle(GZ_FINISH_GOLD,   -1, GZ_FINISH_COUNT));
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -157,5 +167,6 @@ int main(void)
     RUN_TEST(test_every_offered_option_is_sourceable);
     RUN_TEST(test_pod_cycler_skips_unavailable);
     RUN_TEST(test_face_and_scalar_cyclers);
+    RUN_TEST(test_finish_cycle);
     return UNITY_END();
 }
