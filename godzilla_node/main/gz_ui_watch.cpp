@@ -9,7 +9,7 @@
  *
  * Drawing (all LVGL primitives, original artwork — no traced watch face, no
  * image or font asset):
- *   - a case ring (gold, or silver via GZ_FACE_FINISH) around an ivory dial and
+ *   - a case ring (gold, or silver via the persisted finish setting) around an ivory dial and
  *     a thin inner ring, centred and drawn to fill the glass then pulled in to
  *     GZ_FACE_PCT so the case clears the edge with a night margin (no bow/crown);
  *   - 60 minute ticks (every fifth heavier) and upright Roman numerals in
@@ -32,7 +32,7 @@
  * be shown wrong (CI images are built in UTC) with no way to fix it.
  *
  * Palette: abyss 0x031627 (surround), gold 0xC9A227 / dark gold 0x8A6D1B (case,
- * cap) — or silver 0xC7CCD4 / 0x878D97 with GZ_FACE_FINISH=1, ivory 0xF3E9D2
+ * cap) — or silver 0xC7CCD4 / 0x878D97 when the finish is silver, ivory 0xF3E9D2
  * (dial), ink 0x1B2A3A (numerals, ticks), black 0x10131A (hour + minute hands),
  * trident-blue 0x2E7BE6 (second hand), oxblood 0xA63A2B (SET / RTC note).
  */
@@ -46,6 +46,7 @@
 #include "gz_geom.h"   /* the one geometry source (#88 §3.2) */
 #include "gz_moon.h"   /* pure moon-phase + printed sub-scale math (unit 2) */
 #include "gz_timeset.h"/* pure epoch -> civil time for CMD_TIMESET (step 3) */
+#include "ui/faces/gz_faces.h" /* gz_finish_t: the persisted case finish */
 
 #include <Arduino.h>
 #include <stdio.h>
@@ -58,18 +59,20 @@
 #define GZ_UI_SF(v) GZ_UI_S((v) * GZ_FACE_PCT / 100)
 
 #define COL_ABYSS    0x031627
-/* Case finish: gold (default) or silver. Compile-time for now; a follow-up
- * wires this to a persisted, customiser-selectable setting (Dale, 2026-11-20). */
-#ifndef GZ_FACE_FINISH
-#define GZ_FACE_FINISH 0           /* 0 = gold, 1 = silver */
-#endif
-#if GZ_FACE_FINISH == 1
-#define COL_BRASS    0xC7CCD4      /* brushed-silver case / ring */
-#define COL_BRASS_D  0x878D97      /* dark silver                */
-#else
-#define COL_BRASS    0xC9A227      /* gold case / ring           */
-#define COL_BRASS_D  0x8A6D1B      /* dark gold                  */
-#endif
+/* Case finish: gold (default) or brushed silver. A persisted, customiser-
+ * selectable setting (Dale, 2026-11-20): gz_ui_watch_set_finish stores the
+ * choice and gz_ui_watch_build reads it once into s_col_brass / s_col_brass_d,
+ * so the case recolours on the next build with no geometry change. */
+#define COL_BRASS_GOLD     0xC9A227   /* gold case / ring           */
+#define COL_BRASS_GOLD_D   0x8A6D1B   /* dark gold                  */
+#define COL_BRASS_SILVER   0xC7CCD4   /* brushed-silver case / ring */
+#define COL_BRASS_SILVER_D 0x878D97   /* dark silver                */
+
+static uint8_t  s_finish      = GZ_FINISH_GOLD;      /* set by the UI layer */
+static uint32_t s_col_brass   = COL_BRASS_GOLD;      /* read at build */
+static uint32_t s_col_brass_d = COL_BRASS_GOLD_D;
+#define COL_BRASS    s_col_brass
+#define COL_BRASS_D  s_col_brass_d
 #define COL_IVORY    0xF3E9D2
 #define COL_INK      0x1B2A3A
 #define COL_OXBLOOD  0xA63A2B
@@ -400,8 +403,22 @@ static void leave_set_mode(void)
 
 /* ---- build --------------------------------------------------------------- */
 
+/* Persisted case finish, set by the UI layer (gz_ui.cpp) from NVS before the
+ * face is built. Clamped to a known finish; the recolour happens at build. */
+void gz_ui_watch_set_finish(uint8_t finish)
+{
+    s_finish = (finish < GZ_FINISH_COUNT) ? finish : GZ_FINISH_GOLD;
+}
+
 void gz_ui_watch_build(lv_obj_t *scr)
 {
+    /* Read the finish once into the case colours — gold default, silver when
+     * selected. Dial geometry is untouched. */
+    s_col_brass   = (s_finish == GZ_FINISH_SILVER) ? COL_BRASS_SILVER
+                                                   : COL_BRASS_GOLD;
+    s_col_brass_d = (s_finish == GZ_FINISH_SILVER) ? COL_BRASS_SILVER_D
+                                                   : COL_BRASS_GOLD_D;
+
     lv_obj_set_style_bg_color(scr, lv_color_hex(COL_ABYSS), 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
     lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);

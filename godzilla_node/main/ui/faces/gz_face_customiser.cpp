@@ -27,14 +27,19 @@
 /* Accent swatches come from the one shared palette, gz_accent_rgb (unit 6), so
  * the customiser and every face show the same nine colours. */
 
-enum { ROW_FACE = 0, ROW_ACCENT, ROW_BG, ROW_AON,
+enum { ROW_FACE = 0, ROW_ACCENT, ROW_FINISH, ROW_BG, ROW_AON,
        ROW_SLOT0, ROW_SLOT1, ROW_SLOT2, ROW_SLOT3, ROW_COUNT };
+
+/* Case-finish swatch colours — the Classic watch's gold / silver case metal
+ * (gz_ui_watch.cpp COL_BRASS_GOLD / COL_BRASS_SILVER), shown as a preview dot. */
+static const uint32_t FINISH_SWATCH[GZ_FINISH_COUNT] = { 0xC9A227, 0xC7CCD4 };
 
 static gz_ui_settings_t s_set;
 static gz_rect_t        s_box;
 static int              s_rowh;
 static lv_obj_t        *s_val[ROW_COUNT];
 static lv_obj_t        *s_accent_sw;
+static lv_obj_t        *s_finish_sw;
 
 /* ---- names --------------------------------------------------------------- */
 static const char *face_name(uint8_t f)
@@ -85,12 +90,18 @@ static lv_obj_t *label_tl(lv_obj_t *scr, uint32_t rgb, int x, int y, const char 
     return l;
 }
 
+static const char *finish_name(uint8_t f)
+{
+    return f == GZ_FINISH_SILVER ? "Silver" : "Gold";
+}
+
 /* ---- row value text ------------------------------------------------------ */
 static void row_value(int row, char *out, size_t n)
 {
     switch (row) {
     case ROW_FACE:   snprintf(out, n, "%s", face_name(s_set.face));             break;
     case ROW_ACCENT: snprintf(out, n, "#%d", s_set.accent + 1);                 break;
+    case ROW_FINISH: snprintf(out, n, "%s", finish_name(s_set.finish));         break;
     case ROW_BG:     snprintf(out, n, "%s", s_set.background == GZ_BG_TEXTURE ? "Texture" : "Black"); break;
     case ROW_AON:    snprintf(out, n, "%s", s_set.always_on ? "On" : "Off");    break;
     default:         snprintf(out, n, "%s", comp_name(s_set.slots[row - ROW_SLOT0])); break;
@@ -105,6 +116,8 @@ static void refresh_rows(void)
         lv_label_set_text(s_val[r], buf);
     }
     lv_obj_set_style_bg_color(s_accent_sw, lv_color_hex(gz_accent_rgb(s_set.accent)), 0);
+    uint8_t fin = s_set.finish < GZ_FINISH_COUNT ? s_set.finish : GZ_FINISH_GOLD;
+    lv_obj_set_style_bg_color(s_finish_sw, lv_color_hex(FINISH_SWATCH[fin]), 0);
 }
 
 /* ---- build --------------------------------------------------------------- */
@@ -120,7 +133,7 @@ void gz_face_customiser_build(lv_obj_t *scr)
     s_rowh = s_box.h / ROW_COUNT;
 
     static const char *const NAME[ROW_COUNT] = {
-        "Face", "Accent", "Background", "Always-on",
+        "Face", "Accent", "Finish", "Background", "Always-on",
         "Pod 1", "Pod 2", "Pod 3", "Pod 4",
     };
     int valx = s_box.x + s_box.w / 2;
@@ -138,14 +151,23 @@ void gz_face_customiser_build(lv_obj_t *scr)
         s_val[r] = label_tl(scr, COL_VALUE, valx + GZ_UI_S(16), y, "");
     }
 
-    /* Accent swatch sits just left of the accent value. */
-    s_accent_sw = plain_obj(scr);
+    /* Accent + finish swatches sit just left of their row values. */
     int sw = GZ_UI_S(12);
+    s_accent_sw = plain_obj(scr);
     lv_obj_set_size(s_accent_sw, sw, sw);
     lv_obj_set_style_radius(s_accent_sw, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_opa(s_accent_sw, LV_OPA_COVER, 0);
     lv_obj_align(s_accent_sw, LV_ALIGN_TOP_LEFT, valx - GZ_UI_S(2),
                  s_box.y + ROW_ACCENT * s_rowh + (s_rowh - sw) / 2);
+
+    s_finish_sw = plain_obj(scr);
+    lv_obj_set_size(s_finish_sw, sw, sw);
+    lv_obj_set_style_radius(s_finish_sw, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_opa(s_finish_sw, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(s_finish_sw, 1, 0);
+    lv_obj_set_style_border_color(s_finish_sw, lv_color_hex(COL_NAME), 0);
+    lv_obj_align(s_finish_sw, LV_ALIGN_TOP_LEFT, valx - GZ_UI_S(2),
+                 s_box.y + ROW_FINISH * s_rowh + (s_rowh - sw) / 2);
 
     /* Title band. */
     lv_obj_t *t = lv_label_create(scr);
@@ -179,6 +201,9 @@ void gz_face_customiser_tap(int x, int y)
         break;
     case ROW_ACCENT:
         s_set.accent = (uint8_t)gz_cust_cycle(s_set.accent, +1, GZ_ACCENT_COUNT);
+        break;
+    case ROW_FINISH:
+        s_set.finish = (uint8_t)gz_cust_cycle(s_set.finish, +1, GZ_FINISH_COUNT);
         break;
     case ROW_BG:
         s_set.background = (uint8_t)gz_cust_cycle(s_set.background, +1, GZ_BG_COUNT);

@@ -101,6 +101,17 @@ typedef enum {
     GZ_BG_COUNT   = 2,
 } gz_bg_t;
 
+/* ---- case finish --------------------------------------------------------- */
+/* The Classic dial's case metal: gold (the original look) or brushed silver.
+ * Runtime, customiser-selectable and persisted (the watch recolours its case at
+ * build from this). Board-agnostic — every board that shows the Classic face
+ * offers both. */
+typedef enum {
+    GZ_FINISH_GOLD   = 0,
+    GZ_FINISH_SILVER = 1,
+    GZ_FINISH_COUNT  = 2,
+} gz_finish_t;
+
 /* ---- persisted settings -------------------------------------------------- */
 #define GZ_FACE_SLOTS 4       /* four complication pods on the slotted faces */
 
@@ -110,10 +121,11 @@ typedef struct {
     uint8_t background;           /* gz_bg_t                                */
     uint8_t always_on;            /* 0 / 1                                  */
     uint8_t slots[GZ_FACE_SLOTS]; /* gz_comp_id_t per pod                   */
+    uint8_t finish;               /* gz_finish_t (Classic case metal)       */
 } gz_ui_settings_t;
 
 /* Factory defaults: the Classic face, first accent, black ground, always-on
- * off, and the four all-board complications in the pods. */
+ * off, the four all-board complications in the pods, and a gold case. */
 static inline void gz_ui_settings_defaults(gz_ui_settings_t *s)
 {
     s->face       = GZ_FACE_CLASSIC;
@@ -124,6 +136,7 @@ static inline void gz_ui_settings_defaults(gz_ui_settings_t *s)
     s->slots[1]   = GZ_COMP_CONTACTS;
     s->slots[2]   = GZ_COMP_PUBLISH;
     s->slots[3]   = GZ_COMP_CHANNEL;
+    s->finish     = GZ_FINISH_GOLD;
 }
 
 /* ---- capability filter --------------------------------------------------- */
@@ -172,6 +185,7 @@ static inline void gz_ui_settings_sanitise(gz_ui_settings_t *s, uint8_t board_ca
     if (s->accent >= GZ_ACCENT_COUNT) s->accent = 0;
     if (s->background >= GZ_BG_COUNT) s->background = GZ_BG_BLACK;
     s->always_on = s->always_on ? 1 : 0;
+    if (s->finish >= GZ_FINISH_COUNT) s->finish = GZ_FINISH_GOLD;
     for (int i = 0; i < GZ_FACE_SLOTS; ++i)
         if (!gz_comp_available((gz_comp_id_t)s->slots[i], board_caps))
             s->slots[i] = GZ_COMP_NONE;
@@ -182,11 +196,13 @@ static inline void gz_ui_settings_sanitise(gz_ui_settings_t *s, uint8_t board_ca
  * it fixed-length lets deserialise reject anything that isn't exactly this
  * shape and fall back to defaults, so an old or corrupt blob never half-loads. */
 #define GZ_SETTINGS_MAGIC   0x47u   /* 'G' */
-#define GZ_SETTINGS_VERSION 1u
+#define GZ_SETTINGS_VERSION 2u      /* v2 appends the case finish byte */
 
-/* Layout (10 bytes): [0]=magic [1]=version [2]=face [3]=accent [4]=background
- * [5]=always_on [6..9]=slots[0..3]. */
-#define GZ_SETTINGS_WIRE_LEN (6 + GZ_FACE_SLOTS)
+/* Layout (11 bytes): [0]=magic [1]=version [2]=face [3]=accent [4]=background
+ * [5]=always_on [6..9]=slots[0..3] [10]=finish. v1 (10 bytes, no finish) differs
+ * in both version byte and length, so an old blob is rejected to defaults by
+ * gz_ui_settings_decode below — exactly the existing fall-back path. */
+#define GZ_SETTINGS_WIRE_LEN (6 + GZ_FACE_SLOTS + 1)
 
 /* Serialise into out[GZ_SETTINGS_WIRE_LEN]. Returns the byte count written. */
 static inline int gz_ui_settings_encode(const gz_ui_settings_t *s, uint8_t *out)
@@ -198,6 +214,7 @@ static inline int gz_ui_settings_encode(const gz_ui_settings_t *s, uint8_t *out)
     out[4] = s->background;
     out[5] = s->always_on ? 1u : 0u;
     for (int i = 0; i < GZ_FACE_SLOTS; ++i) out[6 + i] = s->slots[i];
+    out[6 + GZ_FACE_SLOTS] = s->finish;
     return GZ_SETTINGS_WIRE_LEN;
 }
 
@@ -217,6 +234,7 @@ static inline bool gz_ui_settings_decode(const uint8_t *in, int len, gz_ui_setti
     s->background = in[4];
     s->always_on  = in[5] ? 1u : 0u;
     for (int i = 0; i < GZ_FACE_SLOTS; ++i) s->slots[i] = in[6 + i];
+    s->finish     = in[6 + GZ_FACE_SLOTS];
     return true;
 }
 
