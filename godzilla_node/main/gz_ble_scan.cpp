@@ -28,6 +28,7 @@
 #include "gz_stats.h"
 #include "gz_radar_store.h"  /* P2b: radar of what was published */
 #include "gz_skimmer.h"      /* §4 unit 1: passive BT card-skimmer signature */
+#include "gz_smartglass.h"   /* §4 unit 5: recording smart-glasses company ID */
 
 #include <Arduino.h>
 #include <NimBLEDevice.h>
@@ -63,6 +64,14 @@ class GzBleScanCb : public NimBLEScanCallbacks {
         if (fam == POSEI_DET_FAM_BLE_GENERIC || fam == POSEI_DET_FAM_UNKNOWN) {
             if (gz_skimmer_classify_payload(pl.data(), (int)pl.size()) == GZ_SKIMMER_HIGH)
                 fam = POSEI_DET_FAM_SKIMMER;
+            /* §4 unit 5: a manufacturer company ID assigned to a dedicated
+             * recording-smart-glasses maker (HIGH) promotes the contact to
+             * SMARTGLASS. A LOW company ID (a maker whose ID also ships non-
+             * glasses products) needs corroboration and is NOT promoted on its
+             * own, so it never false-alarms. Never overrides a specific family
+             * det_classify_ble already found. */
+            else if (gz_smartglass_classify_payload(pl.data(), (int)pl.size()) == GZ_SMARTGLASS_HIGH)
+                fam = POSEI_DET_FAM_SMARTGLASS;
         }
         /* BLE Lab (#98 §2.4): keep this device's latest raw advert for the
          * passive decoder. Its own spinlock; a 31-byte copy at most. */
