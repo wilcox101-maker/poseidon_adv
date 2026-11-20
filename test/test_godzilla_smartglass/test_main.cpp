@@ -4,7 +4,8 @@
  *   - a manufacturer advert whose SIG company ID is a dedicated smart-glasses
  *     maker (Vuzix 0x060C) -> HIGH;
  *   - a company ID of a maker that also ships non-glasses products
- *     (Facebook/Meta 0x01AB, Snapchat 0x03C2) -> LOW; 0x00B6 (Meso) -> NONE;
+ *     (Meta Platforms 0x01AB, Snapchat 0x03C2, Luxottica 0x0D53) -> LOW;
+ *     0x00B6 (Meso), 0x00A3 (Meta Watch), 0x07DF (Snap-on) -> NONE;
  *   - an unrelated company ID (Apple 0x004C), a name-only advert, no
  *     manufacturer data, and a malformed/empty advert -> NONE.
  * Pure host TU, same style as test_godzilla_skimmer. */
@@ -38,8 +39,8 @@ static void test_dedicated_maker_company_id_is_high(void)
 
 static void test_shared_parent_company_id_is_low(void)
 {
-    /* Facebook, Inc. (0x01AB) — Ray-Ban Meta advertise under it, but so do
-     * many other Meta products, so LOW (needs corroboration). */
+    /* Meta Platforms, Inc. (0x01AB, formerly Facebook, Inc.) — Ray-Ban Meta
+     * advertise under it, but so do many other Meta products, so LOW. */
     const uint8_t meta[] = { FLAGS, MFR_META_RL };
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_LOW, classify(meta, sizeof meta));
     /* Snapchat Inc (0x03C2) — Snap Spectacles, but the ID also ships app
@@ -87,9 +88,13 @@ static void test_classify_struct_direct(void)
     /* A bare company-id lookup. */
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_HIGH, gz_smartglass_cid_conf(0x060C));
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_LOW,  gz_smartglass_cid_conf(0x01AB));
+    TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_LOW,  gz_smartglass_cid_conf(0x0D53)); /* Luxottica */
+    /* Look-alikes that must never match. */
+    TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_NONE, gz_smartglass_cid_conf(0x00A3)); /* Meta Watch Ltd. */
+    TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_NONE, gz_smartglass_cid_conf(0x07DF)); /* Snap-on Inc.    */
     /* 0x00B6 is "Meso international" — unrelated, must never match. */
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_NONE, gz_smartglass_cid_conf(0x00B6));
-    /* 0x058E "Oculus VR, LLC" (Quest VR) is deliberately not listed. */
+    /* 0x058E "Meta Platforms Technologies, LLC" (Quest VR) is not listed. */
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_NONE, gz_smartglass_cid_conf(0x058E));
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_LOW,  gz_smartglass_cid_conf(0x03C2));
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_NONE, gz_smartglass_cid_conf(0x004C));

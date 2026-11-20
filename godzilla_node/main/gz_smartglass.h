@@ -27,19 +27,24 @@
  * authoritative registry mapping each 16-bit company ID to the exact member
  * company that registered it. The IDs below were read from that list under the
  * VERBATIM registrant names (registrant confirmed, not just a product name):
- *   - 0x060C "Vuzix Corporation"  — dedicated AR/smart-glasses maker   (HIGH)
- *   - 0x01AB "Facebook, Inc."      — Meta; Ray-Ban Meta glasses advertise
- *                                    under it, but so do many Meta products (LOW)
- *   - 0x03C2 "Snapchat Inc"        — Snap Spectacles                   (LOW)
- * (registrants cross-checked against the SIG-derived systemd hwdb list.)
+ *   - 0x060C "Vuzix Corporation"         — dedicated AR/smart-glasses maker (HIGH)
+ *   - 0x01AB "Meta Platforms, Inc."      — formerly "Facebook, Inc."; Ray-Ban
+ *                                           Meta advertise under it, but so do
+ *                                           many Meta products            (LOW)
+ *   - 0x03C2 "Snapchat Inc"              — Snap Spectacles                (LOW)
+ *   - 0x0D53 "Luxottica Group S.p.A"     — Ray-Ban maker; also non-camera
+ *                                           eyewear                       (LOW)
+ * Verified 2026-11-20 against the SIG-mirrored Nordic bluetooth-numbers-
+ * database (v1/company_ids.json, commit of 2026-11-13) and the systemd hwdb.
+ * PR #151 claimed other registrants for these IDs from "verbatim reads"; the
+ * mirror contradicts every one (0x01AB is not Meta Watch Ltd. — that is
+ * 0x00A3; 0x07DF is Snap-on Incorporated; 0x0657 is Meshtronix Limited).
  *
  * Deliberately NOT listed, to avoid misattribution:
  *   - 0x00B6 is "Meso international", NOT Meta — an earlier draft listed it
  *     by mistake (Claudius review of #149); never add it back.
- *   - 0x058E "Oculus VR, LLC" (Meta Quest VR headsets) — head-worn but a VR
- *     headset, not recording eyewear; left out to keep the family honest.
- *   - Luxottica (Ray-Ban maker) is reported at 0x0D53 by secondary sources;
- *     not added until the registrant is confirmed in the SIG list itself.
+ *   - 0x058E "Meta Platforms Technologies, LLC" (formerly Oculus VR; Quest VR
+ *     headsets) — head-worn but a VR headset, not recording eyewear.
  *   - Amazon Echo Frames (0x0171 "Amazon.com Services LLC") — audio-only
  *     eyewear with no camera, so not a recording device.
  *   - Rokid, Xreal (formerly Nreal) and Even Realities — no Bluetooth SIG
@@ -66,8 +71,9 @@ static const uint16_t gz_smartglass_cid_high[] = {
 /* SIG company IDs of makers that ship recording smart glasses alongside many
  * non-glasses products, so the ID alone is weak. LOW. */
 static const uint16_t gz_smartglass_cid_low[] = {
-    0x01AB,   /* Facebook, Inc. (Meta; Ray-Ban Meta, among many products) */
+    0x01AB,   /* Meta Platforms, Inc. (Ray-Ban Meta, among many products) */
     0x03C2,   /* Snapchat Inc (Snap Spectacles) */
+    0x0D53,   /* Luxottica Group S.p.A (Ray-Ban; also non-camera eyewear) */
 };
 
 /* Confidence for a bare 16-bit company identifier. */
