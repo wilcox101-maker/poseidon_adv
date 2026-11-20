@@ -9,6 +9,7 @@
  * Pure host TU, same style as test_godzilla_faces / test_godzilla_geom. */
 #include <unity.h>
 #include <math.h>
+#include <stdio.h>
 #include "../../godzilla_node/main/gz_moon.h"
 
 void setUp(void) {}
