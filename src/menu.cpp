@@ -200,6 +200,7 @@ extern void feat_screensaver_picker(void);
  * See src/features/saltyjack/ for credits + implementation. */
 extern void feat_saltyjack_root(void);
 extern void feat_saltyjack_info(void);
+extern void feat_saltyjack_ethernet(void);
 extern void feat_saltyjack_dhcp_starve(void);
 extern void feat_saltyjack_dhcp_rogue_sta(void);
 extern void feat_saltyjack_dhcp_rogue_ap(void);

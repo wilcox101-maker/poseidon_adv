@@ -142,7 +142,7 @@ Four paths. SaltyJack uses the first two.
 | --- | --- | --- |
 | Wi-Fi STA | Works. lwIP on `WIFI_STA_DEF` after a join. | SaltyJack DHCP Starve, Rogue DHCP (STA), Responder, WPAD. Network-menu tools that need an address. |
 | SoftAP | Works. Open AP `POSEIDON-SaltyJack` from `wifi_raw_ap_up` in `saltyjack_dhcp_rogue.cpp`. | SaltyJack Rogue DHCP (AP). Other SoftAP tools (Portal, Evil Twin, Karma, AP Clone) bring up their own AP. |
-| W5500 RJ45 | Pinout and docs only. No `Ethernet.begin`, no W5500 driver, no Ethernet netif in `src/`. | Nothing. `saltyjack.h` still describes it as future. |
+| W5500 RJ45 | **Driver present** (`saltyjack_eth.cpp`, `ETH_PHY_W5500` on the shared HSPI bus) but **bench-unverified**; SaltyJack ▸ Ethernet brings it up and shows link/IP. Routing each STA tool onto the ETH netif is the follow-on. | SPI Ethernet netif via `ETH.begin`. |
 | ESP32-C5 / TRIDENT | Separate board, ESP-NOW. | Root `5`. 5 GHz scan, 5 GHz deauth, 5 GHz PMKID, 5 GHz handshake nuke, 802.15.4 / Zigbee. SaltyJack does not route through it. |
 
 W5500 pinout, from `docs/saltyjack-networking.md` and `docs/hardware.html` (the firmware does not claim these pins): SCLK 40, MOSI 14, MISO 39, SCS 1, INT 2, RST open. Shared SPI with the microSD. A W5500 Mini is 3.3 V only.
@@ -167,11 +167,12 @@ Seat one hat at a time. Hydra, the CAP-LoRa1262, and a W5500 module share SCK / 
 
 ## SaltyJack
 
-Own renderer in `src/features/saltyjack/saltyjack_menu.cpp`. Root `j`. **7** rows:
+Own renderer in `src/features/saltyjack/saltyjack_menu.cpp`. Root `j`. **8** rows:
 
 | Row | Path |
 | --- | --- |
 | About | credits |
+| Ethernet (W5500) | brings up the SPI Ethernet netif on the shared HSPI bus + DHCP (driver present; bench-unverified) |
 | DHCP Starve | STA |
 | Rogue DHCP (STA) | STA |
 | Rogue DHCP (AP) | SoftAP `POSEIDON-SaltyJack` |
