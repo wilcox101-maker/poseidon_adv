@@ -36,6 +36,11 @@ static const char *fam_tag(uint8_t f)
     case DET_FAM_RAVEN:       return "RAVN";
     case DET_FAM_TILE:        return "TILE";
     case DET_FAM_SMARTTAG:    return "STAG";
+    case DET_FAM_SKIMMER:     return "SKIM";
+    case DET_FAM_CAMERA:      return "CAM ";
+    case DET_FAM_LE_EQUIP:    return "LE  ";
+    case DET_FAM_ALPR:        return "ALPR";
+    case DET_FAM_SMARTGLASS:  return "GLAS";
     default:                  return "??? ";
     }
 }
@@ -43,9 +48,10 @@ static const char *fam_tag(uint8_t f)
 static uint16_t fam_colour(uint8_t f)
 {
     switch (f) {
-    case DET_FAM_FLOCK: case DET_FAM_RAVEN: case DET_FAM_REMOTEID: return T_BAD;
+    case DET_FAM_FLOCK: case DET_FAM_RAVEN: case DET_FAM_REMOTEID:
+    case DET_FAM_SKIMMER: case DET_FAM_LE_EQUIP: case DET_FAM_ALPR: return T_BAD;
     case DET_FAM_FINDMY: case DET_FAM_AIRTAG: case DET_FAM_TILE:
-    case DET_FAM_SMARTTAG:                                         return T_WARN;
+    case DET_FAM_SMARTTAG: case DET_FAM_CAMERA: case DET_FAM_SMARTGLASS: return T_WARN;
     default:                                                       return T_FG;
     }
 }
