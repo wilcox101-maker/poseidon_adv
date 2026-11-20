@@ -14,13 +14,16 @@
  * by itself.
  *
  * Source (primary): the IEEE MA-L OUI registry (https://standards-oui.ieee.org/).
- * The listed prefixes are full 24-bit MA-L blocks assigned to Genetec (the
- * AutoVu / SharpV ALPR maker): "GENETEC Corporation" 00:0A:B1 (2002) and
- * "Genetec Inc." 00:BF:15 (2012) and 0C:BF:15 (2011) — cross-checked on the
- * maclookup / cleancss aggregators.
+ * The listed prefixes are full 24-bit MA-L blocks assigned to "Genetec Inc."
+ * (St. Laurent, Quebec — the AutoVu / SharpV ALPR maker): 00:BF:15 (2012) and
+ * 0C:BF:15 (2011), cross-checked on the maclookup aggregator. Genetec Inc. also
+ * holds an IAB (00:50:C2:BE:7, a shared 24-bit prefix), deliberately not listed.
  *
  * Deliberately NOT listed, because matching them on the 24-bit OUI would
  * misattribute other companies' devices:
+ *   - 00:0A:B1 "GENETEC Corporation" is an UNRELATED company in Shinjuku,
+ *     Tokyo (registered 2002), not Genetec Inc. of Quebec — a name collision
+ *     like Axon Networks vs Axon Enterprise (gz_le_equip.h);
  *   - ELSAG (Leonardo's ALPR division) holds only a 36-bit MA-S sub-block
  *     (70:B3:D5:1C:5…) under the IEEE IAB pool 70:B3:D5, whose 24-bit prefix is
  *     shared across many unrelated registrants — so there is no ELSAG-exclusive
@@ -41,7 +44,6 @@ enum { GZ_ALPR_NONE = 0, GZ_ALPR_LOW = 1 };
 
 /* OUIs IEEE-assigned (full 24-bit MA-L) to non-Flock ALPR makers. LOW. */
 static const uint32_t gz_alpr_oui_low[] = {
-    0x000AB1,   /* GENETEC Corporation (MA-L, 2002) */
     0x00BF15,   /* Genetec Inc. (MA-L, 2012)        */
     0x0CBF15,   /* Genetec Inc. (MA-L, 2011)        */
 };
