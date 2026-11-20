@@ -32,6 +32,7 @@
 
 void feat_saltyjack_root(void);               /* RaspyJack-style submenu root */
 void feat_saltyjack_info(void);               /* homage + help landing page */
+void feat_saltyjack_ethernet(void);           /* W5500 RJ45 bring-up / status */
 void feat_saltyjack_dhcp_starve(void);        /* DHCP Starvation */
 void feat_saltyjack_dhcp_rogue_sta(void);     /* Rogue DHCP on joined WiFi */
 void feat_saltyjack_dhcp_rogue_ap(void);      /* Rogue DHCP on our SoftAP */

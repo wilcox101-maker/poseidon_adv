@@ -51,6 +51,23 @@ static const sj_menu_item_t SJ_ITEMS[] = {
         feat_saltyjack_info
     },
     {
+        icon_wheel,
+        "Ethernet (W5500)",
+        "Bring up the RJ45 wired netif",
+        "Wired L2 for the STA-style\n"
+        "tools: brings up the W5500\n"
+        "SPI Ethernet on the shared\n"
+        "HSPI bus and starts DHCP.\n"
+        "\n"
+        "CS 1, IRQ 2, RST open;\n"
+        "SCK 40 MISO 39 MOSI 14.\n"
+        "One hat at a time — no\n"
+        "Hydra/LoRa seated with it.\n"
+        "\n"
+        "r retries, ` goes back.",
+        feat_saltyjack_ethernet
+    },
+    {
         icon_skull,
         "DHCP Starve",
         "Exhaust DHCP pool w/ random MACs",
