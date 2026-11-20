@@ -25,21 +25,29 @@
  * Sources (primary): the Bluetooth SIG Assigned Numbers "Company Identifiers"
  * list (https://www.bluetooth.com/specifications/assigned-numbers/), the
  * authoritative registry mapping each 16-bit company ID to the exact member
- * company that registered it. The IDs below were read from that list under the
- * VERBATIM registrant names (registrant confirmed, not just a product name):
+ * company that registered it. Only one signature ships here, verified against
+ * the SIG "Company Identifiers by Name" section (read verbatim, twice):
  *   - 0x060C "Vuzix Corporation"  — dedicated AR/smart-glasses maker   (HIGH)
- *   - 0x01AB "Facebook, Inc."      — Meta; Ray-Ban Meta glasses advertise
- *                                    under it, but so do many Meta products (LOW)
- *   - 0x03C2 "Snapchat Inc"        — Snap Spectacles                   (LOW)
- * (registrants cross-checked against the SIG-derived systemd hwdb list.)
+ *
+ * LOW family DEFERRED (no entries): the exact SIG company-ID values for the
+ * conglomerate makers of recording smart glasses (Meta / Ray-Ban Meta, Snap /
+ * Spectacles) could not be pinned to a single value I trust — independent
+ * verbatim reads of the SIG list disagreed on the hex (e.g. Snapchat Inc read
+ * as both 0x03C2 and 0x07DF). Rather than ship an unverified registrant, the
+ * LOW list is empty until Dale/Claudius confirm the values from the
+ * authoritative source. A LOW entry has no runtime effect regardless — the node
+ * scan hook promotes only HIGH onto the wire — so deferring it costs nothing.
+ *
+ * Registrant corrections confirmed for the next verifier (SIG by-name list,
+ * 2-of-2 verbatim reads; these supersede an earlier #149 review note):
+ *   - 0x01AB = "Meta Watch Ltd." (a defunct Fossil smartwatch brand) — NOT
+ *     "Facebook, Inc."; there is NO "Facebook" entry in the list at all. A
+ *     name collision on the word "Meta"; never list 0x01AB here.
+ *   - "Meso international" = 0x0657, NOT 0x00B6.
+ *   - 0x00B6 = "Meta Platforms Technologies, LLC"; 0x058E = "Meta Platforms,
+ *     Inc." (both real Meta entities, but the LOW family is deferred as above).
  *
  * Deliberately NOT listed, to avoid misattribution:
- *   - 0x00B6 is "Meso international", NOT Meta — an earlier draft listed it
- *     by mistake (Claudius review of #149); never add it back.
- *   - 0x058E "Oculus VR, LLC" (Meta Quest VR headsets) — head-worn but a VR
- *     headset, not recording eyewear; left out to keep the family honest.
- *   - Luxottica (Ray-Ban maker) is reported at 0x0D53 by secondary sources;
- *     not added until the registrant is confirmed in the SIG list itself.
  *   - Amazon Echo Frames (0x0171 "Amazon.com Services LLC") — audio-only
  *     eyewear with no camera, so not a recording device.
  *   - Rokid, Xreal (formerly Nreal) and Even Realities — no Bluetooth SIG
@@ -64,18 +72,17 @@ static const uint16_t gz_smartglass_cid_high[] = {
 };
 
 /* SIG company IDs of makers that ship recording smart glasses alongside many
- * non-glasses products, so the ID alone is weak. LOW. */
-static const uint16_t gz_smartglass_cid_low[] = {
-    0x01AB,   /* Facebook, Inc. (Meta; Ray-Ban Meta, among many products) */
-    0x03C2,   /* Snapchat Inc (Snap Spectacles) */
-};
+ * non-glasses products (LOW). DEFERRED — empty until a value is verified (see
+ * header). Sentinel element keeps the array valid C; the count stays 0. */
+static const uint16_t gz_smartglass_cid_low[] = { 0 };
+#define GZ_SMARTGLASS_CID_LOW_N 0
 
 /* Confidence for a bare 16-bit company identifier. */
 static inline int gz_smartglass_cid_conf(uint16_t cid)
 {
     for (unsigned i = 0; i < sizeof gz_smartglass_cid_high / sizeof gz_smartglass_cid_high[0]; ++i)
         if (gz_smartglass_cid_high[i] == cid) return GZ_SMARTGLASS_HIGH;
-    for (unsigned i = 0; i < sizeof gz_smartglass_cid_low / sizeof gz_smartglass_cid_low[0]; ++i)
+    for (int i = 0; i < GZ_SMARTGLASS_CID_LOW_N; ++i)
         if (gz_smartglass_cid_low[i] == cid) return GZ_SMARTGLASS_LOW;
     return GZ_SMARTGLASS_NONE;
 }
