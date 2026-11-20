@@ -166,6 +166,7 @@ static void test_codec_round_trips(void)
     in.slots[2]   = GZ_COMP_RECON;
     in.slots[3]   = GZ_COMP_DECODE;
     in.finish     = GZ_FINISH_SILVER;   /* v2: the case-finish byte round-trips */
+    in.alert_mask = 0x2A;               /* v3: the alert mask round-trips       */
 
     uint8_t blob[GZ_SETTINGS_WIRE_LEN];
     int n = gz_ui_settings_encode(&in, blob);
@@ -215,55 +216,68 @@ static void test_codec_rejects_bad_blobs_to_defaults(void)
     TEST_ASSERT_EQUAL_MEMORY(&def, &out, sizeof def);
 }
 
-/* ---- 3b. v2 case-finish byte + v1 fall-back ------------------------------ */
-static void test_codec_v2_finish_byte(void)
+/* ---- 3b. v3 codec (finish + alert mask) + older-blob fall-back ----------- */
+static void test_codec_v3_layout(void)
 {
-    /* v2 is an 11-byte blob at version 2, with the finish as the last byte. */
-    TEST_ASSERT_EQUAL_INT(2u, GZ_SETTINGS_VERSION);
-    TEST_ASSERT_EQUAL_INT(6 + GZ_FACE_SLOTS + 1, GZ_SETTINGS_WIRE_LEN);
+    /* v3 is a 12-byte blob at version 3: finish at [10], alert mask at [11]. */
+    TEST_ASSERT_EQUAL_INT(3u, GZ_SETTINGS_VERSION);
+    TEST_ASSERT_EQUAL_INT(6 + GZ_FACE_SLOTS + 2, GZ_SETTINGS_WIRE_LEN);
 
     gz_ui_settings_t in, out;
     gz_ui_settings_defaults(&in);
-    in.finish = GZ_FINISH_SILVER;
+    in.finish     = GZ_FINISH_SILVER;
+    in.alert_mask = 0x15;
     uint8_t blob[GZ_SETTINGS_WIRE_LEN];
     int n = gz_ui_settings_encode(&in, blob);
-    TEST_ASSERT_EQUAL_INT(2u, blob[1]);                       /* version byte  */
-    TEST_ASSERT_EQUAL_INT(GZ_FINISH_SILVER, blob[n - 1]);     /* finish is last */
+    TEST_ASSERT_EQUAL_INT(3u, blob[1]);                             /* version byte */
+    TEST_ASSERT_EQUAL_INT(GZ_FINISH_SILVER, blob[6 + GZ_FACE_SLOTS]);     /* finish */
+    TEST_ASSERT_EQUAL_INT(0x15, blob[6 + GZ_FACE_SLOTS + 1]);       /* alert mask last */
     TEST_ASSERT_TRUE(gz_ui_settings_decode(blob, n, &out));
     TEST_ASSERT_EQUAL_INT(GZ_FINISH_SILVER, out.finish);
+    TEST_ASSERT_EQUAL_INT(0x15, out.alert_mask);
 }
 
-static void test_codec_v1_blob_decodes_to_defaults(void)
+static void test_codec_old_blobs_decode_to_defaults(void)
 {
-    /* A real v1 blob: the old 10-byte layout (no finish byte), version 1. Both
-     * its version byte and its length differ from v2, so decode must reject it
-     * and fall back to defaults — the existing short/old-blob path, unchanged. */
+    /* Real v1 (10-byte) and v2 (11-byte) blobs: both differ from v3 in version
+     * byte AND length, so decode rejects each and falls back to defaults — the
+     * existing short/old-blob path, unchanged. */
     gz_ui_settings_t def, out;
     gz_ui_settings_defaults(&def);
 
     const int V1_LEN = 6 + GZ_FACE_SLOTS;                     /* 10 bytes */
     uint8_t v1[V1_LEN];
-    v1[0] = GZ_SETTINGS_MAGIC;
-    v1[1] = 1u;                                               /* v1 */
+    v1[0] = GZ_SETTINGS_MAGIC; v1[1] = 1u;                    /* v1 */
     v1[2] = GZ_FACE_COMMAND; v1[3] = 3; v1[4] = GZ_BG_TEXTURE; v1[5] = 1;
     for (int i = 0; i < GZ_FACE_SLOTS; ++i) v1[6 + i] = GZ_COMP_STATUS;
-
     TEST_ASSERT_FALSE(gz_ui_settings_decode(v1, V1_LEN, &out));
-    TEST_ASSERT_EQUAL_MEMORY(&def, &out, sizeof def);         /* incl. finish = GOLD */
+    TEST_ASSERT_EQUAL_MEMORY(&def, &out, sizeof def);
+
+    const int V2_LEN = 6 + GZ_FACE_SLOTS + 1;                 /* 11 bytes */
+    uint8_t v2[V2_LEN];
+    memcpy(v2, v1, V1_LEN);
+    v2[1] = 2u; v2[6 + GZ_FACE_SLOTS] = GZ_FINISH_SILVER;     /* v2 w/ finish */
+    TEST_ASSERT_FALSE(gz_ui_settings_decode(v2, V2_LEN, &out));
+    TEST_ASSERT_EQUAL_MEMORY(&def, &out, sizeof def);         /* incl. finish GOLD, mask ALL */
     TEST_ASSERT_EQUAL_INT(GZ_FINISH_GOLD, out.finish);
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_ALERT_MASK_ALL, out.alert_mask);
 }
 
-static void test_sanitise_clamps_finish(void)
+static void test_sanitise_clamps_finish_and_mask(void)
 {
     gz_ui_settings_t s;
     gz_ui_settings_defaults(&s);
     s.finish = 200;                                           /* out of range */
+    s.alert_mask = 0xFF;                                      /* undefined high bit set */
     gz_ui_settings_sanitise(&s, CAPS_185B);
     TEST_ASSERT_EQUAL_INT(GZ_FINISH_GOLD, s.finish);
-    /* a valid finish survives */
+    TEST_ASSERT_EQUAL_INT(GZ_FACE_ALERT_MASK_ALL, s.alert_mask);   /* bit 7 dropped */
+    /* a valid finish + partial mask survive */
     s.finish = GZ_FINISH_SILVER;
+    s.alert_mask = 0x09;
     gz_ui_settings_sanitise(&s, CAPS_185B);
     TEST_ASSERT_EQUAL_INT(GZ_FINISH_SILVER, s.finish);
+    TEST_ASSERT_EQUAL_INT(0x09, s.alert_mask);
 }
 
 int main(int, char **)
@@ -280,8 +294,8 @@ int main(int, char **)
     RUN_TEST(test_codec_round_trips);
     RUN_TEST(test_codec_defaults_round_trip);
     RUN_TEST(test_codec_rejects_bad_blobs_to_defaults);
-    RUN_TEST(test_codec_v2_finish_byte);
-    RUN_TEST(test_codec_v1_blob_decodes_to_defaults);
-    RUN_TEST(test_sanitise_clamps_finish);
+    RUN_TEST(test_codec_v3_layout);
+    RUN_TEST(test_codec_old_blobs_decode_to_defaults);
+    RUN_TEST(test_sanitise_clamps_finish_and_mask);
     return UNITY_END();
 }
