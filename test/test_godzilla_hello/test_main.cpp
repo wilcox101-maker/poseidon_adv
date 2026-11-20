@@ -23,6 +23,7 @@ static void test_hello_identity(void)
     TEST_ASSERT_NOT_EQUAL(1, h.role);              /* never the C5's role */
     TEST_ASSERT_EQUAL_UINT8(0, h.has_5g);
     TEST_ASSERT_EQUAL_UINT8(0, h.has_ieee802154);
+    TEST_ASSERT_EQUAL_UINT8(POSEI_CAP_WIFI24 | POSEI_CAP_BLE, h.caps);
     TEST_ASSERT_EQUAL_UINT32(123, h.heap_kb);
 }
 

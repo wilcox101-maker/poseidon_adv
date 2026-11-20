@@ -162,7 +162,18 @@ typedef struct __attribute__((packed)) {
     uint8_t  role;
     uint8_t  has_5g;
     uint8_t  has_ieee802154;
+    uint8_t  caps;    /* POSEI_CAP_* bitfield (0 = legacy node) */
 } posei_hello_t;
+/* HELLO capability bits (posei_hello_t.caps / c5_hello_t.caps). Append-only;
+ * let the hub draw a live sensor map and route per-node offensive commands. */
+#define POSEI_CAP_WIFI24  0x01u  /* 2.4 GHz Wi-Fi radio                      */
+#define POSEI_CAP_WIFI5   0x02u  /* 5 GHz Wi-Fi radio (C5/Trident)           */
+#define POSEI_CAP_BLE     0x04u  /* BLE radio                                */
+#define POSEI_CAP_154     0x08u  /* 802.15.4 (Zigbee/Thread)                 */
+#define POSEI_CAP_SUBGHZ  0x10u  /* sub-GHz receiver module (CC1101)         */
+#define POSEI_CAP_NFC     0x20u  /* NFC/RFID module (PN532)                  */
+#define POSEI_CAP_TXARM   0x40u  /* carries TX-arm gated offensive ops       */
+
 
 typedef struct __attribute__((packed)) {
     uint16_t duration_ms;

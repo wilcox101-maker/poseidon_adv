@@ -86,6 +86,9 @@ static_assert((int)C5_VERSION      == (int)POSEI_VERSION,      "wire version (v5
 /* The TIMESET payload must be byte-identical across the two sides. */
 static_assert(sizeof(c5_timeset_t) == sizeof(posei_timeset_t), "timeset payload size");
 
+/* HELLO struct (now carrying caps) must stay byte-identical. */
+static_assert(sizeof(c5_hello_t) == sizeof(posei_hello_t), "hello payload size");
+
 void setUp(void) {}
 void tearDown(void) {}
 

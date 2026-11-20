@@ -45,4 +45,5 @@ static inline void gz_build_hello(posei_hello_t *h, uint32_t heap_kb)
     h->role           = GZ_ROLE;
     h->has_5g         = 0;  /* ESP32-S3: 2.4 GHz only */
     h->has_ieee802154 = 0;  /* no Zigbee/Thread radio */
+    h->caps           = POSEI_CAP_WIFI24 | POSEI_CAP_BLE;
 }
