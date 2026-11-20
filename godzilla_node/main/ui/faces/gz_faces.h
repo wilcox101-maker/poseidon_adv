@@ -48,16 +48,19 @@ typedef enum {
     GZ_FACE_COUNT   = 4,
 } gz_face_id_t;
 
-/* Caps a face needs just to appear. The Classic face shows on a board without
- * an RTC (its clock rings read "set via Cardputer"), so no face requires RTC
- * to exist — RTC gating is per-element inside the face. All faces are therefore
- * available everywhere; the field exists so the filter is honest if a future
- * face needs hardware. */
+/* Caps a face needs just to appear. Dale's rule (2026-11-20): "no RTC, no clock
+ * faces." CLASSIC (antique analog dial), MODULAR (digital time + slot grid) and
+ * MINIMAL (big time + status line) are clocks — each is gated out whole on a
+ * board without a GZ_CAP_RTC, not shown with the time blanked and no soft clock.
+ * COMMAND (detection radar + complication pods) is not a clock, needs no RTC, and
+ * stays on every board — so every board always has at least one available face.
+ * (Per-element GZ_COMP_CLOCK gating inside a non-clock face is separate, in
+ * gz_comp_caps[].) */
 static const uint8_t gz_face_caps[GZ_FACE_COUNT] = {
-    /* CLASSIC */ 0,
+    /* CLASSIC */ GZ_CAP_RTC,
     /* COMMAND */ 0,
-    /* MODULAR */ 0,
-    /* MINIMAL */ 0,
+    /* MODULAR */ GZ_CAP_RTC,
+    /* MINIMAL */ GZ_CAP_RTC,
 };
 
 /* ---- complications ------------------------------------------------------- */
@@ -146,7 +149,8 @@ static inline bool gz_comp_available(gz_comp_id_t c, uint8_t board_caps)
 
 /* ---- registry selection -------------------------------------------------- */
 /* The face to show: the requested one if it exists and fits this board, else
- * the first registered face that fits (CLASSIC, which fits every board).
+ * the first registered face that fits. CLASSIC fits only RTC boards now, so the
+ * walk lands on COMMAND (caps 0) on an RTC-less board — the default face there.
  * Returns a valid gz_face_id_t. */
 static inline gz_face_id_t gz_face_select(int requested, uint8_t board_caps)
 {
@@ -156,7 +160,7 @@ static inline gz_face_id_t gz_face_select(int requested, uint8_t board_caps)
     for (int f = 0; f < GZ_FACE_COUNT; ++f)
         if (gz_face_available((gz_face_id_t)f, board_caps))
             return (gz_face_id_t)f;
-    return GZ_FACE_CLASSIC;                        /* unreachable: CLASSIC fits */
+    return GZ_FACE_COMMAND;                        /* unreachable: COMMAND (caps 0) always fits */
 }
 
 /* Drop any choice this board can't honour: a face it lacks -> gz_face_select;
