@@ -4,7 +4,7 @@
  *   - a manufacturer advert whose SIG company ID is a dedicated smart-glasses
  *     maker (Vuzix 0x060C) -> HIGH;
  *   - a company ID of a maker that also ships non-glasses products
- *     (Meta Platforms Technologies 0x00B6, Snapchat 0x03C2) -> LOW;
+ *     (Facebook/Meta 0x01AB, Snapchat 0x03C2) -> LOW; 0x00B6 (Meso) -> NONE;
  *   - an unrelated company ID (Apple 0x004C), a name-only advert, no
  *     manufacturer data, and a malformed/empty advert -> NONE.
  * Pure host TU, same style as test_godzilla_skimmer. */
@@ -19,7 +19,7 @@ void tearDown(void) {}
 #define FLAGS            0x02, 0x01, 0x06
 /* Manufacturer-specific AD: len, 0xFF, company-LE[, extra payload]. */
 #define MFR_VUZIX        0x03, 0xFF, 0x0C, 0x06                 /* 0x060C */
-#define MFR_META_RL      0x03, 0xFF, 0xB6, 0x00                 /* 0x00B6 */
+#define MFR_META_RL      0x03, 0xFF, 0xAB, 0x01                 /* 0x01AB */
 #define MFR_SNAP         0x03, 0xFF, 0xC2, 0x03                 /* 0x03C2 */
 #define MFR_APPLE        0x03, 0xFF, 0x4C, 0x00                 /* 0x004C */
 #define NAME_GLASS       0x06, 0x09, 'G','l','a','s','s'
@@ -38,8 +38,8 @@ static void test_dedicated_maker_company_id_is_high(void)
 
 static void test_shared_parent_company_id_is_low(void)
 {
-    /* Meta Platforms Technologies, LLC (0x00B6) — Reality Labs / Ray-Ban Meta,
-     * but the ID also ships Quest headsets etc., so LOW (needs corroboration). */
+    /* Facebook, Inc. (0x01AB) — Ray-Ban Meta advertise under it, but so do
+     * many other Meta products, so LOW (needs corroboration). */
     const uint8_t meta[] = { FLAGS, MFR_META_RL };
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_LOW, classify(meta, sizeof meta));
     /* Snapchat Inc (0x03C2) — Snap Spectacles, but the ID also ships app
@@ -86,7 +86,11 @@ static void test_classify_struct_direct(void)
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_HIGH, gz_smartglass_classify(&a));
     /* A bare company-id lookup. */
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_HIGH, gz_smartglass_cid_conf(0x060C));
-    TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_LOW,  gz_smartglass_cid_conf(0x00B6));
+    TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_LOW,  gz_smartglass_cid_conf(0x01AB));
+    /* 0x00B6 is "Meso international" — unrelated, must never match. */
+    TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_NONE, gz_smartglass_cid_conf(0x00B6));
+    /* 0x058E "Oculus VR, LLC" (Quest VR) is deliberately not listed. */
+    TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_NONE, gz_smartglass_cid_conf(0x058E));
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_LOW,  gz_smartglass_cid_conf(0x03C2));
     TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_NONE, gz_smartglass_cid_conf(0x004C));
 }

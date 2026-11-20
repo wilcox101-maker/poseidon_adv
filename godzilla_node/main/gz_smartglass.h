@@ -27,13 +27,19 @@
  * authoritative registry mapping each 16-bit company ID to the exact member
  * company that registered it. The IDs below were read from that list under the
  * VERBATIM registrant names (registrant confirmed, not just a product name):
- *   - 0x060C "Vuzix Corporation"                — dedicated AR/smart-glasses maker (HIGH)
- *   - 0x00B6 "Meta Platforms Technologies, LLC" — Reality Labs, Ray-Ban Meta    (LOW)
- *   - 0x03C2 "Snapchat Inc"                      — Snap Spectacles               (LOW)
+ *   - 0x060C "Vuzix Corporation"  — dedicated AR/smart-glasses maker   (HIGH)
+ *   - 0x01AB "Facebook, Inc."      — Meta; Ray-Ban Meta glasses advertise
+ *                                    under it, but so do many Meta products (LOW)
+ *   - 0x03C2 "Snapchat Inc"        — Snap Spectacles                   (LOW)
+ * (registrants cross-checked against the SIG-derived systemd hwdb list.)
  *
  * Deliberately NOT listed, to avoid misattribution:
- *   - 0x058E "Meta Platforms, Inc." and the Facebook app estate — the broad
- *     parent ID covers phones and apps, far too wide to imply glasses.
+ *   - 0x00B6 is "Meso international", NOT Meta — an earlier draft listed it
+ *     by mistake (Claudius review of #149); never add it back.
+ *   - 0x058E "Oculus VR, LLC" (Meta Quest VR headsets) — head-worn but a VR
+ *     headset, not recording eyewear; left out to keep the family honest.
+ *   - Luxottica (Ray-Ban maker) is reported at 0x0D53 by secondary sources;
+ *     not added until the registrant is confirmed in the SIG list itself.
  *   - Amazon Echo Frames (0x0171 "Amazon.com Services LLC") — audio-only
  *     eyewear with no camera, so not a recording device.
  *   - Rokid, Xreal (formerly Nreal) and Even Realities — no Bluetooth SIG
@@ -60,7 +66,7 @@ static const uint16_t gz_smartglass_cid_high[] = {
 /* SIG company IDs of makers that ship recording smart glasses alongside many
  * non-glasses products, so the ID alone is weak. LOW. */
 static const uint16_t gz_smartglass_cid_low[] = {
-    0x00B6,   /* Meta Platforms Technologies, LLC (Reality Labs / Ray-Ban Meta) */
+    0x01AB,   /* Facebook, Inc. (Meta; Ray-Ban Meta, among many products) */
     0x03C2,   /* Snapchat Inc (Snap Spectacles) */
 };
 
