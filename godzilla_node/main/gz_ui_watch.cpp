@@ -9,15 +9,18 @@
  *
  * Drawing (all LVGL primitives, original artwork — no traced watch face, no
  * image or font asset):
- *   - a brass case ring around an ivory dial, a thin inner ring, and a crown
- *     with a bow at 12 o'clock, all inside the round glass (the case is centred
- *     8 px low to make room for the bow);
+ *   - a case ring (gold, or silver via GZ_FACE_FINISH) around an ivory dial and
+ *     a thin inner ring, centred and drawn to fill the glass then pulled in to
+ *     GZ_FACE_PCT so the case clears the edge with a night margin (no bow/crown);
  *   - 60 minute ticks (every fifth heavier) and upright Roman numerals in
- *     Montserrat 20, with the traditional dial "IIII";
- *   - hour, minute and second hands as lv_line objects positioned by their
- *     bounding box (same technique as the radar sweep), so a move invalidates
- *     only the hand's own strip. The second hand TICKS at 1 Hz — it does not
- *     sweep — and the face redraws only when the second changes.
+ *     Montserrat 18, with the traditional dial "IIII" (gz_watch_roman);
+ *   - three printed sub-dials (month / two-letter weekday / date) and a moon
+ *     window whose sliding night-shadow is clipped to the aperture;
+ *   - black hour and minute hands, and a blue second hand carrying a small
+ *     trident head — all lv_line objects positioned by their bounding box (same
+ *     technique as the radar sweep), so a move invalidates only that strip. The
+ *     second hand TICKS at 1 Hz — it does not sweep — and the face redraws only
+ *     when the second changes.
  *
  * Set mode (no wire change; I2C to a soldered part): long-press enters, a tap
  * on the upper half is hour +1, on the lower half minute +1, long-press again
@@ -28,9 +31,10 @@
  * No date on the dial: set mode sets hours and minutes only, so a date could
  * be shown wrong (CI images are built in UTC) with no way to fix it.
  *
- * Palette: abyss 0x031627 (surround), brass 0xC9A227 / dark brass 0x8A6D1B
- * (case, crown, cap), ivory 0xF3E9D2 (dial), ink 0x1B2A3A (numerals, ticks,
- * hour + minute hands), oxblood 0xA63A2B (second hand, SET).
+ * Palette: abyss 0x031627 (surround), gold 0xC9A227 / dark gold 0x8A6D1B (case,
+ * cap) — or silver 0xC7CCD4 / 0x878D97 with GZ_FACE_FINISH=1, ivory 0xF3E9D2
+ * (dial), ink 0x1B2A3A (numerals, ticks), black 0x10131A (hour + minute hands),
+ * trident-blue 0x2E7BE6 (second hand), oxblood 0xA63A2B (SET / RTC note).
  */
 #include "gz_board.h"
 #if GZ_BOARD_HAS_RTC   /* the watch runs only where an RTC exists (#88 §4) */
@@ -45,34 +49,55 @@
 
 #include <Arduino.h>
 #include <stdio.h>
+#include <math.h>
+
+/* Classic is drawn at GZ_FACE_PCT of each panel's safe radius so the case
+ * clears the glass with a night margin (Dale, 2026-11-20). One factor feeds
+ * every scaled dimension in this file via GZ_UI_SF. */
+#define GZ_FACE_PCT 93
+#define GZ_UI_SF(v) GZ_UI_S((v) * GZ_FACE_PCT / 100)
 
 #define COL_ABYSS    0x031627
-#define COL_BRASS    0xC9A227
-#define COL_BRASS_D  0x8A6D1B
+/* Case finish: gold (default) or silver. Compile-time for now; a follow-up
+ * wires this to a persisted, customiser-selectable setting (Dale, 2026-11-20). */
+#ifndef GZ_FACE_FINISH
+#define GZ_FACE_FINISH 0           /* 0 = gold, 1 = silver */
+#endif
+#if GZ_FACE_FINISH == 1
+#define COL_BRASS    0xC7CCD4      /* brushed-silver case / ring */
+#define COL_BRASS_D  0x878D97      /* dark silver                */
+#else
+#define COL_BRASS    0xC9A227      /* gold case / ring           */
+#define COL_BRASS_D  0x8A6D1B      /* dark gold                  */
+#endif
 #define COL_IVORY    0xF3E9D2
 #define COL_INK      0x1B2A3A
 #define COL_OXBLOOD  0xA63A2B
-#define COL_BLUE     0x27406E   /* blued steel: hour + minute hands, sub pointers */
+#define COL_BLUE     0x27406E   /* blued steel: sub-dial pointers                 */
 #define COL_NIGHT    0x0B1830   /* moon-aperture night ground                     */
 #define COL_SILVER   0xD9DEE6   /* the lit moon disc                              */
+#define COL_BLACK    0x10131A   /* hour + minute hands                            */
+#define COL_TRIDENT  0x2E7BE6   /* blue trident second hand                       */
+#define COL_CRATER   0xB4BAC6   /* moon craters (grey on the lit disc)            */
 
 /* Designed on the 1.85B's 360 canvas; every radial length scales with the
- * panel's safe radius via gz_geom.h (#88 §3.2), identity on the 1.85B. */
+ * panel's safe radius via gz_geom.h (#88 §3.2). The Classic dial is drawn to
+ * fill the glass, then pulled in to GZ_FACE_PCT so the case clears the edge with
+ * a night margin (Dale, 2026-11-20); GZ_UI_SF folds that factor into GZ_UI_S. */
 #define WCX          GZ_UI_CX                      /* 180 on the 1.85B */
-#define WCY          (GZ_UI_CY + GZ_UI_S(8))       /* 188: room for the bow above */
-#define R_CASE       GZ_UI_S(150)                  /* outer edge of the brass ring */
-#define CASE_W       GZ_UI_S(7)
-#define R_INNER      GZ_UI_S(139)                  /* thin inner ring */
-#define R_TICK_OUT   GZ_UI_S(135)
-#define R_TICK_IN    GZ_UI_S(129)                  /* minute ticks */
-#define R_TICK_IN5   GZ_UI_S(123)                  /* five-minute ticks */
-#define R_NUMERAL    GZ_UI_S(103)
-#define LEN_HOUR     GZ_UI_S(62)
-#define LEN_MINUTE   GZ_UI_S(96)
-#define LEN_SECOND   GZ_UI_S(112)
-#define TAIL_HM      GZ_UI_S(14)
-#define TAIL_SECOND  GZ_UI_S(24)
-#define BOW_Y        (WCY - R_CASE - 21)           /* 17 on the 1.85B */
+#define WCY          (GZ_UI_CY)                    /* centred: no bow             */
+#define R_CASE       GZ_UI_SF(178)                  /* outer edge of the case ring */
+#define CASE_W       GZ_UI_SF(7)
+#define R_INNER      GZ_UI_SF(166)                  /* thin inner ring */
+#define R_TICK_OUT   GZ_UI_SF(161)
+#define R_TICK_IN    GZ_UI_SF(154)                  /* minute ticks */
+#define R_TICK_IN5   GZ_UI_SF(147)                  /* five-minute ticks */
+#define R_NUMERAL    GZ_UI_SF(123)
+#define LEN_HOUR     GZ_UI_SF(74)
+#define LEN_MINUTE   GZ_UI_SF(114)
+#define LEN_SECOND   GZ_UI_SF(133)
+#define TAIL_HM      GZ_UI_SF(14)
+#define TAIL_SECOND  GZ_UI_SF(24)
 #define BLINK_MS     500u
 
 /* ---- antique sub-scales (unit 2) ----------------------------------------- */
@@ -84,21 +109,21 @@
  * this compiles there. Until the clock has been set — by hand or by a
  * CMD_TIMESET from the Cardputer (gz_ui_watch_apply_timeset) — the dial shows
  * the "hold to set" hint; after a sync it shows the real time/date/moon. */
-#define SUB_R        GZ_UI_S(30)                    /* sub-dial scale radius     */
-#define SUB_PTR      GZ_UI_S(24)                    /* sub-dial pointer length   */
-#define SUB_OFF      GZ_UI_S(52)                    /* sub-dial centre offset    */
+#define SUB_R        GZ_UI_SF(30)                    /* sub-dial scale radius     */
+#define SUB_PTR      GZ_UI_SF(24)                    /* sub-dial pointer length   */
+#define SUB_OFF      GZ_UI_SF(62)                    /* sub-dial centre offset    */
 #define SUB_DOW_CX   WCX                            /* day-of-week: above centre */
 #define SUB_DOW_CY   (WCY - SUB_OFF)
 #define SUB_MON_CX   (WCX - SUB_OFF)               /* month: lower left          */
-#define SUB_MON_CY   (WCY + GZ_UI_S(8))
+#define SUB_MON_CY   (WCY + GZ_UI_SF(8))
 #define SUB_DATE_CX  (WCX + SUB_OFF)               /* date: lower right          */
-#define SUB_DATE_CY  (WCY + GZ_UI_S(8))
+#define SUB_DATE_CY  (WCY + GZ_UI_SF(8))
 #define MOON_CX      WCX                            /* moon aperture: below centre */
 #define MOON_CY      (WCY + SUB_OFF)
-#define MOON_R       GZ_UI_S(15)
-#define MOON_STAR_R  GZ_UI_S(1)                      /* gold star dot in the night sky */
+#define MOON_R       GZ_UI_SF(15)
+#define MOON_STAR_R  GZ_UI_SF(1)                      /* gold star dot in the night sky */
 #define SUB_TICK_R   SUB_R                           /* division ticks sit on the rim  */
-#define SUB_LBL_R    (SUB_R - GZ_UI_S(9))            /* printed numeral / abbrev radius */
+#define SUB_LBL_R    (SUB_R - GZ_UI_SF(9))            /* printed numeral / abbrev radius */
 
 static gz_watch_clock_t s_clock;
 static gz_watch_set_t   s_set;
@@ -111,11 +136,15 @@ static bool     s_blink_hidden;
 static lv_obj_t *s_hand_h, *s_hand_m, *s_hand_s, *s_note;
 static lv_point_precise_t s_pts_h[2], s_pts_m[2], s_pts_s[2];
 static lv_point_precise_t s_tick_pts[60][2];
+static lv_obj_t *s_tri[4];                   /* trident head segments on the second hand */
+static lv_point_precise_t s_tri_pts[4][2];
 
 /* Sub-scale pointers (month / day-of-week / date) and the moon window. */
 static lv_obj_t *s_ptr_mon, *s_ptr_dow, *s_ptr_date;
 static lv_point_precise_t s_pts_mon[2], s_pts_dow[2], s_pts_date[2];
 static lv_obj_t *s_moon_lit;                 /* the lit disc inside the aperture */
+static lv_obj_t *s_moon_shadow;              /* night disc that carves the phase  */
+static int        s_moon_mc = 0;             /* moon centre inside the clip box   */
 static uint8_t  s_drawn_day = 0;             /* last date whose scales were drawn */
 static lv_obj_t *s_date_ring;                /* date ticks+numerals (rebuilt monthly) */
 static uint8_t  s_drawn_month = 0;           /* last month whose date ring was drawn */
@@ -209,7 +238,7 @@ static void place_sub_ptr(lv_obj_t *l, lv_point_precise_t pts[2], int32_t angle,
  * abbreviations) and the pointer are added by the caller. */
 static void build_subdial(lv_obj_t *scr, int cx, int cy)
 {
-    disc(scr, cx, cy, SUB_R + GZ_UI_S(3), 1, COL_BRASS_D, true, COL_IVORY);
+    disc(scr, cx, cy, SUB_R + GZ_UI_SF(3), 1, COL_BRASS_D, true, COL_IVORY);
     disc(scr, cx, cy, 3, 1, COL_BRASS_D, true, COL_BLUE);
 }
 
@@ -218,7 +247,7 @@ static void sub_tick(lv_obj_t *parent, int cx, int cy, int32_t angle, uint32_t r
 {
     int x, y;
     gz_watch_polar(angle, SUB_TICK_R, cx, cy, &x, &y);
-    disc(parent, x, y, GZ_UI_S(2), 0, 0, true, rgb);
+    disc(parent, x, y, GZ_UI_SF(2), 0, 0, true, rgb);
 }
 
 /* A printed sub-scale label (month / weekday abbrev, or a date numeral) inside
@@ -228,7 +257,7 @@ static void sub_label(lv_obj_t *parent, int cx, int cy, int32_t angle, const cha
     if (!txt || !txt[0]) return;
     int x, y;
     gz_watch_polar(angle, SUB_LBL_R, cx, cy, &x, &y);
-    dial_label(parent, &lv_font_montserrat_10, COL_INK, x, y, txt);
+    dial_label(parent, &lv_font_montserrat_8, COL_INK, x, y, txt);
 }
 
 /* Every change to the software clock goes through here, so other tasks (the
@@ -274,6 +303,21 @@ static void update_note(void)
     lv_label_set_text(s_note, text);
 }
 
+/* Point in the second-hand frame: `along` outward from the dial centre, `lat`
+ * perpendicular (right of the hand). Used to draw the trident head. */
+static void tri_pt(int32_t a_tenths, int along, int lat, int *x, int *y)
+{
+    float A = (float)a_tenths * 0.0017453292519943f;
+    float sa = sinf(A), ca = cosf(A);
+    *x = WCX + (int)lroundf((float)along * sa + (float)lat * ca);
+    *y = WCY + (int)lroundf(-(float)along * ca + (float)lat * sa);
+}
+static void tri_seg(int i, int32_t a, int al1, int la1, int al2, int la2)
+{
+    int x0,y0,x1,y1; tri_pt(a,al1,la1,&x0,&y0); tri_pt(a,al2,la2,&x1,&y1);
+    if (s_tri[i]) place_line(s_tri[i], s_tri_pts[i], x0,y0,x1,y1);
+}
+
 static void draw_hands(const gz_datetime_t *t)
 {
     place_hand(s_hand_h, s_pts_h, gz_watch_hour_angle(t->hour, t->minute),
@@ -282,6 +326,17 @@ static void draw_hands(const gz_datetime_t *t)
                LEN_MINUTE, TAIL_HM);
     place_hand(s_hand_s, s_pts_s, gz_watch_second_angle(t->second),
                LEN_SECOND, TAIL_SECOND);
+    {   /* Classic trident head riding the second hand (Dale: style 1). */
+        int32_t a = gz_watch_second_angle(t->second);
+        const int B  = LEN_SECOND - GZ_UI_SF(22);  /* crossbar / head base */
+        const int cw = GZ_UI_SF(7);                /* crossbar half-width  */
+        const int TL = GZ_UI_SF(20);               /* outer tine length    */
+        const int CL = GZ_UI_SF(28);               /* centre tine (longer) */
+        tri_seg(0, a, B, -cw, B,     cw);         /* crossbar             */
+        tri_seg(1, a, B,   0, B+CL,   0);         /* centre tine          */
+        tri_seg(2, a, B, -cw, B+TL, -cw);         /* left tine (parallel) */
+        tri_seg(3, a, B,  cw, B+TL,  cw);         /* right tine           */
+    }
     s_drawn_second = t->second;
 }
 
@@ -317,14 +372,11 @@ static void draw_calendar(const gz_datetime_t *t)
                   SUB_DATE_CX, SUB_DATE_CY, SUB_PTR);
 
     double illum = gz_moon_illum(t->year, t->month, t->day);
-    int lr = (int)lroundf((float)MOON_R * (float)illum);
-    if (lr < 1) {
-        lv_obj_add_flag(s_moon_lit, LV_OBJ_FLAG_HIDDEN);
-    } else {
-        lv_obj_remove_flag(s_moon_lit, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_set_size(s_moon_lit, 2 * lr, 2 * lr);
-        lv_obj_set_pos(s_moon_lit, MOON_CX - lr, MOON_CY - lr);
-    }
+    /* Slide the night shadow across the lit disc inside the clipped aperture:
+     * fully covering at new moon, fully clear at full moon. The clip keeps it
+     * from ever spilling onto the dial. */
+    int dx = (int)lroundf((float)(2.0 * illum) * (float)MOON_R);  /* 0..2R east */
+    lv_obj_set_pos(s_moon_shadow, (s_moon_mc - MOON_R) + dx, s_moon_mc - MOON_R);
     s_drawn_day = t->day;
 }
 
@@ -354,14 +406,8 @@ void gz_ui_watch_build(lv_obj_t *scr)
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
     lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
 
-    /* Bow (ring) and crown (stem) first, so the case overlaps their roots. */
-    disc(scr, WCX, BOW_Y, 13, 4, COL_BRASS, false, 0);
-    lv_obj_t *crown = plain_obj(scr);
-    lv_obj_set_size(crown, 22, 16);
-    lv_obj_set_pos(crown, WCX - 11, WCY - R_CASE - 12);
-    lv_obj_set_style_radius(crown, 3, 0);
-    lv_obj_set_style_bg_color(crown, lv_color_hex(COL_BRASS_D), 0);
-    lv_obj_set_style_bg_opa(crown, LV_OPA_COVER, 0);
+    /* Dial-only: the pocket-watch bow/crown chain ring is gone and the case
+     * fills the glass (Dale, 2026-11-20). */
 
     /* Case + dial in one object, then the thin inner ring. */
     disc(scr, WCX, WCY, R_CASE, CASE_W, COL_BRASS, true, COL_IVORY);
@@ -379,17 +425,15 @@ void gz_ui_watch_build(lv_obj_t *scr)
     }
     for (int q = 0; q < 4; ++q) {
         int x, y;
-        gz_watch_polar(q * 900, R_TICK_IN5 - GZ_UI_S(7), WCX, WCY, &x, &y);
-        disc(scr, x, y, GZ_UI_S(4), 1, COL_BRASS_D, true, COL_BRASS);  /* quarter lozenge */
+        gz_watch_polar(q * 900, R_TICK_IN5 - GZ_UI_SF(7), WCX, WCY, &x, &y);
+        disc(scr, x, y, GZ_UI_SF(4), 1, COL_BRASS_D, true, COL_BRASS);  /* quarter lozenge */
     }
 
-    /* Breguet-style Arabic numerals, upright. */
+    /* Upright Roman numerals (traditional dial "IIII"), from gz_watch_roman. */
     for (int h = 1; h <= 12; ++h) {
         int x, y;
-        char num[3];
-        snprintf(num, sizeof num, "%d", h);
         gz_watch_polar(h * 300, R_NUMERAL, WCX, WCY, &x, &y);
-        dial_label(scr, &lv_font_montserrat_20, COL_INK, x, y, num);
+        dial_label(scr, &lv_font_montserrat_18, COL_INK, x, y, gz_watch_roman(h));
     }
 
     /* Three printed calendar sub-dials (month / day-of-week / date) and the
@@ -398,11 +442,12 @@ void gz_ui_watch_build(lv_obj_t *scr)
     build_subdial(scr, SUB_MON_CX,  SUB_MON_CY);
     build_subdial(scr, SUB_DATE_CX, SUB_DATE_CY);
 
-    /* Day-of-week ring: SUN..SAT printed at all seven divisions. */
+    /* Day-of-week ring: two-letter labels at all seven divisions (Dale). */
+    static const char *const DOW1[7] = { "Su","Mo","Tu","Wd","Th","Fr","Sa" };
     for (int i = 0; i < 7; ++i) {
         int32_t a = gz_weekday_angle_tenths(i);
         sub_tick(scr, SUB_DOW_CX, SUB_DOW_CY, a, COL_INK);
-        sub_label(scr, SUB_DOW_CX, SUB_DOW_CY, a, gz_weekday_abbrev(i));
+        sub_label(scr, SUB_DOW_CX, SUB_DOW_CY, a, DOW1[i]);
     }
     /* Month ring: twelve ticks; abbreviations are printed at the quarter months
      * (JAN/APR/JUL/OCT) so the names stay legible on the small sub-dial — the
@@ -421,31 +466,44 @@ void gz_ui_watch_build(lv_obj_t *scr)
     lv_obj_set_size(s_date_ring, GZ_LCD_WIDTH, GZ_LCD_HEIGHT);
     lv_obj_set_pos(s_date_ring, 0, 0);
 
-    /* Twin-aperture moon window: a cream scalloped mask ring, a night-blue sky
-     * with a few gold stars, and the lit disc (its radius encodes the
-     * illuminated fraction, 0 at new .. full at full moon). */
-    disc(scr, MOON_CX, MOON_CY, MOON_R + GZ_UI_S(3), 1, COL_BRASS_D, true, COL_IVORY); /* cream mask */
-    disc(scr, MOON_CX, MOON_CY, MOON_R + GZ_UI_S(1), 0, 0, true, COL_NIGHT);           /* night sky  */
+    /* Moon window: lit disc, craters and the sliding night-shadow all live in a
+     * CIRCULAR-CLIPPED container (radius = aperture) so the phase shadow can
+     * never spill onto the dial. The cream bezel stays outside the clip. */
+    disc(scr, MOON_CX, MOON_CY, MOON_R + GZ_UI_SF(3), 1, COL_BRASS_D, true, COL_IVORY); /* cream bezel */
+    const int MCLR = MOON_R + GZ_UI_SF(1);           /* clip-container radius */
+    s_moon_mc = MCLR;                                /* moon centre inside the clip */
+    lv_obj_t *clip = plain_obj(scr);
+    lv_obj_set_size(clip, 2 * MCLR, 2 * MCLR);
+    lv_obj_set_pos(clip, MOON_CX - MCLR, MOON_CY - MCLR);
+    lv_obj_set_style_radius(clip, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(clip, lv_color_hex(COL_NIGHT), 0);
+    lv_obj_set_style_bg_opa(clip, LV_OPA_COVER, 0);
+    lv_obj_set_style_clip_corner(clip, true, 0);     /* clip children to the circle */
     static const int star_dx[5] = { -8,  6, -3,  9, -9 };
     static const int star_dy[5] = { -6, -8,  7,  4,  2 };
     for (int s = 0; s < 5; ++s)
-        disc(scr, MOON_CX + GZ_UI_S(star_dx[s]), MOON_CY + GZ_UI_S(star_dy[s]),
-             MOON_STAR_R, 0, 0, true, COL_BRASS);                                       /* gold stars */
-    s_moon_lit = disc(scr, MOON_CX, MOON_CY, MOON_R, 0, 0, true, COL_SILVER);
-    dial_label(scr, &lv_font_montserrat_12, COL_BRASS_D, MOON_CX, MOON_CY + MOON_R + GZ_UI_S(10), "MOON");
+        disc(clip, s_moon_mc + GZ_UI_SF(star_dx[s]), s_moon_mc + GZ_UI_SF(star_dy[s]),
+             MOON_STAR_R, 0, 0, true, COL_BRASS);                                        /* gold stars */
+    s_moon_lit = disc(clip, s_moon_mc, s_moon_mc, MOON_R, 0, 0, true, COL_SILVER);
+    static const int cr_dx[4]={ -5, 3, 6, -2 }, cr_dy[4]={ -4, -6, 3, 6 }, cr_r[4]={ 3,2,2,3 };
+    for (int c=0;c<4;++c) disc(clip, s_moon_mc+GZ_UI_SF(cr_dx[c]), s_moon_mc+GZ_UI_SF(cr_dy[c]),
+                               GZ_UI_SF(cr_r[c]), 0,0,true, COL_CRATER);
+    s_moon_shadow = disc(clip, s_moon_mc, s_moon_mc, MOON_R, 0, 0, true, COL_NIGHT);
+    dial_label(scr, &lv_font_montserrat_12, COL_BRASS_D, MOON_CX, MOON_CY + MOON_R + GZ_UI_SF(10), "MOON");
 
     s_ptr_mon  = new_line(scr, COL_BLUE, 2);
     s_ptr_dow  = new_line(scr, COL_BLUE, 2);
     s_ptr_date = new_line(scr, COL_BLUE, 2);
 
-    dial_label(scr, &lv_font_montserrat_12, COL_BRASS_D, WCX, WCY - GZ_UI_S(44), "POSEIDON");
-    s_note = dial_label(scr, &lv_font_montserrat_14, COL_INK, WCX, WCY + GZ_UI_S(46), "");
+    s_note = dial_label(scr, &lv_font_montserrat_10, COL_INK, WCX,
+                        MOON_CY + MOON_R + GZ_UI_SF(26), "");
 
     /* Hands, bottom to top: hour, minute, second, then the centre cap. The
      * hour and minute hands are blued steel; the second hand stays oxblood. */
-    s_hand_h = new_line(scr, COL_BLUE, 7);
-    s_hand_m = new_line(scr, COL_BLUE, 4);
-    s_hand_s = new_line(scr, COL_OXBLOOD, 2);
+    s_hand_h = new_line(scr, COL_BLACK, 8);
+    s_hand_m = new_line(scr, COL_BLACK, 5);
+    s_hand_s = new_line(scr, COL_TRIDENT, 2);
+    for (int i = 0; i < 4; ++i) s_tri[i] = new_line(scr, COL_TRIDENT, i < 2 ? 3 : 2);
     disc(scr, WCX, WCY, 7, 2, COL_BRASS_D, true, COL_BRASS);
 
     gz_status_t st;

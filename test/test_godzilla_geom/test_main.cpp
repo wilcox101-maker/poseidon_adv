@@ -3,8 +3,8 @@
  *   1. on the 1.85B (360x360 round) every function returns exactly the
  *      constant it replaced, so nothing moves on the reference board;
  *   2. on all three boards the layouts fit the panel (the dial inscribes in the
- *      short side, the card and plot fit the width, the watch bow stays on
- *      screen, Hunt's last line stays above the bottom edge). */
+ *      short side, the card and plot fit the width, the centred watch case
+ *      clears the glass with a margin, Hunt's last line stays on screen). */
 #include <unity.h>
 #include <stdio.h>
 #include <string.h>
@@ -19,11 +19,12 @@ static const board_t B206  = { "2.06",    410, 502, false };
 static const board_t BES3  = { "ES3C28P", 240, 320, false };
 static const board_t ALL[] = { B185, B206, BES3 };
 
-/* Watch-face design constants (gz_ui_watch.cpp, 360 canvas). */
-#define D_R_CASE 150
-#define D_WCY_DY 8
-#define D_BOW_ABOVE 21   /* bow centre sits 21 px above the case top */
-#define D_BOW_R 13
+/* Watch-face design constants (gz_ui_watch.cpp, 360 canvas). The Classic dial
+ * is centred (no bow) and drawn at D_FACE_PCT of the fill radius so the case
+ * clears the glass with a margin (redesign, 2026-11-20). */
+#define D_FACE_PCT 93
+#define D_R_FILL   178                            /* fill radius before pull-in */
+#define D_R_CASE   (D_R_FILL * D_FACE_PCT / 100)  /* 165: effective case radius */
 
 static void test_185b_is_unchanged(void)
 {
@@ -37,7 +38,7 @@ static void test_185b_is_unchanged(void)
     TEST_ASSERT_EQUAL_INT(260, gz_geom_col_w(260, w));             /* Hunt labels */
     TEST_ASSERT_EQUAL_INT(0,   gz_geom_content_dy(h));
     /* The watch's radial constants scale by exactly 1. */
-    const int watch[] = { 150, 7, 139, 135, 129, 123, 103, 62, 96, 112, 14, 24, 8, 44, 46 };
+    const int watch[] = { 178, 7, 166, 161, 154, 147, 123, 74, 114, 133, 14, 24, 165 };
     for (unsigned i = 0; i < sizeof watch / sizeof watch[0]; ++i)
         TEST_ASSERT_EQUAL_INT(watch[i], gz_geom_scale(watch[i], w, h));
 }
@@ -76,13 +77,17 @@ static void test_layouts_fit_every_board(void)
         TEST_ASSERT_TRUE_MESSAGE(px >= 0 && px + pw <= b->w, b->name);
         TEST_ASSERT_TRUE_MESSAGE(gz_geom_col_w(260, b->w) <= b->w - 16, b->name);
 
-        /* Watch: case on screen, bow above it still on screen. */
-        int wcy  = cy + gz_geom_scale(D_WCY_DY, b->w, b->h);
-        int rc   = gz_geom_scale(D_R_CASE, b->w, b->h);
-        int bowy = wcy - rc - D_BOW_ABOVE;
-        TEST_ASSERT_TRUE_MESSAGE(bowy - D_BOW_R >= 0, b->name);
-        TEST_ASSERT_TRUE_MESSAGE(wcy + rc < b->h, b->name);
+        /* Watch (redesign): centred dial, no bow. The pulled-in case fits the
+         * panel on every axis and, on the round board, clears the glass with a
+         * visible night margin. */
+        int wcy = cy;                                   /* centred: no bow offset */
+        int rc  = gz_geom_scale(D_R_CASE, b->w, b->h);  /* 93%-reduced fill radius */
         TEST_ASSERT_TRUE_MESSAGE(cx - rc >= 0 && cx + rc < b->w, b->name);
+        TEST_ASSERT_TRUE_MESSAGE(wcy - rc >= 0 && wcy + rc < b->h, b->name);
+        if (b->round) {
+            int half = (b->w < b->h ? b->w : b->h) / 2;
+            TEST_ASSERT_TRUE_MESSAGE(half - rc >= 8, b->name);   /* night margin ring */
+        }
 
         /* Hunt: first label (design y 52) and last line (design y 192+76+28+16)
          * stay on the panel once shifted. */
