@@ -44,9 +44,14 @@ static posei_ble_det_t s_stage;
 static volatile bool   s_flush_req   = false;
 static uint16_t        s_seq         = 0;
 static uint32_t        s_last_pub_ms = 0;
+/* Monotonic count of advertisements the scan callback has seen. Read-only
+ * liveness for the bench self-test (item J): the page diffs it over a window for
+ * an adverts/s rate. A plain counter — a torn read only skews one rate sample. */
+static volatile uint32_t s_adverts   = 0;
 
 class GzBleScanCb : public NimBLEScanCallbacks {
     void onResult(const NimBLEAdvertisedDevice *dev) override {
+        s_adverts++;                   /* advert seen (self-test rate) */
         uint8_t addr[6];
         memcpy(addr, dev->getAddress().getBase()->val, 6);
         uint8_t atype = dev->getAddress().getType();
@@ -92,6 +97,8 @@ class GzBleScanCb : public NimBLEScanCallbacks {
 };
 
 static GzBleScanCb s_cb;
+
+uint32_t gz_ble_scan_adverts(void) { return s_adverts; }
 
 void gz_ble_scan_init(uint8_t node_id)
 {

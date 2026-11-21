@@ -41,10 +41,15 @@ static uint16_t         s_seq         = 0;
 static uint32_t         s_last_pub_ms = 0;
 static uint32_t         s_last_hop_ms = 0;
 static uint8_t          s_cur_ch      = GZ_WIFI_CH_MIN;
+/* Monotonic count of promiscuous mgmt frames the callback has seen. Read-only
+ * liveness for the bench self-test (item J): the page diffs it over a window for
+ * a frames/s rate. A plain counter — a torn read only skews one rate sample. */
+static volatile uint32_t s_frames     = 0;
 
 static void promisc_cb(void *buf, wifi_promiscuous_pkt_type_t type)
 {
     if (type != WIFI_PKT_MGMT) return;
+    s_frames++;                        /* captured mgmt frame (self-test rate) */
     const wifi_promiscuous_pkt_t *pkt = (const wifi_promiscuous_pkt_t *)buf;
 
     /* flock_frame_classify wants the length INCLUDING the 4-byte FCS, which is
@@ -118,6 +123,8 @@ static void publish_if_due(uint32_t now)
     }
     s_last_pub_ms = now;
 }
+
+uint32_t gz_wifi_scan_frames(void) { return s_frames; }
 
 void gz_wifi_scan_tick(void)
 {

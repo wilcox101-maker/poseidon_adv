@@ -36,3 +36,8 @@ void gz_ble_scan_init(uint8_t node_id);
 /* Call every loop iteration. When a publish is due it packs the staging BLE
  * batch, broadcasts it (nothing is sent for an empty window), and resets it. */
 void gz_ble_scan_tick(void);
+
+/* Monotonic count of advertisements seen since boot. Read-only liveness for the
+ * bench self-test (item J); the page diffs it over a window for an adverts/s
+ * reading. Never transmits. */
+uint32_t gz_ble_scan_adverts(void);

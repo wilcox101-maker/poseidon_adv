@@ -36,3 +36,9 @@ void gz_recon_toggle(void);
 
 /* Any task: a consistent copy of the current status. */
 void gz_recon_status(gz_recon_status_t *out);
+
+/* Read-only: is a card currently mounted? The bench self-test (item J) shows
+ * this on boards with a TF slot. The card mounts when a Recon session first
+ * starts, so this reads false until then — the self-test reflects it, never
+ * mounts. Only meaningful where GZ_BOARD_HAS_SD. */
+bool gz_recon_sd_mounted(void);

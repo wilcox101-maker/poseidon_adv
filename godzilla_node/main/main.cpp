@@ -111,6 +111,15 @@ void setup()
                   (unsigned)GZ_WIFI_CH_MIN, (unsigned)GZ_WIFI_CH_MAX,
                   (unsigned)GZ_WIFI_HOP_MS, (unsigned)GZ_WIFI_PUBLISH_MS);
     Serial.println("  passive only — capture is receive-only; publishes return to ch1");
+
+#if GZ_SELFTEST_SERIAL
+    /* Item J: one-line bench self-test summary over serial, for a headless /
+     * first-power-on check. Off by default; build with -DGZ_SELFTEST_SERIAL=1.
+     * Read-only — the same passive probes the on-screen self-test page uses. */
+#if GZ_BOARD_HAS_UI
+    gz_ui_selftest_serial_emit();
+#endif
+#endif
 }
 
 void loop()

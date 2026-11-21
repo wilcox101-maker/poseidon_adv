@@ -86,7 +86,44 @@ I2C n dev | <panel>
 <touch chip> | <gesture> x,y      (updates as you touch)
 [IMU still|moving | rot 0..3]      (IMU boards)
 [batt ...]                          (boards with a power readout)
+tap: self-test                      (opens the self-test page, below)
 ```
+
+### First power-on: the self-test page
+
+The quickest first-light check. Swipe to the **Status** screen (it is the last in the ring);
+its bottom line reads **`tap: self-test`**. **Tap anywhere** to open the self-test page, and
+**tap again** to return. The page is **read-only** — it only reads the parts, writes nothing,
+and transmits nothing new — so it is safe to open at any time. Each line shows a verdict
+(`ok` green, `FAIL` red, `--` dim for a part this board does not have) and a live reading.
+
+Walk the lines top to bottom:
+
+| Line | Pass reads | Notes |
+|---|---|---|
+| **Display** | `driving pixels` | You are looking at it, so this is `ok` whenever the panel came up. |
+| **Touch** | your last tap's `x,y` | Reads `no tap yet` until you touch; `not found` is a controller/bus fail. |
+| **RTC** | `running` | `osc stopped` = cold boot / no backup cell (seeds from build time); `--` on the ES3C28P (no RTC). |
+| **IMU** | `still` / `moving` | Tilt the board to see it flip; `--` where no IMU is fitted. |
+| **Gauge** | `present` or `N.NN V` | I2C presence of the fuel gauge / PMIC; voltage only where the power readout is driven; `--` on the ES3C28P. |
+| **Mic** | `present` | I2C presence of the mic ADC; `--` on the ES3C28P (MEMS mic, no I2C part). |
+| **SD** | `mounted` | Reads `not mounted` until a **Recon** session mounts the card (long-press the radar); the page never mounts it itself. `--` where no TF slot. |
+| **Wi-Fi** | a rising `N.N/s` | Promiscuous management frames per second; near a live AP it climbs within a few seconds. |
+| **BLE** | a rising `N.N/s` | Advertisements per second; put a phone nearby. |
+| **Link** | `pub Ns` | Age of the newest ESP-NOW detection publish to the S3; `up, no publish` until the first non-empty window. |
+
+Record anything that reads `FAIL` where the part exists, with what you saw.
+
+For a **headless / no-display** check, build with `-DGZ_SELFTEST_SERIAL=1` and the boot log
+prints one line after the banner:
+
+```text
+SELFTEST disp=ok touch=ok rtc=ok imu=ok gauge=ok mic=ok sd=-- wifi=ok ble=ok link=ok
+```
+
+`--` marks a part this board does not carry; the radios and link read from the state right
+after boot, so `wifi` / `ble` / `link` may still be `FAIL` on that first line and come good
+on the on-screen page a few seconds later. The flag is **off by default**.
 
 ---
 
