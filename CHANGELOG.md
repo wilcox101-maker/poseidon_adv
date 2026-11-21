@@ -8,6 +8,17 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **GODZILLA node — live settings apply (#153).** A customiser change to the
+  Classic case finish or the alert settings takes effect immediately, without a
+  reboot: a pure settings diff (`gz_ui_apply.h`, native-tested) re-applies only
+  the consumers that changed, rebuilding the watch dial in place on a finish
+  change. Accent, background and face selection still apply at the next boot.
+- **GODZILLA node — Alerts settings page (#152).** An "Alerts n/7 on" row in the
+  face customiser opens a page of per-family On/Off toggles (Flock, Raven,
+  Remote ID, skimmer, camera, glasses, trackers) persisted in the settings mask;
+  LE equipment and ALPR are radar-only and have no toggle. Row model
+  native-tested (`test/test_godzilla_alerts_page`); render-verified on the three
+  boards, with the customiser and Alerts titles moved inside the safe area.
 - **GODZILLA node — priority ALERT overlay (detection §4 item 6) (#147; render
   fixes #150).** A full-screen priority alert raised from the node-local radar
   table: HIGH surveillance / recording families (Flock, Raven, Remote ID, card
@@ -19,12 +30,15 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   three boards. #150 fixed the overlay glyph, wording and ES3C28P line stacking.
   Passive: reads the radar table only, transmits nothing.
 - **GODZILLA node — §4 surveillance / recording classifiers (#141, #142, #144,
-  #145, #149).** Passive classifiers, each keyed to a primary-sourced ID table
-  with the verbatim registrant confirmed and a HIGH/LOW confidence (LOW never
-  alerts alone): card skimmer by Bluetooth signature (#141), covert / IP camera
+  #145, #149; ID corrections #145, #151).** Passive classifiers, each keyed to
+  an ID table whose registrants were verified in review against the IEEE OUI
+  registry or a Bluetooth SIG-mirrored company-ID list (three look-alike
+  entries were removed: 00:0A:B1 GENETEC Corporation, Tokyo; 0x00B6 Meso
+  international; and an unrelated Axon), each with a HIGH/LOW confidence (LOW
+  never alerts alone): card skimmer by Bluetooth signature (#141), covert / IP camera
   by Wi-Fi OUI (#142), law-enforcement equipment by Wi-Fi OUI (#144, radar-only),
   non-Flock ALPR by Wi-Fi OUI (#145, radar-only), and recording smart glasses by
-  Bluetooth SIG company identifier (#149). Each is a pure header with a native
+  Bluetooth SIG company identifier (#149; Luxottica 0x0D53 added LOW in #151). Each is a pure header with a native
   test. Passive: classification only, nothing transmitted or connected.
 - **GODZILLA node — customiser-selectable case finish (#146).** The Classic
   watch's case metal (gold or silver) is a persisted, customiser-selectable
