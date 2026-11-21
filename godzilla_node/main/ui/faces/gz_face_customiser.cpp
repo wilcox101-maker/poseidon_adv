@@ -13,6 +13,7 @@
 #include "gz_face_caps.h"      /* gz_faces.h + GZ_FACE_BOARD_CAPS (this board) */
 #include "gz_face_store.h"     /* NVS load / save (unit 1) */
 #include "../../gz_customiser.h"
+#include "../../gz_cust_layout.h"  /* item M: one source for the list row geometry */
 #include "../../gz_geom.h"
 #include "../../gz_accent.h"   /* the one accent palette (unit 6) */
 #include "../../gz_alerts_page.h"  /* Alerts subpage pure model (row<->bit, count) */
@@ -38,19 +39,16 @@ static const uint32_t FINISH_SWATCH[GZ_FINISH_COUNT] = { 0xC9A227, 0xC7CCD4 };
 
 static gz_ui_settings_t s_set;
 static gz_rect_t        s_box;
-static int              s_rowh;
-static int              s_rows_y;                           /* first row, below the title */
+static gz_cust_list_t   s_main_L;      /* main-page row geometry (gz_cust_layout.h) */
 static lv_obj_t        *s_val[ROW_COUNT];
 static lv_obj_t        *s_accent_sw;
 static lv_obj_t        *s_finish_sw;
 
 /* ---- Alerts subpage state (one page shown at a time) --------------------- */
 static lv_obj_t        *s_alerts_scr;                      /* full-screen overlay */
-static lv_obj_t        *s_alerts_list;                     /* scrollable row band */
 static lv_obj_t        *s_alerts_val[GZ_ALERTS_FAMILY_COUNT];
 static gz_rect_t        s_alerts_box;
-static gz_rect_t        s_alerts_band;                      /* rows area under the title */
-static int              s_alerts_rowh;
+static gz_cust_list_t   s_alerts_L;    /* subpage row geometry — all rows fit, no scroll (item M) */
 static bool             s_on_alerts;                       /* true -> subpage up */
 
 /* ---- names --------------------------------------------------------------- */
@@ -157,46 +155,36 @@ static void build_alerts_page(lv_obj_t *scr)
     lv_obj_add_flag(s_alerts_scr, LV_OBJ_FLAG_HIDDEN);          /* main page first */
 
     s_alerts_box = gz_safe_box(GZ_UI_W, GZ_UI_H, GZ_UI_ROUND, GZ_UI_S(6));
-    /* Row height from the real Montserrat-14 line (fonts do not scale with the
-     * panel — #150), plus a scaled gap. Never shrink below the font. */
-    s_alerts_rowh = lv_font_get_line_height(&lv_font_montserrat_14) + GZ_UI_S(8);
+    /* Title and footer get their own lines INSIDE the safe box; the eight rows
+     * divide the rest evenly (gz_cust_layout.h). All eight fit every board, so
+     * the list is NOT scrolled — the old scrollable band could never be dragged
+     * anyway (its parents were non-clickable), and the rows stay at least the
+     * Montserrat-14 line height (fonts do not scale — #150). Item M. */
+    int th = gz_cust_band_h(lv_font_get_line_height(&lv_font_montserrat_12), GZ_UI_S(4));
+    s_alerts_L = gz_cust_list(s_alerts_box, th, th, GZ_ALERTS_ROW_COUNT);
 
-    /* The rows live in a vertically scrollable band clipped to the safe box, so
-     * eight rows stay legible and scroll if a panel is too short to show them
-     * all, rather than the font being shrunk (orders H). */
-    /* Title and footer get their own lines INSIDE the safe box (render review:
-     * the title overlapped row 1 and the footer fell off the bottom). */
-    int th = lv_font_get_line_height(&lv_font_montserrat_12) + GZ_UI_S(4);
-    s_alerts_band = s_alerts_box;
-    s_alerts_band.y += th;
-    s_alerts_band.h -= 2 * th;
-    s_alerts_list = plain_obj(s_alerts_scr);
-    lv_obj_set_pos(s_alerts_list, s_alerts_band.x, s_alerts_band.y);
-    lv_obj_set_size(s_alerts_list, s_alerts_band.w, s_alerts_band.h);
-    lv_obj_set_scroll_dir(s_alerts_list, LV_DIR_VER);
-    lv_obj_add_flag(s_alerts_list, LV_OBJ_FLAG_SCROLLABLE);
-
-    int valx = s_alerts_box.w / 2;
+    int valx = s_alerts_box.x + s_alerts_box.w / 2;
+    int lh14 = lv_font_get_line_height(&lv_font_montserrat_14);
     for (int r = 0; r < GZ_ALERTS_ROW_COUNT; ++r) {
-        int ry = r * s_alerts_rowh;
+        int ry = s_alerts_L.rows_y + r * s_alerts_L.row_h;
         bool back = (r == GZ_ALERTS_ROW_BACK);
 
-        lv_obj_t *strip = plain_obj(s_alerts_list);
-        lv_obj_set_size(strip, s_alerts_box.w, s_alerts_rowh - 2);
-        lv_obj_set_pos(strip, 0, ry + 1);
+        lv_obj_t *strip = plain_obj(s_alerts_scr);
+        lv_obj_set_size(strip, s_alerts_box.w, s_alerts_L.row_h - 2);
+        lv_obj_set_pos(strip, s_alerts_box.x, ry + 1);
         lv_obj_set_style_bg_color(strip, lv_color_hex(COL_ROW), 0);
         lv_obj_set_style_bg_opa(strip, (r & 1) ? LV_OPA_40 : LV_OPA_20, 0);
         lv_obj_set_style_radius(strip, 4, 0);
 
-        int ty = ry + (s_alerts_rowh - lv_font_get_line_height(&lv_font_montserrat_14)) / 2;
-        lv_obj_t *nm = lv_label_create(s_alerts_list);
+        int ty = gz_cust_row_text_y(&s_alerts_L, r, lh14);
+        lv_obj_t *nm = lv_label_create(s_alerts_scr);
         lv_obj_set_style_text_font(nm, &lv_font_montserrat_14, 0);
         lv_obj_set_style_text_color(nm, lv_color_hex(back ? COL_TITLE : COL_NAME), 0);
         lv_label_set_text(nm, gz_alerts_row_name(r));
-        lv_obj_set_pos(nm, GZ_UI_S(6), ty);
+        lv_obj_set_pos(nm, s_alerts_box.x + GZ_UI_S(6), ty);
 
         if (!back) {
-            lv_obj_t *v = lv_label_create(s_alerts_list);
+            lv_obj_t *v = lv_label_create(s_alerts_scr);
             lv_obj_set_style_text_font(v, &lv_font_montserrat_14, 0);
             lv_obj_set_style_text_color(v, lv_color_hex(COL_VALUE), 0);
             lv_label_set_text(v, "Off");
@@ -205,7 +193,8 @@ static void build_alerts_page(lv_obj_t *scr)
         }
     }
 
-    /* Title above the band, informational footer below it (ASCII only). */
+    /* Title at the top of the box, informational footer below the last row
+     * (ASCII only), both inside the safe box. */
     lv_obj_t *t = lv_label_create(s_alerts_scr);
     lv_obj_set_style_text_font(t, &lv_font_montserrat_12, 0);
     lv_obj_set_style_text_color(t, lv_color_hex(COL_TITLE), 0);
@@ -216,7 +205,7 @@ static void build_alerts_page(lv_obj_t *scr)
     lv_obj_set_style_text_font(f, &lv_font_montserrat_12, 0);
     lv_obj_set_style_text_color(f, lv_color_hex(COL_NAME), 0);
     lv_label_set_text(f, "LE gear / ALPR: radar only");
-    lv_obj_align(f, LV_ALIGN_TOP_MID, 0, s_alerts_band.y + s_alerts_band.h + GZ_UI_S(2));
+    lv_obj_align(f, LV_ALIGN_TOP_MID, 0, s_alerts_L.footer_y + GZ_UI_S(2));
 
     alerts_refresh();
 }
@@ -226,7 +215,6 @@ static void show_alerts_page(void)
     if (!s_alerts_scr) return;
     s_on_alerts = true;
     alerts_refresh();
-    lv_obj_scroll_to_y(s_alerts_list, 0, LV_ANIM_OFF);     /* open at the top */
     lv_obj_remove_flag(s_alerts_scr, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -237,16 +225,12 @@ static void hide_alerts_page(void)
     refresh_rows();                                        /* main "n/7 on" updates */
 }
 
-/* Route a tap while the Alerts subpage is up. The band may be scrolled, so the
- * hit row is resolved in content space (screen y + the band's scroll offset). */
+/* Route a tap while the Alerts subpage is up. All rows are on screen (no scroll,
+ * item M), so the row is a direct y -> row map (gz_cust_layout.h). */
 static void alerts_tap(int x, int y)
 {
-    if (s_alerts_rowh <= 0) return;
-    if (x < s_alerts_band.x || x >= s_alerts_band.x + s_alerts_band.w) return;
-    if (y < s_alerts_band.y || y >= s_alerts_band.y + s_alerts_band.h) return;
-    int rel = (y - s_alerts_band.y) + (int)lv_obj_get_scroll_y(s_alerts_list);
-    int row = rel / s_alerts_rowh;
-    if (row < 0 || row >= GZ_ALERTS_ROW_COUNT) return;
+    int row = gz_cust_row_at(&s_alerts_L, s_alerts_box, x, y, GZ_ALERTS_ROW_COUNT);
+    if (row < 0) return;
 
     if (row == GZ_ALERTS_ROW_BACK) { hide_alerts_page(); return; }
     if (gz_alerts_row_is_family(row)) {
@@ -267,23 +251,24 @@ void gz_face_customiser_build(lv_obj_t *scr)
     gz_face_store_load(&s_set);                 /* saved + sanitised for this board */
 
     s_box  = gz_safe_box(GZ_UI_W, GZ_UI_H, GZ_UI_ROUND, GZ_UI_S(6));
-    /* Title gets its own line inside the box; rows share the rest (render
-     * review: the title used to overlap the first row). */
-    int th  = lv_font_get_line_height(&lv_font_montserrat_12) + GZ_UI_S(4);
-    s_rows_y = s_box.y + th;
-    s_rowh  = (s_box.h - th) / ROW_COUNT;
+    /* Title gets its own line inside the box; the ten rows divide the rest
+     * evenly (gz_cust_layout.h — render review: the title used to overlap the
+     * first row). */
+    int th  = gz_cust_band_h(lv_font_get_line_height(&lv_font_montserrat_12), GZ_UI_S(4));
+    s_main_L = gz_cust_list(s_box, th, 0, ROW_COUNT);   /* no footer */
 
     static const char *const NAME[ROW_COUNT] = {
         "Face", "Accent", "Finish", "Background", "Always-on", "Alerts",
         "Pod 1", "Pod 2", "Pod 3", "Pod 4",
     };
     int valx = s_box.x + s_box.w / 2;
+    int lh14 = lv_font_get_line_height(&lv_font_montserrat_14);
     for (int r = 0; r < ROW_COUNT; ++r) {
-        int y = s_rows_y + r * s_rowh + (s_rowh - lv_font_get_line_height(&lv_font_montserrat_14)) / 2;
+        int y = gz_cust_row_text_y(&s_main_L, r, lh14);
         /* row strip */
         lv_obj_t *strip = plain_obj(scr);
-        lv_obj_set_size(strip, s_box.w, s_rowh - 2);
-        lv_obj_set_pos(strip, s_box.x, s_rows_y + r * s_rowh + 1);
+        lv_obj_set_size(strip, s_box.w, s_main_L.row_h - 2);
+        lv_obj_set_pos(strip, s_box.x, s_main_L.rows_y + r * s_main_L.row_h + 1);
         lv_obj_set_style_bg_color(strip, lv_color_hex(COL_ROW), 0);
         lv_obj_set_style_bg_opa(strip, (r & 1) ? LV_OPA_40 : LV_OPA_20, 0);
         lv_obj_set_style_radius(strip, 4, 0);
@@ -299,7 +284,7 @@ void gz_face_customiser_build(lv_obj_t *scr)
     lv_obj_set_style_radius(s_accent_sw, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_opa(s_accent_sw, LV_OPA_COVER, 0);
     lv_obj_align(s_accent_sw, LV_ALIGN_TOP_LEFT, valx - GZ_UI_S(2),
-                 s_rows_y + ROW_ACCENT * s_rowh + (s_rowh - sw) / 2);
+                 s_main_L.rows_y + ROW_ACCENT * s_main_L.row_h + (s_main_L.row_h - sw) / 2);
 
     s_finish_sw = plain_obj(scr);
     lv_obj_set_size(s_finish_sw, sw, sw);
@@ -308,7 +293,7 @@ void gz_face_customiser_build(lv_obj_t *scr)
     lv_obj_set_style_border_width(s_finish_sw, 1, 0);
     lv_obj_set_style_border_color(s_finish_sw, lv_color_hex(COL_NAME), 0);
     lv_obj_align(s_finish_sw, LV_ALIGN_TOP_LEFT, valx - GZ_UI_S(2),
-                 s_rows_y + ROW_FINISH * s_rowh + (s_rowh - sw) / 2);
+                 s_main_L.rows_y + ROW_FINISH * s_main_L.row_h + (s_main_L.row_h - sw) / 2);
 
     /* Title band. */
     lv_obj_t *t = lv_label_create(scr);
@@ -333,11 +318,8 @@ void gz_face_customiser_tap(int x, int y)
 {
     if (s_on_alerts) { alerts_tap(x, y); return; }   /* subpage owns the taps */
 
-    if (s_rowh <= 0) return;
-    if (y < s_rows_y || y >= s_rows_y + s_rowh * ROW_COUNT) return;
-    if (x < s_box.x || x >= s_box.x + s_box.w) return;
-    int row = (y - s_rows_y) / s_rowh;
-    if (row < 0 || row >= ROW_COUNT) return;
+    int row = gz_cust_row_at(&s_main_L, s_box, x, y, ROW_COUNT);
+    if (row < 0) return;
 
     if (row == ROW_ALERTS) { show_alerts_page(); return; }  /* open, nothing to save */
 
