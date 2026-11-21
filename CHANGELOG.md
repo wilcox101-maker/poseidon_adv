@@ -8,6 +8,27 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **GODZILLA node — bench self-test page (item J) (#155).** A read-only
+  SELF-TEST screen, reached by a tap on the Status screen and dismissed by a
+  tap, that shows per board capability flag whether each on-board part answered
+  and one live reading where fitted: display, touch (last tap), RTC (read +
+  oscillator-stopped), IMU (present + motion), fuel gauge / mic (I2C presence,
+  voltage where driven), SD (mounted), Wi-Fi frames/s, BLE adverts/s, and the
+  ESP-NOW link (HELLO seen / publish age). Pure pass/fail/skip verdict, per-line
+  value and serial-line text live in `gz_selftest.h`, native-tested
+  (`test/test_godzilla_selftest`); the page is built on the existing
+  safe-box / line-height layout. An optional one-line serial summary prints at
+  boot behind `GZ_SELFTEST_SERIAL` (default off). Read-only: nothing writes a
+  device, NVS, RTC or SD, and nothing new transmits. `docs/godzilla-bench-runbook.md`
+  gained a matching first-power-on checklist.
+- **GODZILLA node — RX fuzz round 2 (item N) (#157).** The native RX fuzz
+  harness (`test/test_godzilla_rx_fuzz`) now also fuzzes the smart-glasses
+  classifier (random payloads stay within the three defined levels, a malformed
+  advert never flags, and LOW-table company IDs never promote to HIGH),
+  `gz_alerts_page.h` (random masks keep the on-count in range, a family toggle
+  is an involution, Back / out-of-range rows are no-ops), and `gz_ui_apply.h`
+  (the diff of identical settings touches nothing; each field change reports
+  exactly its live consumer). Test-only; ID tables read-only, no entry changed.
 - **GODZILLA node — live settings apply (#153).** A customiser change to the
   Classic case finish or the alert settings takes effect immediately, without a
   reboot: a pure settings diff (`gz_ui_apply.h`, native-tested) re-applies only
@@ -246,6 +267,20 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
   the IMU-less ES3C28P. Touch follows automatically. `GZ_UI_AUTO_ROTATE 0`
   turns it off and `GZ_UI_ROT_REVERSE 1` flips the quarter-turn direction
   (`godzilla_node/main/gz_rotate.h`, native-tested in `test/test_godzilla_rotate`).
+
+### Changed
+
+- **GODZILLA node — customiser list geometry extracted; dead Alerts scroll
+  removed (item M) (#156).** The customiser main-page and Alerts-subpage row
+  geometry (title line, row origin, row height, tap-y → row, footer y) moved out
+  of `gz_face_customiser.cpp` into one pure, host-tested `gz_cust_layout.h`,
+  native-tested (`test/test_godzilla_cust_layout`) for all three boards'
+  `GZ_LCD_WIDTH/HEIGHT/ROUND`: title and footer inside `gz_safe_box`, no row
+  overlaps the title, every row at least the montserrat_14 line height, and a
+  tap on each drawn row round-trips back to it. The dead Alerts-list scroll
+  (marked scrollable on non-clickable parents, so it could not drag on device)
+  was removed, the test asserting all rows fit every current board. No on-device
+  behaviour change.
 
 ## [0.9.2] - 2026-11-16
 
