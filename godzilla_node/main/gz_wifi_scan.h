@@ -35,3 +35,8 @@ void gz_wifi_scan_init(uint8_t node_id);
 /* Call every loop iteration: hops the channel on the dwell timer and publishes
  * the Wi-Fi batch when due (nothing is sent for an empty window). */
 void gz_wifi_scan_tick(void);
+
+/* Monotonic count of promiscuous management frames captured since boot. Read-only
+ * liveness for the bench self-test (item J); the page diffs it over a window for
+ * a frames/s reading. Never transmits. */
+uint32_t gz_wifi_scan_frames(void);

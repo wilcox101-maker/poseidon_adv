@@ -26,3 +26,10 @@ bool gz_ui_start(void);
  * task has built its screens — the finish then simply applies on the next
  * build. */
 void gz_ui_apply_settings(const gz_ui_settings_t *s);
+
+/* Item J: print the one-line bench self-test summary to serial. Called once by
+ * the UI task (which owns the I2C bus) behind GZ_SELFTEST_SERIAL (default off). Read-only — it
+ * probes the on-board parts and prints "SELFTEST disp=ok touch=ok ..."; it never
+ * writes a device or transmits. On a headless board (no UI) the readings that
+ * depend on the panel/touch simply report absent. */
+void gz_ui_selftest_serial_emit(void);

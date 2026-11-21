@@ -111,6 +111,10 @@ void setup()
                   (unsigned)GZ_WIFI_CH_MIN, (unsigned)GZ_WIFI_CH_MAX,
                   (unsigned)GZ_WIFI_HOP_MS, (unsigned)GZ_WIFI_PUBLISH_MS);
     Serial.println("  passive only — capture is receive-only; publishes return to ch1");
+
+    /* Item J: the GZ_SELFTEST_SERIAL one-line summary is emitted by the UI task
+     * itself (gz_ui.cpp), which owns the I2C bus — calling it from here raced
+     * the UI task's RTC / IMU / gauge reads (review fix). */
 }
 
 void loop()

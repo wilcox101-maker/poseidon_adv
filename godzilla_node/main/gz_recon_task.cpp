@@ -51,6 +51,12 @@ static bool     s_mounted = false;
 static File     s_file;
 static uint32_t s_last_flush_ms;
 
+/* Read-only: has the card been mounted (and not since removed)? The bench
+ * self-test (item J) shows this on boards with a TF slot. Mounting itself only
+ * happens when a Recon session starts, so this reads false until the first
+ * session — the self-test surfaces that, it does not drive the card. */
+bool gz_recon_sd_mounted(void) { return s_mounted; }
+
 static void set_state(gz_recon_state_t st)
 {
     uint32_t now = millis();

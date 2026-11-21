@@ -38,8 +38,15 @@
 #include "gz_ui_apply.h"     /* which live consumers a settings save touches (item I) */
 #include "gz_link.h"         /* CMD_TIMESET latch drained on this (RTC) task */
 #include "gz_geom.h"         /* the one geometry source (#88 §3.2) */
+#include "gz_safearea.h"     /* item J self-test: shape-aware safe box */
+#include "gz_rtc.h"          /* item J self-test: read-only RTC read */
+#include "gz_recon_task.h"   /* item J self-test: SD mount state (read-only) */
+#include "gz_wifi_scan.h"    /* item J self-test: captured-frame counter */
+#include "gz_ble_scan.h"     /* item J self-test: captured-advert counter */
+#include "gz_selftest.h"     /* item J: pure verdict / rate / serial model */
 
 #include <Arduino.h>
+#include <Wire.h>            /* item J self-test: read-only I2C presence probe */
 #include <esp_heap_caps.h>
 #include <lvgl.h>
 #include <stdio.h>
@@ -171,6 +178,22 @@ static lv_obj_t *s_lbl_imu;
 static uint8_t   s_imu_rot = 0;   /* last orientation, feeds the hysteresis */
 #endif
 
+/* ---- bench self-test page (item J) --------------------------------------- */
+/* A second screen, reached by a tap on the Status screen and dismissed by a tap.
+ * Shows, per board capability flag, whether each on-board part answered and one
+ * live reading where fitted. Read-only: nothing here writes a device, NVS, RTC
+ * or SD, and nothing new transmits. */
+static lv_obj_t *s_scr_selftest = nullptr;
+static lv_obj_t *s_st_list = nullptr;
+static lv_obj_t *s_st_name[GZ_ST_LINE_COUNT];
+static lv_obj_t *s_st_val[GZ_ST_LINE_COUNT];
+static bool      s_in_selftest = false;
+static bool      s_touch_seen  = false;   /* at least one tap registered */
+/* Capture-rate baseline: previous frame/advert counts and when they were read,
+ * so a refresh shows frames/s over the elapsed window. */
+static uint32_t  s_st_prev_wifi = 0, s_st_prev_ble = 0, s_st_prev_ms = 0;
+#define GZ_COL_WARN 0xE86A5C   /* self-test FAIL rows */
+
 static lv_obj_t *add_label(lv_obj_t *parent, const lv_font_t *font, uint32_t rgb)
 {
     lv_obj_t *l = lv_label_create(parent);
@@ -216,6 +239,9 @@ static void build_status_screen(lv_obj_t *scr)
 #if GZ_BOARD_POWER
     s_lbl_pwr   = add_label(col, &lv_font_montserrat_14, GZ_COL_DIM);
 #endif
+    /* Item J: a tap on this screen opens the bench self-test page. */
+    lv_obj_t *hint = add_label(col, &lv_font_montserrat_14, GZ_COL_TEAL);
+    lv_label_set_text(hint, "tap: self-test");
 }
 
 static void refresh_status_screen(void)
@@ -304,6 +330,194 @@ static void refresh_status_screen(void)
 #endif
 }
 
+/* ---- bench self-test page (item J) --------------------------------------- */
+
+/* Gather the live self-test snapshot from the subsystems. All reads: an I2C
+ * presence poll (address only, no register write) for the gauge / mic, a time
+ * read for the RTC, one IMU sample, the SD mount flag, the capture counters and
+ * the publish stats. Runs on the UI task, like the status-screen reads. */
+static void gz_st_gather(gz_selftest_t *s)
+{
+    memset(s, 0, sizeof *s);
+    uint32_t now = millis();
+
+    s->disp_ok = s_first_flush_done;         /* panel completed a flush */
+
+    s->touch_found = gz_touch_found();
+    s->touch_seen  = s_touch_seen;
+    s->touch_x = s_touch_pt.x;
+    s->touch_y = s_touch_pt.y;
+
+#if GZ_BOARD_HAS_RTC
+    s->cap_rtc = true;
+    gz_datetime_t dt;
+    if (gz_rtc_read(&dt)) { s->rtc_ok = true; s->rtc_osc_stopped = dt.osc_stopped; }
+#endif
+
+#if GZ_BOARD_HAS_IMU
+    s->cap_imu = true;
+    if (gz_imu_chip_id() == GZ_IMU_WHOAMI_VALUE) {
+        gz_imu_sample_t im;
+        if (gz_imu_read(&im, s_imu_rot)) { s->imu_ok = true; s->imu_moving = im.moving; }
+    }
+#endif
+
+#if GZ_BOARD_HAS_GAUGE
+    s->cap_gauge = true;
+    Wire.beginTransmission(GZ_I2C_ADDR_GAUGE);
+    s->gauge_ok = (Wire.endTransmission() == 0);
+#if GZ_BOARD_POWER
+    { gz_power_t pw; if (gz_power_read(&pw) && pw.mv_valid) s->gauge_mv = pw.mv; }
+#endif
+#endif
+
+#if GZ_BOARD_HAS_MIC_ADC
+    s->cap_mic = true;
+    Wire.beginTransmission(GZ_I2C_ADDR_MIC_ADC);
+    s->mic_ok = (Wire.endTransmission() == 0);
+#endif
+
+#if GZ_BOARD_HAS_SD
+    s->cap_sd = true;
+    s->sd_mounted = gz_recon_sd_mounted();
+#endif
+
+    /* Radios: frames/adverts per second over the window since the last gather. */
+    uint32_t wf = gz_wifi_scan_frames();
+    uint32_t ba = gz_ble_scan_adverts();
+    s->wifi_any   = (wf > 0u);
+    s->ble_any    = (ba > 0u);
+    s->wifi_delta = wf - s_st_prev_wifi;
+    s->ble_delta  = ba - s_st_prev_ble;
+    s->rate_window_ms = (uint32_t)(now - s_st_prev_ms);
+    s_st_prev_wifi = wf;
+    s_st_prev_ble  = ba;
+    s_st_prev_ms   = now;
+
+    /* ESP-NOW link: brought up at boot; liveness is a real detection publish. */
+    gz_status_t stt;
+    gz_stats_snapshot(&stt);
+    s->link_up       = true;
+    s->has_published = stt.has_published;
+    s->pub_age_ms    = stt.has_published ? (uint32_t)(now - stt.last_pub_ms) : 0u;
+}
+
+static lv_obj_t *st_plain(lv_obj_t *parent)
+{
+    lv_obj_t *o = lv_obj_create(parent);
+    lv_obj_remove_style_all(o);
+    lv_obj_remove_flag(o, LV_OBJ_FLAG_CLICKABLE);
+    return o;
+}
+
+static lv_obj_t *st_label(lv_obj_t *parent, const lv_font_t *font, uint32_t rgb)
+{
+    lv_obj_t *l = lv_label_create(parent);
+    lv_obj_set_style_text_font(l, font, 0);
+    lv_obj_set_style_text_color(l, lv_color_hex(rgb), 0);
+    lv_label_set_text(l, "");
+    return l;
+}
+
+static void build_selftest_screen(lv_obj_t *scr)
+{
+    lv_obj_set_style_bg_color(scr, lv_color_hex(GZ_COL_ABYSS), 0);
+    lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
+    lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
+
+    /* One geometry source (gz_geom.h via gz_safearea.h): the safe box keeps the
+     * list off a round panel's edge; title and footer sit on their own lines
+     * INSIDE the box; the rows scroll in the band between them, by real font
+     * line height so nothing shrinks (#150, #152). */
+    gz_rect_t box = gz_safe_box(GZ_UI_W, GZ_UI_H, GZ_UI_ROUND, GZ_UI_S(6));
+    int rowh = lv_font_get_line_height(&lv_font_montserrat_14) + GZ_UI_S(6);
+    int th   = lv_font_get_line_height(&lv_font_montserrat_14) + GZ_UI_S(4);
+    int fh   = lv_font_get_line_height(&lv_font_montserrat_12) + GZ_UI_S(4);
+
+    gz_rect_t band = box;
+    band.y += th;
+    band.h -= th + fh;
+    /* Fit all lines in the band (the list cannot be drag-scrolled: its parents
+     * are not clickable). Shrink the GAP, never below the font line height —
+     * the round 1.85B lost the last line by 5 px at the full gap (render
+     * review). */
+    int fit = band.h / GZ_ST_LINE_COUNT;
+    int minh = lv_font_get_line_height(&lv_font_montserrat_14);
+    if (rowh > fit) rowh = (fit > minh) ? fit : minh;
+
+    s_st_list = st_plain(scr);
+    lv_obj_set_pos(s_st_list, band.x, band.y);
+    lv_obj_set_size(s_st_list, band.w, band.h);
+    lv_obj_set_scroll_dir(s_st_list, LV_DIR_VER);
+    lv_obj_add_flag(s_st_list, LV_OBJ_FLAG_SCROLLABLE);
+
+    int valx = box.w / 2;
+    for (int r = 0; r < GZ_ST_LINE_COUNT; ++r) {
+        int ry = r * rowh;
+        int ty = ry + (rowh - lv_font_get_line_height(&lv_font_montserrat_14)) / 2;
+        lv_obj_t *nm = st_label(s_st_list, &lv_font_montserrat_14, GZ_COL_FOAM);
+        lv_label_set_text(nm, gz_selftest_label(r));
+        lv_obj_set_pos(nm, GZ_UI_S(4), ty);
+        s_st_name[r] = nm;
+        lv_obj_t *v = st_label(s_st_list, &lv_font_montserrat_14, GZ_COL_FOAM);
+        lv_obj_set_pos(v, valx, ty);
+        s_st_val[r] = v;
+    }
+
+    lv_obj_t *t = st_label(scr, &lv_font_montserrat_14, GZ_COL_TEAL);
+    lv_label_set_text(t, "SELF-TEST");
+    lv_obj_align(t, LV_ALIGN_TOP_MID, 0, box.y);
+
+    lv_obj_t *f = st_label(scr, &lv_font_montserrat_12, GZ_COL_DIM);
+    lv_label_set_text(f, "tap to return");
+    lv_obj_align(f, LV_ALIGN_TOP_MID, 0, band.y + band.h + GZ_UI_S(2));
+}
+
+static void refresh_selftest_screen(void)
+{
+    gz_selftest_t st;
+    gz_st_gather(&st);
+    char val[24];
+    for (int r = 0; r < GZ_ST_LINE_COUNT; ++r) {
+        gz_st_result_t res = gz_selftest_fmt_value(&st, r, val, sizeof val);
+        lv_label_set_text(s_st_val[r], val);
+        uint32_t vc = (res == GZ_ST_PASS) ? GZ_COL_FOAM
+                    : (res == GZ_ST_FAIL) ? GZ_COL_WARN : GZ_COL_DIM;
+        lv_obj_set_style_text_color(s_st_val[r], lv_color_hex(vc), 0);
+        lv_obj_set_style_text_color(s_st_name[r],
+            lv_color_hex(res == GZ_ST_SKIP ? GZ_COL_DIM : GZ_COL_FOAM), 0);
+    }
+}
+
+static void selftest_open(void)
+{
+    if (!s_scr_selftest) return;
+    s_in_selftest  = true;
+    s_st_prev_wifi = gz_wifi_scan_frames();     /* reset the rate window */
+    s_st_prev_ble  = gz_ble_scan_adverts();
+    s_st_prev_ms   = millis();
+    refresh_selftest_screen();
+    lv_screen_load(s_scr_selftest);
+}
+
+static void selftest_close(void)
+{
+    s_in_selftest = false;
+    refresh_status_screen();
+    lv_screen_load(s_scr[GZ_SCR_STATUS]);
+}
+
+/* Print the one-line self-test summary to serial. Called once at boot from
+ * main.cpp behind GZ_SELFTEST_SERIAL (default off). */
+void gz_ui_selftest_serial_emit(void)
+{
+    gz_selftest_t st;
+    gz_st_gather(&st);
+    char line[128];
+    gz_selftest_serial(&st, line, sizeof line);
+    Serial.println(line);
+}
+
 /* ---- navigation ---------------------------------------------------------- */
 
 static void refresh_current(uint32_t now)
@@ -336,6 +550,21 @@ static void go_to(int idx)
 static void screen_event_cb(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
+
+    /* Self-test page (item J): a clean tap returns to Status; a swipe only
+     * scrolls the row band (and marks the release as not a tap). */
+    if (s_in_selftest) {
+        if (code == LV_EVENT_PRESSED)       s_suppress_click = false;
+        else if (code == LV_EVENT_GESTURE)  s_suppress_click = true;
+        else if (code == LV_EVENT_CLICKED) {
+            if (s_suppress_click) return;
+            s_touch_seen = true;
+            if (gz_ui_alert_tap()) return;     /* an alert overlay eats the tap first */
+            selftest_close();
+        }
+        return;
+    }
+
     if (code == LV_EVENT_PRESSED) {
         s_suppress_click = false;
     } else if (code == LV_EVENT_GESTURE) {
@@ -356,6 +585,7 @@ static void screen_event_cb(lv_event_t *e)
         else if (gz_ui_radar_long_press()) go_to(GZ_SCR_HUNT);       /* card: hunt it */
     } else if (code == LV_EVENT_CLICKED) {
         if (s_suppress_click) return;
+        s_touch_seen = true;               /* item J self-test: a tap has been seen */
         /* A tap dismisses the priority alert overlay first, and never also
          * reaches the screen beneath it. */
         if (gz_ui_alert_tap()) return;
@@ -366,6 +596,7 @@ static void screen_event_cb(lv_event_t *e)
 #if GZ_BOARD_HAS_RTC
         else if (s_cur == GZ_SCR_WATCH) gz_ui_watch_tap(p.y, millis());
 #endif
+        else if (s_cur == GZ_SCR_STATUS) selftest_open();   /* item J: open self-test */
     }
 }
 
@@ -404,6 +635,11 @@ static void ui_task(void *arg)
     gz_ui_watch_build(s_scr[GZ_SCR_WATCH]);     /* first RTC read, on this task */
 #endif
     build_status_screen(s_scr[GZ_SCR_STATUS]);
+    /* Item J: the bench self-test page — a standalone screen (not in the swipe
+     * ring), opened by a tap on Status and dismissed by a tap. */
+    s_scr_selftest = lv_obj_create(nullptr);
+    wire_screen(s_scr_selftest);
+    build_selftest_screen(s_scr_selftest);
     gz_ui_alert_build();                        /* §4 item 6: overlay on the top layer */
     refresh_current(millis());
     lv_screen_load(s_scr[s_cur]);
@@ -411,6 +647,14 @@ static void ui_task(void *arg)
     gz_wake_init(&s_wake, millis());
     bool     backlight_on = false;
     uint32_t last_refresh = 0;
+#if GZ_SELFTEST_SERIAL
+    /* Item J: one-line bench self-test summary over serial (off by default;
+     * -DGZ_SELFTEST_SERIAL=1). Emitted HERE, on the task that owns the I2C bus,
+     * so its RTC / IMU / gauge probes never interleave with another task's
+     * register reads (a repeated-start read is two Wire calls). Read-only. */
+    gz_ui_selftest_serial_emit();
+#endif
+
     for (;;) {
         uint32_t wait = lv_timer_handler();
 
@@ -466,7 +710,8 @@ static void ui_task(void *arg)
             }
 #endif
             /* Only the visible screen; the others catch up when shown. */
-            refresh_current(now);
+            if (s_in_selftest) refresh_selftest_screen();   /* item J page on top */
+            else               refresh_current(now);
 
             /* Priority ALERT overlay (§4 item 6): polls the radar table on every
              * screen. A freshly raised alert counts as activity so the backlight
