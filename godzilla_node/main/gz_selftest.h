@@ -152,7 +152,9 @@ static inline gz_st_result_t gz_selftest_result(const gz_selftest_t *s, int line
     case GZ_ST_IMU:     return !s->cap_imu   ? GZ_ST_SKIP : (s->imu_ok     ? GZ_ST_PASS : GZ_ST_FAIL);
     case GZ_ST_GAUGE:   return !s->cap_gauge ? GZ_ST_SKIP : (s->gauge_ok   ? GZ_ST_PASS : GZ_ST_FAIL);
     case GZ_ST_MIC:     return !s->cap_mic   ? GZ_ST_SKIP : (s->mic_ok     ? GZ_ST_PASS : GZ_ST_FAIL);
-    case GZ_ST_SD:      return !s->cap_sd    ? GZ_ST_SKIP : (s->sd_mounted ? GZ_ST_PASS : GZ_ST_FAIL);
+    /* SD mounts only when a Recon session starts, so 'not mounted' cannot tell
+     * a missing card from an unused one: report it as SKIP, never FAIL. */
+    case GZ_ST_SD:      return !s->cap_sd    ? GZ_ST_SKIP : (s->sd_mounted ? GZ_ST_PASS : GZ_ST_SKIP);
     case GZ_ST_WIFI:    return s->wifi_any ? GZ_ST_PASS : GZ_ST_FAIL;
     case GZ_ST_BLE:     return s->ble_any  ? GZ_ST_PASS : GZ_ST_FAIL;
     case GZ_ST_LINK:    return (s->link_up && s->has_published) ? GZ_ST_PASS : GZ_ST_FAIL;
@@ -206,7 +208,7 @@ static inline gz_st_result_t gz_selftest_fmt_value(const gz_selftest_t *s, int l
         break;
     case GZ_ST_SD:
         if (!s->cap_sd)      snprintf(out, n, "n/a");
-        else                 snprintf(out, n, s->sd_mounted ? "mounted" : "no card");
+        else                 snprintf(out, n, s->sd_mounted ? "mounted" : "not mounted");
         break;
     case GZ_ST_WIFI:
         gz_st_fmt_rate(s->wifi_delta, s->rate_window_ms, out, n);

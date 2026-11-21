@@ -437,6 +437,13 @@ static void build_selftest_screen(lv_obj_t *scr)
     gz_rect_t band = box;
     band.y += th;
     band.h -= th + fh;
+    /* Fit all lines in the band (the list cannot be drag-scrolled: its parents
+     * are not clickable). Shrink the GAP, never below the font line height —
+     * the round 1.85B lost the last line by 5 px at the full gap (render
+     * review). */
+    int fit = band.h / GZ_ST_LINE_COUNT;
+    int minh = lv_font_get_line_height(&lv_font_montserrat_14);
+    if (rowh > fit) rowh = (fit > minh) ? fit : minh;
 
     s_st_list = st_plain(scr);
     lv_obj_set_pos(s_st_list, band.x, band.y);
@@ -640,6 +647,14 @@ static void ui_task(void *arg)
     gz_wake_init(&s_wake, millis());
     bool     backlight_on = false;
     uint32_t last_refresh = 0;
+#if GZ_SELFTEST_SERIAL
+    /* Item J: one-line bench self-test summary over serial (off by default;
+     * -DGZ_SELFTEST_SERIAL=1). Emitted HERE, on the task that owns the I2C bus,
+     * so its RTC / IMU / gauge probes never interleave with another task's
+     * register reads (a repeated-start read is two Wire calls). Read-only. */
+    gz_ui_selftest_serial_emit();
+#endif
+
     for (;;) {
         uint32_t wait = lv_timer_handler();
 

@@ -101,7 +101,8 @@ static void test_failures(void)
     s = all_good();
     s.imu_ok = false;           TEST_ASSERT_EQUAL_INT(GZ_ST_FAIL, gz_selftest_result(&s, GZ_ST_IMU));
     s = all_good();
-    s.sd_mounted = false;       TEST_ASSERT_EQUAL_INT(GZ_ST_FAIL, gz_selftest_result(&s, GZ_ST_SD));
+    /* not mounted = no Recon session yet, or no card: SKIP, never FAIL */
+    s.sd_mounted = false;       TEST_ASSERT_EQUAL_INT(GZ_ST_SKIP, gz_selftest_result(&s, GZ_ST_SD));
     s = all_good();
     s.wifi_any = false;         TEST_ASSERT_EQUAL_INT(GZ_ST_FAIL, gz_selftest_result(&s, GZ_ST_WIFI));
     s = all_good();

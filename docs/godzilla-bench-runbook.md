@@ -95,7 +95,7 @@ The quickest first-light check. Swipe to the **Status** screen (it is the last i
 its bottom line reads **`tap: self-test`**. **Tap anywhere** to open the self-test page, and
 **tap again** to return. The page is **read-only** — it only reads the parts, writes nothing,
 and transmits nothing new — so it is safe to open at any time. Each line shows a verdict
-(`ok` green, `FAIL` red, `--` dim for a part this board does not have) and a live reading.
+(`ok` green, `FAIL` red, `--` dim for a part this board does not have, or an SD card not yet mounted) and a live reading.
 
 Walk the lines top to bottom:
 
@@ -115,7 +115,7 @@ Walk the lines top to bottom:
 Record anything that reads `FAIL` where the part exists, with what you saw.
 
 For a **headless / no-display** check, build with `-DGZ_SELFTEST_SERIAL=1` and the boot log
-prints one line after the banner:
+prints one line once the UI task is up (it owns the I2C bus, so the probes never race it):
 
 ```text
 SELFTEST disp=ok touch=ok rtc=ok imu=ok gauge=ok mic=ok sd=-- wifi=ok ble=ok link=ok

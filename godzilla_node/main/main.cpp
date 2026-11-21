@@ -112,14 +112,9 @@ void setup()
                   (unsigned)GZ_WIFI_HOP_MS, (unsigned)GZ_WIFI_PUBLISH_MS);
     Serial.println("  passive only — capture is receive-only; publishes return to ch1");
 
-#if GZ_SELFTEST_SERIAL
-    /* Item J: one-line bench self-test summary over serial, for a headless /
-     * first-power-on check. Off by default; build with -DGZ_SELFTEST_SERIAL=1.
-     * Read-only — the same passive probes the on-screen self-test page uses. */
-#if GZ_BOARD_HAS_UI
-    gz_ui_selftest_serial_emit();
-#endif
-#endif
+    /* Item J: the GZ_SELFTEST_SERIAL one-line summary is emitted by the UI task
+     * itself (gz_ui.cpp), which owns the I2C bus — calling it from here raced
+     * the UI task's RTC / IMU / gauge reads (review fix). */
 }
 
 void loop()
