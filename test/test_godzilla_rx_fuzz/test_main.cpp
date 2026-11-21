@@ -40,6 +40,9 @@
 #include "../../godzilla_node/main/gz_camera.h"
 #include "../../godzilla_node/main/gz_le_equip.h"
 #include "../../godzilla_node/main/gz_alpr.h"
+#include "../../godzilla_node/main/gz_smartglass.h"   /* §4 unit 5 classifier (round 2) */
+#include "../../godzilla_node/main/gz_alerts_page.h"  /* Alerts subpage mask logic */
+#include "../../godzilla_node/main/gz_ui_apply.h"     /* live-apply consumer diff */
 #include "../../godzilla_node/main/gz_timeset.h"
 #include "../../godzilla_node/main/gz_rtc.h"
 #include "../../src/godzilla_det.h"
@@ -90,6 +93,14 @@ static void decode_all(const uint8_t *buf, int len)
     TEST_ASSERT_TRUE(sk == GZ_SKIMMER_NONE || sk == GZ_SKIMMER_LOW ||
                      sk == GZ_SKIMMER_HIGH);
     if (a.malformed) TEST_ASSERT_EQUAL_INT(GZ_SKIMMER_NONE, sk);
+
+    /* §4 unit 5 smart-glasses classifier off the same raw payload: always one of
+     * the three defined levels, and a malformed or mfr-less advert never flags
+     * (the company ID is its only signal). */
+    int sg = gz_smartglass_classify_payload(buf, len);
+    TEST_ASSERT_TRUE(sg == GZ_SMARTGLASS_NONE || sg == GZ_SMARTGLASS_LOW ||
+                     sg == GZ_SMARTGLASS_HIGH);
+    if (a.malformed || !a.has_mfr) TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_NONE, sg);
 
     /* The BLE vendor labeller takes an arbitrary 16-bit company id and an
      * arbitrary type string drawn from the fuzz buffer; it must always stay
@@ -347,6 +358,86 @@ static void test_det_ingest_fuzz(void)
     TEST_ASSERT_EQUAL_INT(0, t3.n);
 }
 
+/* §4 unit 5: the smart-glasses company-ID classifier. Random IDs never exceed
+ * the three defined levels; every LOW-table ID stays LOW (never promoted to
+ * HIGH), every HIGH-table ID is HIGH. (Round 2.) The ID tables themselves are
+ * read-only here — this never adds, removes or edits an entry. */
+static void test_smartglass_cid_fuzz(void)
+{
+    for (int iter = 0; iter < 20000; ++iter) {
+        uint16_t cid = (uint16_t)rnd();
+        int c = gz_smartglass_cid_conf(cid);
+        TEST_ASSERT_TRUE(c == GZ_SMARTGLASS_NONE || c == GZ_SMARTGLASS_LOW ||
+                         c == GZ_SMARTGLASS_HIGH);
+    }
+    for (unsigned i = 0; i < sizeof gz_smartglass_cid_low / sizeof gz_smartglass_cid_low[0]; ++i)
+        TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_LOW,
+                              gz_smartglass_cid_conf(gz_smartglass_cid_low[i]));
+    for (unsigned i = 0; i < sizeof gz_smartglass_cid_high / sizeof gz_smartglass_cid_high[0]; ++i)
+        TEST_ASSERT_EQUAL_INT(GZ_SMARTGLASS_HIGH,
+                              gz_smartglass_cid_conf(gz_smartglass_cid_high[i]));
+}
+
+/* Alerts subpage mask logic (gz_alerts_page.h): over random masks and rows the
+ * count stays in 0..family-count, toggling a family row is an involution and
+ * flips exactly that row, and Back / out-of-range rows are no-ops. */
+static void test_alerts_mask_fuzz(void)
+{
+    for (int iter = 0; iter < 20000; ++iter) {
+        uint8_t mask = (uint8_t)rnd();
+        int n = gz_alerts_count_on(mask);
+        TEST_ASSERT_TRUE(n >= 0 && n <= GZ_ALERTS_FAMILY_COUNT);
+
+        int row = (int)(rnd() % (GZ_ALERTS_ROW_COUNT + 4)) - 2;   /* -2 .. ROW_COUNT+1 */
+        if (gz_alerts_row_is_family(row)) {
+            uint8_t once  = gz_alerts_toggle(mask, row);
+            uint8_t twice = gz_alerts_toggle(once, row);
+            TEST_ASSERT_EQUAL_UINT8(mask, twice);                 /* involution */
+            TEST_ASSERT_TRUE(gz_alerts_row_on(mask, row) != gz_alerts_row_on(once, row));
+        } else {
+            TEST_ASSERT_EQUAL_UINT8(mask, gz_alerts_toggle(mask, row));   /* no-op */
+            TEST_ASSERT_FALSE(gz_alerts_row_on(mask, row));
+        }
+    }
+}
+
+/* Live-apply consumer diff (gz_ui_apply.h): the diff of identical settings
+ * touches nothing, and over random settings it reports exactly the live
+ * consumers (finish, alert) whose fields differ — a non-live field change
+ * (accent / background / face / pods) never touches a consumer. */
+static void test_ui_apply_diff_fuzz(void)
+{
+    gz_ui_settings_t base;
+    gz_ui_settings_defaults(&base);
+    TEST_ASSERT_FALSE(gz_ui_consumers_any(gz_ui_consumers_diff(&base, &base)));
+
+    for (int iter = 0; iter < 20000; ++iter) {
+        gz_ui_settings_t a, b;
+        uint8_t *pa = (uint8_t *)&a, *pb = (uint8_t *)&b;
+        for (size_t i = 0; i < sizeof a; ++i) { pa[i] = (uint8_t)rnd(); pb[i] = (uint8_t)rnd(); }
+        gz_ui_consumers_t c = gz_ui_consumers_diff(&a, &b);
+        TEST_ASSERT_EQUAL_INT(a.finish != b.finish, c.finish);
+        TEST_ASSERT_EQUAL_INT((a.alert_mask != b.alert_mask) || (a.always_on != b.always_on),
+                              c.alert);
+    }
+
+    /* Each single-field change touches exactly its consumer. */
+    gz_ui_settings_t a = base, b = base;
+    b.finish = (uint8_t)(base.finish + 1);
+    gz_ui_consumers_t c = gz_ui_consumers_diff(&a, &b);
+    TEST_ASSERT_TRUE(c.finish);  TEST_ASSERT_FALSE(c.alert);
+    b = base; b.alert_mask = (uint8_t)(base.alert_mask ^ 0x04u);
+    c = gz_ui_consumers_diff(&a, &b);
+    TEST_ASSERT_FALSE(c.finish); TEST_ASSERT_TRUE(c.alert);
+    b = base; b.always_on = (uint8_t)!base.always_on;
+    c = gz_ui_consumers_diff(&a, &b);
+    TEST_ASSERT_FALSE(c.finish); TEST_ASSERT_TRUE(c.alert);
+    /* Non-live fields: accent, background, face, a pod — no consumer. */
+    b = base; b.accent = (uint8_t)(base.accent + 1); b.background = (uint8_t)(base.background + 1);
+    b.face = (uint8_t)GZ_FACE_COMMAND; b.slots[0] = (uint8_t)(base.slots[0] + 1);
+    TEST_ASSERT_FALSE(gz_ui_consumers_any(gz_ui_consumers_diff(&a, &b)));
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -358,5 +449,8 @@ int main(void)
     RUN_TEST(test_wifi_batch_dedup_fuzz);
     RUN_TEST(test_det_ingest_malformed);
     RUN_TEST(test_det_ingest_fuzz);
+    RUN_TEST(test_smartglass_cid_fuzz);
+    RUN_TEST(test_alerts_mask_fuzz);
+    RUN_TEST(test_ui_apply_diff_fuzz);
     return UNITY_END();
 }
