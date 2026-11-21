@@ -403,8 +403,8 @@ static void test_alerts_mask_fuzz(void)
 
 /* Live-apply consumer diff (gz_ui_apply.h): the diff of identical settings
  * touches nothing, and over random settings it reports exactly the live
- * consumers (finish, alert) whose fields differ — a non-live field change
- * (accent / background / face / pods) never touches a consumer. */
+ * consumers (finish, alert) whose fields differ; accent / background / face /
+ * pod changes never touch the finish or alert consumer. */
 static void test_ui_apply_diff_fuzz(void)
 {
     gz_ui_settings_t base;
@@ -432,10 +432,13 @@ static void test_ui_apply_diff_fuzz(void)
     b = base; b.always_on = (uint8_t)!base.always_on;
     c = gz_ui_consumers_diff(&a, &b);
     TEST_ASSERT_FALSE(c.finish); TEST_ASSERT_TRUE(c.alert);
-    /* Non-live fields: accent, background, face, a pod — no consumer. */
+    /* Accent, background, face and a pod never touch the finish or alert
+     * consumers. (Deliberately not asserting "no consumer at all": item L makes
+     * accent / background / face live and will add consumers for them.) */
     b = base; b.accent = (uint8_t)(base.accent + 1); b.background = (uint8_t)(base.background + 1);
     b.face = (uint8_t)GZ_FACE_COMMAND; b.slots[0] = (uint8_t)(base.slots[0] + 1);
-    TEST_ASSERT_FALSE(gz_ui_consumers_any(gz_ui_consumers_diff(&a, &b)));
+    c = gz_ui_consumers_diff(&a, &b);
+    TEST_ASSERT_FALSE(c.finish); TEST_ASSERT_FALSE(c.alert);
 }
 
 int main(void)
