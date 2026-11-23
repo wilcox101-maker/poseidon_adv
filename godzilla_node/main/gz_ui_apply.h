@@ -3,17 +3,19 @@
  * (watch-faces, unit 4 / item I). PURE.
  *
  * The customiser persists the WHOLE settings blob (gz_ui_settings_t) on every
- * tap. Most saves change one field, and only two of those fields have a live
+ * tap. Most saves change one field, and three groups of fields have a live
  * consumer in the UI task today:
  *   - the Classic case finish  -> gz_ui_watch_set_finish + a watch rebuild
  *     (the costly one: it deletes and re-lays the whole dial);
  *   - the alert overlay's per-family mask and always-on -> two gz_ui.cpp
- *     statics the overlay tick reads.
+ *     statics the overlay tick reads;
+ *   - accent, background and the selected face -> the active face screen is
+ *     rebuilt live (item L), the same lv_obj_clean + rebuild the finish uses,
+ *     so none of these need a reboot to take hold.
  * This header turns "old settings vs just-saved settings" into exactly which of
  * those consumers must re-apply, so gz_ui.cpp runs the watch rebuild only when
- * the finish really changed and never on an unrelated save (an accent tap, a
- * pod swap). Accent / background / face re-apply is not wired as live here, so
- * they are intentionally not consumers of this diff.
+ * one of its driving fields really changed and never on an unrelated save (a
+ * pod swap on its own touches nothing).
  *
  * Pure: stdint/bool only; compiles as C and C++. Native-tested in
  * test_godzilla_ui_apply.
@@ -29,6 +31,7 @@
 typedef struct {
     bool finish;   /* Classic case metal -> set_finish + rebuild (RTC boards) */
     bool alert;    /* alert mask or always-on -> gz_ui.cpp overlay statics     */
+    bool face;     /* accent / background / selected face -> face-screen rebuild */
 } gz_ui_consumers_t;
 
 /* What changed between the last-applied settings `prev` and the just-saved
@@ -40,6 +43,9 @@ static inline gz_ui_consumers_t gz_ui_consumers_diff(const gz_ui_settings_t *pre
     c.finish = (prev->finish != next->finish);
     c.alert  = (prev->alert_mask != next->alert_mask) ||
                (prev->always_on  != next->always_on);
+    c.face   = (prev->accent     != next->accent)     ||
+               (prev->background != next->background) ||
+               (prev->face       != next->face);
     return c;
 }
 
@@ -47,5 +53,5 @@ static inline gz_ui_consumers_t gz_ui_consumers_diff(const gz_ui_settings_t *pre
  * save that touched only non-live fields). */
 static inline bool gz_ui_consumers_any(gz_ui_consumers_t c)
 {
-    return c.finish || c.alert;
+    return c.finish || c.alert || c.face;
 }

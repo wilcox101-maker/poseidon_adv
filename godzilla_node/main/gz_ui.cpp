@@ -730,8 +730,9 @@ static void ui_task(void *arg)
 /* ---- live settings apply (item I) ---------------------------------------- */
 /* Called on the UI task after the customiser persists a change. Diffs the save
  * against what is currently applied (gz_ui_apply.h) and re-applies only the
- * consumers that moved: the alert overlay statics always cheaply, the Classic
- * watch only on a real finish change (a full rebuild). */
+ * consumers that moved: the alert overlay statics cheaply, and the active face
+ * screen rebuilt once when the finish, accent, background or selected face
+ * changed (item L) — so none of those need a reboot to take hold. */
 void gz_ui_apply_settings(const gz_ui_settings_t *s)
 {
     if (!s) return;
@@ -745,14 +746,18 @@ void gz_ui_apply_settings(const gz_ui_settings_t *s)
         s_alert_always_on = s->always_on != 0;
     }
 #if GZ_BOARD_HAS_RTC
-    if (c.finish) {
-        gz_ui_watch_set_finish(s->finish);
+    /* The case finish (c.finish) and accent/background/selected-face (c.face)
+     * both land on the one active face screen, so a save that moved either (or
+     * both) costs exactly one rebuild, never two. */
+    if (c.finish) gz_ui_watch_set_finish(s->finish);
+    if (c.finish || c.face) {
         lv_obj_t *w = s_scr[GZ_SCR_WATCH];
         if (w) {
-            /* Rebuild the dial in the new case metal. lv_obj_clean deletes and
-             * frees the old children (no LVGL leak); gz_ui_watch_build re-lays
-             * them, and the screen's own event callbacks live on the screen,
-             * not its children, so they survive. Resync if it is on screen. */
+            /* Rebuild the dial so the new finish / accent / background / face
+             * take hold live. lv_obj_clean deletes and frees the old children
+             * (no LVGL leak); gz_ui_watch_build re-lays them, and the screen's
+             * own event callbacks live on the screen, not its children, so they
+             * survive. Resync if it is on screen. */
             lv_obj_clean(w);
             gz_ui_watch_build(w);
             if (s_cur == GZ_SCR_WATCH) gz_ui_watch_show(millis());
